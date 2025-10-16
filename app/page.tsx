@@ -21,7 +21,7 @@ export default async function HomePage() {
             <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-xl flex items-center justify-center">
               <span className="text-2xl">🎤</span>
             </div>
-            <span className="text-2xl font-bold text-white">Talksmith</span>
+            <span className="text-2xl font-bold text-white">Locuta.ai</span>
           </div>
           <div className="flex items-center gap-4">
             <Link 
@@ -96,7 +96,7 @@ export default async function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Why Talksmith?
+              Why Locuta.ai?
             </h2>
             <p className="text-xl text-purple-200">
               Everything you need to become a confident speaker
@@ -154,7 +154,7 @@ export default async function HomePage() {
               <h3 className="text-2xl font-bold text-white mb-4">Choose Your Category</h3>
               <p className="text-purple-200 leading-relaxed">
                 Select from Public Speaking, Storytelling, Creator Content, Workplace Communication, 
-                Casual Conversation, or Investor Pitches.
+                Casual Conversation, or Pitches for anything
               </p>
             </div>
 
@@ -249,10 +249,10 @@ export default async function HomePage() {
               <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-xl flex items-center justify-center">
                 <span className="text-2xl">🎤</span>
               </div>
-              <span className="text-xl font-bold text-white">Talksmith</span>
+              <span className="text-xl font-bold text-white">Locuta.ai</span>
             </div>
             <p className="text-purple-200">
-              © 2025 Talksmith. Elevate your voice.
+              © 2025 Locuta.ai. Elevate your voice.
             </p>
           </div>
         </div>

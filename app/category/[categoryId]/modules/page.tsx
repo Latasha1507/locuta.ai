@@ -9,7 +9,7 @@ const categoryMap: { [key: string]: string } = {
   'creator-speaking': 'Creator Speaking',
   'casual-conversation': 'Casual Conversation',
   'workplace-communication': 'Workplace Communication',
-  'investor-pitch': 'Investor Pitch',
+  'pitch-anything': 'Pitch Anything',
 }
 
 const categoryColors: { [key: string]: string } = {
@@ -18,7 +18,7 @@ const categoryColors: { [key: string]: string } = {
   'creator-speaking': 'from-pink-500 to-rose-600',
   'casual-conversation': 'from-green-500 to-emerald-600',
   'workplace-communication': 'from-indigo-500 to-purple-600',
-  'investor-pitch': 'from-teal-500 to-cyan-600',
+  'pitch-anything': 'from-teal-500 to-cyan-600',
 }
 
 export default async function CategoryModulesPage({

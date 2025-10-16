@@ -123,7 +123,7 @@ export default async function DashboardPage() {
               <span className="text-2xl">🎤</span>
             </div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-              Talksmith
+            Locuta.ai
             </h1>
           </div>
           <div className="flex items-center gap-4">

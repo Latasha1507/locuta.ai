@@ -154,7 +154,7 @@ export default async function HomePage() {
               <h3 className="text-2xl font-bold text-white mb-4">Choose Your Category</h3>
               <p className="text-purple-200 leading-relaxed">
                 Select from Public Speaking, Storytelling, Creator Content, Workplace Communication, 
-                Casual Conversation, or Investor Pitches.
+                Casual Conversation, or Pitches for anything.
               </p>
             </div>
 

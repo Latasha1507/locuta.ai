@@ -66,7 +66,7 @@ export default function AdminPage() {
                 Creator Speaking,1,Camera Presence & Speaking Fundamentals,1,Speaking to the Lens,"Imagine one specific person behind the lens...","Answer: 'Why did you start creating content?' in 30-45s to camera.","Start with emotion; make it personal.",45,"Vocal warmth|Eye contact|Conversational tone|Pacing|Genuine emotion|Filler count"
               </p>
               <ul className="mt-3 list-disc list-inside space-y-1">
-                <li><strong>category:</strong> Public Speaking, Storytelling, Creator Speaking, Casual Conversation, Workplace Communication, Investor Pitch</li>
+                <li><strong>category:</strong> Public Speaking, Storytelling, Creator Speaking, Casual Conversation, Workplace Communication, Pitch Anything</li>
                 <li><strong>module_number:</strong> 1-5</li>
                 <li><strong>module_name:</strong> Name of the module (e.g., "Camera Presence & Speaking Fundamentals")</li>
                 <li><strong>level_number:</strong> 1-10 (lesson number within module)</li>

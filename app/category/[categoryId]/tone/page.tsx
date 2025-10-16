@@ -9,7 +9,7 @@ const categoryMap: { [key: string]: string } = {
   'creator-speaking': 'Creator Speaking',
   'casual-conversation': 'Casual Conversation',
   'workplace-communication': 'Workplace Communication',
-  'investor-pitch': 'Investor Pitch',
+  'investor-pitch': 'Pitch Anything',
 }
 
 const tones = [
