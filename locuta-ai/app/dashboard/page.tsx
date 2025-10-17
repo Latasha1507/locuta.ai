@@ -65,7 +65,7 @@ export default async function DashboardPage() {
       gradient: 'from-green-500 to-emerald-600'
     },
     {
-      id: 'investor-pitch',
+      id: 'pitch-anything',
       name: 'Pitch Anything',
       description: 'Master the art of persuasive pitching in any context',
       icon: '💰',
