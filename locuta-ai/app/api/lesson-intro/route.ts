@@ -6,6 +6,16 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 })
 
+// Category mapping - MUST match your Supabase database exactly
+const CATEGORY_MAP: Record<string, string> = {
+  'public-speaking': 'Public Speaking',
+  'storytelling': 'Storytelling',
+  'creator-speaking': 'Creator Speaking',
+  'casual-conversation': 'Casual Conversation',
+  'workplace-communication': 'Workplace Communication',
+  'pitch-anything': 'Pitch Anything',
+}
+
 // Voice mapping for different tones
 const VOICE_MAP: Record<string, 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'> = {
   'Normal': 'shimmer',
@@ -39,11 +49,17 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { tone, categoryId, moduleId, lessonId } = body
 
-    // Convert category ID format to database format
-    const categoryName = categoryId
-      .split('-')
-      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
+    console.log('📥 Lesson intro request:', { tone, categoryId, moduleId, lessonId })
+
+    // Convert category ID to database name using map
+    const categoryName = CATEGORY_MAP[categoryId]
+    
+    if (!categoryName) {
+      console.error('❌ Invalid category ID:', categoryId)
+      return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
+    }
+
+    console.log('🔍 Looking for lesson:', { categoryName, moduleId, lessonId })
 
     // Fetch lesson from database
     const { data: lesson, error: lessonError } = await supabase
@@ -54,9 +70,17 @@ export async function POST(request: Request) {
       .eq('level_number', parseInt(lessonId))
       .single()
 
-    if (lessonError || !lesson) {
+    if (lessonError) {
+      console.error('❌ Lesson query error:', lessonError)
+      return NextResponse.json({ error: 'Lesson not found', details: lessonError.message }, { status: 404 })
+    }
+
+    if (!lesson) {
+      console.error('❌ No lesson found')
       return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
     }
+
+    console.log('✅ Lesson found:', lesson.level_title)
 
     // Get user's first name if available
     const { data: profile } = await supabase
@@ -94,9 +118,11 @@ Practice Task: ${lesson.practice_prompt}
 
 Example/Tips: ${lesson.practice_example}
 
-Focus Areas: ${lesson.feedback_focus_areas?.join(', ')}
+Focus Areas: ${Array.isArray(lesson.feedback_focus_areas) ? lesson.feedback_focus_areas.join(', ') : lesson.feedback_focus_areas}
 
 Remember: Be ${toneDescription} and make this introduction feel like a real coach talking to the learner!`
+
+    console.log('🤖 Generating intro with GPT-4o...')
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -104,15 +130,18 @@ Remember: Be ${toneDescription} and make this introduction feel like a real coac
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      temperature: 0.8, // More creative for varied introductions
+      temperature: 0.8,
       max_tokens: 300
     })
 
     const enhancedIntro = completion.choices[0].message.content || ''
+    console.log('✅ Intro generated:', enhancedIntro.substring(0, 100) + '...')
 
     // Generate audio using OpenAI TTS with the tone-specific voice
     const voice = VOICE_MAP[tone] || 'shimmer'
     
+    console.log('🔊 Generating audio with voice:', voice)
+
     const mp3Response = await openai.audio.speech.create({
       model: 'tts-1',
       voice: voice,
@@ -124,6 +153,8 @@ Remember: Be ${toneDescription} and make this introduction feel like a real coac
     const buffer = Buffer.from(await mp3Response.arrayBuffer())
     const audioBase64 = buffer.toString('base64')
 
+    console.log('✅ Audio generated successfully')
+
     return NextResponse.json({
       audioBase64: audioBase64,
       transcript: enhancedIntro,
@@ -132,9 +163,14 @@ Remember: Be ${toneDescription} and make this introduction feel like a real coac
     })
 
   } catch (error) {
-    console.error('Error generating lesson intro:', error)
+    console.error('❌ Error generating lesson intro:', error)
+    console.error('Stack:', error instanceof Error ? error.stack : 'No stack trace')
+    
     return NextResponse.json(
-      { error: 'Failed to generate lesson introduction' },
+      { 
+        error: 'Failed to generate lesson introduction',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
