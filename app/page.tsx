@@ -182,28 +182,7 @@ export default async function HomePage() {
           <p className="max-w-xl mb-10 text-lg md:text-xl text-gray-500 font-medium leading-relaxed animate-fade-in-del1">
             Locuta.ai helps you master communication through personalized, real-time AI coaching. Practice real scenarios, get instant feedback, and build lasting confidence at your own pace.
           </p>
-          {/* USP Highlights */}
-          <div className="max-w-2xl mb-10 space-y-4 animate-fade-in-del2">
-            <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-indigo-50 to-violet-50 rounded-xl border border-indigo-100">
-              <div className="w-2 h-2 bg-indigo-500 rounded-full mt-2 animate-pulse"></div>
-              <p className="text-gray-700 font-medium">
-                <span className="font-semibold text-indigo-700">AI-Powered Personalization:</span> Get detailed feedback by analyzing your speaking patterns, pace, and delivery style.
-              </p>
-            </div>
-            <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-violet-50 to-pink-50 rounded-xl border border-violet-100">
-              <div className="w-2 h-2 bg-violet-500 rounded-full mt-2 animate-pulse" style={{animationDelay: '0.5s'}}></div>
-              <p className="text-gray-700 font-medium">
-                <span className="font-semibold text-violet-700">6 Unique Coaching Tones:</span> Choose from supportive, inspiring, challenging, or even bossy coaches to shape your personality.
-              </p>
-            </div>
-            <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl border border-pink-100">
-              <div className="w-2 h-2 bg-pink-500 rounded-full mt-2 animate-pulse" style={{animationDelay: '1s'}}></div>
-              <p className="text-gray-700 font-medium">
-                <span className="font-semibold text-pink-700">6 Comprehensive Categories:</span> Master everything from public speaking to casual conversations with 300+ expert-designed lessons.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col md:flex-row gap-4 w-full max-w-lg animate-fade-in-del2">
+          <div className="flex flex-col md:flex-row gap-4 w-full max-w-2xl animate-fade-in-del2">
             <Link
               href="/auth/signup"
               className="flex-1 text-center bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-400 relative min-h-[56px] flex items-center justify-center"
@@ -287,55 +266,96 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* WHY Locuta.ai - Feature Cards */}
-      <section id="why" className="relative py-28 px-5 bg-gradient-to-t from-white/60 via-gray-50/80 to-white">
-        <div className="max-w-7xl mx-auto text-center mb-20">
-          <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-5 tracking-tight animate-fade-in">
-            Why Locuta.ai?
-          </h2>
-          <p className="text-lg text-gray-500 font-medium animate-fade-in-del1">
-            Everything you need to become a confident speaker.
-          </p>
-        </div>
-        <div className="grid md:grid-cols-3 gap-10 max-w-6xl mx-auto">
-          <div className="group bg-gradient-to-br from-white/90 via-indigo-50/80 to-white/70 rounded-3xl p-10 shadow-xl border border-gray-100 flex flex-col items-center text-center
-            transition-all duration-400 will-change-transform hover:-rotate-x-6 hover:rotate-y-3 hover:scale-105
-            animate-fade-in-del1"
-            style={{
-              perspective: "800px",
-            }}
-          >
-            <Feature3DShape type="cube" />
-            <h3 className="text-2xl font-semibold mb-3 text-gray-900">AI-Powered Feedback</h3>
-            <p className="text-base text-gray-500 font-medium">
-              Receive detailed, personalized AI feedback. Locuta analyzes your speaking and offers actionable insights—so you improve faster, every session.
+      {/* USP Highlights Section */}
+      <section className="relative py-20 bg-gradient-to-br from-indigo-50 via-white to-violet-50">
+        <div className="max-w-7xl mx-auto px-5 sm:px-10">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-5 tracking-tight">
+              Train Like an Athlete, Speak Like a Pro
+            </h2>
+            <p className="text-lg text-gray-600 font-medium max-w-2xl mx-auto">
+              Elite speakers spend 90% of their time practicing so they can perform when it counts
             </p>
           </div>
-          <div className="group bg-gradient-to-br from-white/90 via-violet-50/80 to-white/70 rounded-3xl p-10 shadow-xl border border-gray-100 flex flex-col items-center text-center
-            transition-all duration-400 will-change-transform hover:rotate-x-6 hover:scale-105
-            animate-fade-in-del2"
-            style={{
-              perspective: "800px",
-            }}
-          >
-            <Feature3DShape type="sphere" />
-            <h3 className="text-2xl font-semibold mb-3 text-gray-900">Track Your Progress</h3>
-            <p className="text-base text-gray-500 font-medium">
-              Watch your skills improve over time with detailed analytics. See your scores, completion rates, and areas of strength across all categories.
-            </p>
-          </div>
-          <div className="group bg-gradient-to-br from-white/90 via-indigo-50/80 to-white/70 rounded-3xl p-10 shadow-xl border border-gray-100 flex flex-col items-center text-center
-            transition-all duration-400 will-change-transform hover:rotate-x-6 hover:scale-105
-            animate-fade-in-del3"
-            style={{
-              perspective: "800px",
-            }}
-          >
-            <Feature3DShape type="pyramid" />
-            <h3 className="text-2xl font-semibold mb-3 text-gray-900">Real-World Scenarios</h3>
-            <p className="text-base text-gray-500 font-medium">
-              Practice situations you'll actually encounter - from public speaking to casual conversations. 300+ lessons across 6 comprehensive categories.
-            </p>
+          
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Step 1: Practice */}
+            <div className="group bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+              <div className="relative mb-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-2xl flex items-center justify-center mb-4 group-hover:rotate-12 transition-transform duration-300">
+                  <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-white rounded animate-pulse"></div>
+                  </div>
+                </div>
+                {/* Speech bubbles */}
+                <div className="absolute top-0 right-0 w-16 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-xs font-medium text-orange-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  Book follow-up
+                </div>
+                <div className="absolute bottom-0 left-0 w-20 h-8 bg-green-100 rounded-lg flex items-center justify-center text-xs font-medium text-green-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{transitionDelay: '0.1s'}}>
+                  Objection handling
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">Step into the speaking cage</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Get unlimited reps with realistic AI simulations that mimic real-world scenarios. Practice until speaking feels natural.
+              </p>
+            </div>
+
+            {/* Step 2: Feedback */}
+            <div className="group bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+              <div className="relative mb-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-violet-200 rounded-2xl flex items-center justify-center mb-4 group-hover:-rotate-12 transition-transform duration-300">
+                  <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-white rounded animate-bounce"></div>
+                  </div>
+                </div>
+                {/* Feedback items */}
+                <div className="space-y-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
+                    <span className="text-gray-700">Topic: What's your pricing?</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+                    <span className="text-gray-700">5 talking points hit</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+                    <span className="text-gray-700">Strong discovery</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
+                    <span className="text-gray-700">Use BANT framework</span>
+                  </div>
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">Coaching on your highlight reel</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Break down your performance with instant insights on what to double down on and what to improve. See your speaking patterns clearly.
+              </p>
+            </div>
+
+            {/* Step 3: Mastery */}
+            <div className="group bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+              <div className="relative mb-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-pink-100 to-pink-200 rounded-2xl flex items-center justify-center mb-4 group-hover:rotate-12 transition-transform duration-300">
+                  <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-white rounded animate-pulse" style={{animationDelay: '0.5s'}}></div>
+                  </div>
+                </div>
+                {/* Video call mockup */}
+                <div className="relative w-24 h-16 bg-gray-800 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-2 bg-gray-600 rounded flex items-center justify-center">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  </div>
+                  <div className="absolute -inset-1 border-2 border-pink-400 rounded-lg animate-ping"></div>
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">Fine-tune your swing</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Focus on specific parts of your pitch like your opener, close, and discovery until it feels effortless. Master every component.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -473,6 +493,100 @@ export default async function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Testimonials Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Loved by Thousands of Speakers
+            </h2>
+            <p className="text-xl text-gray-600">
+              See how Locuta.ai is transforming communication skills worldwide
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl p-8 border border-indigo-200 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  S
+                </div>
+                <div className="ml-4">
+                  <h4 className="font-semibold text-gray-900">Sarah Chen</h4>
+                  <p className="text-sm text-gray-600">Sales Director</p>
+                </div>
+              </div>
+              <p className="text-gray-700 italic mb-4">
+                "I went from dreading presentations to actually enjoying them. The AI feedback helped me identify my filler words and improve my pacing. My confidence has skyrocketed!"
+              </p>
+              <div className="flex text-yellow-400">
+                {'★'.repeat(5)}
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-violet-50 to-violet-100 rounded-2xl p-8 border border-violet-200 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-violet-400 to-violet-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  M
+                </div>
+                <div className="ml-4">
+                  <h4 className="font-semibold text-gray-900">Marcus Rodriguez</h4>
+                  <p className="text-sm text-gray-600">Content Creator</p>
+                </div>
+              </div>
+              <p className="text-gray-700 italic mb-4">
+                "The different coaching tones are game-changing. I can practice with a supportive coach or challenge myself with the bossy one. It's like having multiple mentors!"
+              </p>
+              <div className="flex text-yellow-400">
+                {'★'.repeat(5)}
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-2xl p-8 border border-pink-200 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  A
+                </div>
+                <div className="ml-4">
+                  <h4 className="font-semibold text-gray-900">Alex Thompson</h4>
+                  <p className="text-sm text-gray-600">Startup Founder</p>
+                </div>
+              </div>
+              <p className="text-gray-700 italic mb-4">
+                "Pitching to investors used to terrify me. Now I practice with realistic scenarios and get instant feedback. I've closed 3 deals this quarter alone!"
+              </p>
+              <div className="flex text-yellow-400">
+                {'★'.repeat(5)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-20 bg-gradient-to-r from-indigo-600 to-violet-600">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-4 gap-8 text-center">
+            <div className="text-white">
+              <div className="text-4xl md:text-5xl font-bold mb-2 animate-pulse">50K+</div>
+              <p className="text-indigo-100">Active Users</p>
+            </div>
+            <div className="text-white">
+              <div className="text-4xl md:text-5xl font-bold mb-2 animate-pulse">300+</div>
+              <p className="text-indigo-100">Practice Lessons</p>
+            </div>
+            <div className="text-white">
+              <div className="text-4xl md:text-5xl font-bold mb-2 animate-pulse">6</div>
+              <p className="text-indigo-100">Speaking Categories</p>
+            </div>
+            <div className="text-white">
+              <div className="text-4xl md:text-5xl font-bold mb-2 animate-pulse">4.9★</div>
+              <p className="text-indigo-100">User Rating</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* CTA Section */}
       <div className="py-20 bg-gradient-to-br from-indigo-50 to-violet-50">
