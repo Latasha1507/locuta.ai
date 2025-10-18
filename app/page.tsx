@@ -127,7 +127,7 @@ export default async function HomePage() {
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
               <img 
-                src="/logo.png" 
+                src="/Icon.png" 
                 alt="Locuta.ai Logo" 
                 className="w-full h-full object-contain"
               />
@@ -608,7 +608,7 @@ export default async function HomePage() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center">
                 <img 
-                  src="/logo.png" 
+                  src="/Icon.png" 
                   alt="Locuta.ai Logo" 
                   className="w-full h-full object-contain"
                 />
