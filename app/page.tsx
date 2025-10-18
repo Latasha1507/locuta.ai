@@ -553,29 +553,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-20 bg-gradient-to-r from-indigo-600 to-violet-600">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-4 gap-8 text-center">
-            <div className="text-white">
-              <div className="text-4xl md:text-5xl font-bold mb-2 animate-pulse">50K+</div>
-              <p className="text-indigo-100">Active Users</p>
-            </div>
-            <div className="text-white">
-              <div className="text-4xl md:text-5xl font-bold mb-2 animate-pulse">300+</div>
-              <p className="text-indigo-100">Practice Lessons</p>
-            </div>
-            <div className="text-white">
-              <div className="text-4xl md:text-5xl font-bold mb-2 animate-pulse">6</div>
-              <p className="text-indigo-100">Speaking Categories</p>
-            </div>
-            <div className="text-white">
-              <div className="text-4xl md:text-5xl font-bold mb-2 animate-pulse">4.9★</div>
-              <p className="text-indigo-100">User Rating</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <div className="py-20 bg-gradient-to-br from-indigo-50 to-violet-50">
