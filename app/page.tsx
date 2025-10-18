@@ -125,10 +125,12 @@ export default async function HomePage() {
         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 bg-gradient-to-br from-violet-200 to-indigo-200 rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
-              {/* existing logo, no emoji, can be replaced with SVG if available */}
-              <span className="sr-only">Locuta.ai Logo</span>
-              <div className="w-6 h-6 bg-gradient-to-br from-indigo-400/80 to-violet-500/90 rounded-lg scale-110 shadow-lg"></div>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
+              <img 
+                src="/logo.png" 
+                alt="Locuta.ai Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <span className="text-2xl font-bold text-gray-900 tracking-tight">Locuta.ai</span>
           </Link>
@@ -178,19 +180,40 @@ export default async function HomePage() {
             </span>
           </h1>
           <p className="max-w-xl mb-10 text-lg md:text-xl text-gray-500 font-medium leading-relaxed animate-fade-in-del1">
-            Locuta.ai helps you master communication through personalized, real-time AI coaching. Practice real scenarios, get instant feedback, and build lasting confidence — at your own pace.
+            Locuta.ai helps you master communication through personalized, real-time AI coaching. Practice real scenarios, get instant feedback, and build lasting confidence at your own pace.
           </p>
-          <div className="flex flex-col md:flex-row gap-4 w-full max-w-md animate-fade-in-del2">
+          {/* USP Highlights */}
+          <div className="max-w-2xl mb-10 space-y-4 animate-fade-in-del2">
+            <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-indigo-50 to-violet-50 rounded-xl border border-indigo-100">
+              <div className="w-2 h-2 bg-indigo-500 rounded-full mt-2 animate-pulse"></div>
+              <p className="text-gray-700 font-medium">
+                <span className="font-semibold text-indigo-700">AI-Powered Personalization:</span> Get detailed feedback by analyzing your speaking patterns, pace, and delivery style.
+              </p>
+            </div>
+            <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-violet-50 to-pink-50 rounded-xl border border-violet-100">
+              <div className="w-2 h-2 bg-violet-500 rounded-full mt-2 animate-pulse" style={{animationDelay: '0.5s'}}></div>
+              <p className="text-gray-700 font-medium">
+                <span className="font-semibold text-violet-700">6 Unique Coaching Tones:</span> Choose from supportive, inspiring, challenging, or even bossy coaches to shape your personality.
+              </p>
+            </div>
+            <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl border border-pink-100">
+              <div className="w-2 h-2 bg-pink-500 rounded-full mt-2 animate-pulse" style={{animationDelay: '1s'}}></div>
+              <p className="text-gray-700 font-medium">
+                <span className="font-semibold text-pink-700">6 Comprehensive Categories:</span> Master everything from public speaking to casual conversations with 300+ expert-designed lessons.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col md:flex-row gap-4 w-full max-w-lg animate-fade-in-del2">
             <Link
               href="/auth/signup"
-              className="flex-1 text-center bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-400 relative"
+              className="flex-1 text-center bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-400 relative min-h-[56px] flex items-center justify-center"
             >
               Start Practicing Free <span aria-hidden>🚀</span>
               <span className="absolute inset-0 rounded-xl bg-white/10 pointer-events-none opacity-0 hover:opacity-100 transition-opacity duration-500" />
             </Link>
             <Link
               href="#why"
-              className="flex-1 text-center border border-indigo-100 bg-white/50 text-indigo-800 px-8 py-4 rounded-xl font-semibold hover:scale-105 hover:bg-indigo-50/80 transition-all duration-400 shadow-md hover:shadow-lg"
+              className="flex-1 text-center border border-indigo-100 bg-white/50 text-indigo-800 px-8 py-4 rounded-xl font-semibold hover:scale-105 hover:bg-indigo-50/80 transition-all duration-400 shadow-md hover:shadow-lg min-h-[56px] flex items-center justify-center"
             >
               Learn More
             </Link>
@@ -318,40 +341,46 @@ export default async function HomePage() {
       </section>
 
       {/* Features Section */}
-      <div id="features" className="bg-white/5 backdrop-blur-md py-20 border-y border-white/10">
+      <div id="features" className="bg-gray-50 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
               Why Locuta.ai?
             </h2>
-            <p className="text-xl text-purple-200">
+            <p className="text-xl text-gray-600">
               Everything you need to become a confident speaker
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-gradient-to-br from-purple-500/10 to-indigo-500/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:border-purple-400/50 transition-all hover:scale-105">
-              <div className="text-5xl mb-4">🎯</div>
-              <h3 className="text-2xl font-bold text-white mb-3">AI-Powered Feedback</h3>
-              <p className="text-purple-200 leading-relaxed">
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:border-indigo-300 transition-all hover:scale-105 shadow-lg group">
+              <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-12 transition-transform duration-300">
+                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg animate-pulse"></div>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">AI-Powered Feedback</h3>
+              <p className="text-gray-600 leading-relaxed">
                 Get detailed, personalized feedback on every practice session. Our AI analyzes your 
                 speaking patterns and provides actionable insights to improve.
               </p>
             </div>
 
-            <div className="bg-gradient-to-br from-pink-500/10 to-rose-500/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:border-pink-400/50 transition-all hover:scale-105">
-              <div className="text-5xl mb-4">📊</div>
-              <h3 className="text-2xl font-bold text-white mb-3">Track Your Progress</h3>
-              <p className="text-purple-200 leading-relaxed">
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:border-pink-300 transition-all hover:scale-105 shadow-lg group">
+              <div className="w-16 h-16 bg-gradient-to-br from-pink-100 to-pink-200 rounded-2xl flex items-center justify-center mb-6 group-hover:-rotate-12 transition-transform duration-300">
+                <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg animate-bounce"></div>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">Track Your Progress</h3>
+              <p className="text-gray-600 leading-relaxed">
                 Watch your skills improve over time with detailed analytics. See your scores, 
                 completion rates, and areas of strength across all categories.
               </p>
             </div>
 
-            <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:border-blue-400/50 transition-all hover:scale-105">
-              <div className="text-5xl mb-4">🎤</div>
-              <h3 className="text-2xl font-bold text-white mb-3">Real-World Scenarios</h3>
-              <p className="text-purple-200 leading-relaxed">
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:border-blue-300 transition-all hover:scale-105 shadow-lg group">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-12 transition-transform duration-300">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg animate-pulse" style={{animationDelay: '0.5s'}}></div>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">Real-World Scenarios</h3>
+              <p className="text-gray-600 leading-relaxed">
                 Practice situations you'll actually encounter - from public speaking to casual 
                 conversations. 300+ lessons across 6 comprehensive categories.
               </p>
@@ -361,24 +390,24 @@ export default async function HomePage() {
       </div>
 
       {/* How It Works */}
-      <div className="py-20">
+      <div className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
               How It Works
             </h2>
-            <p className="text-xl text-purple-200">
+            <p className="text-xl text-gray-600">
               Start improving your speaking skills in 3 simple steps
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-12">
             <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-4xl font-bold text-white mx-auto mb-6 shadow-2xl">
+              <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full flex items-center justify-center text-4xl font-bold text-white mx-auto mb-6 shadow-2xl">
                 1
               </div>
-              <h3 className="text-2xl font-bold text-white mb-4">Choose Your Category</h3>
-              <p className="text-purple-200 leading-relaxed">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Choose Your Category</h3>
+              <p className="text-gray-600 leading-relaxed">
                 Select from Public Speaking, Storytelling, Creator Content, Workplace Communication, 
                 Casual Conversation, or Pitches for anything
               </p>
@@ -388,8 +417,8 @@ export default async function HomePage() {
               <div className="w-20 h-20 bg-gradient-to-br from-pink-500 to-rose-600 rounded-full flex items-center justify-center text-4xl font-bold text-white mx-auto mb-6 shadow-2xl">
                 2
               </div>
-              <h3 className="text-2xl font-bold text-white mb-4">Practice Speaking</h3>
-              <p className="text-purple-200 leading-relaxed">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Practice Speaking</h3>
+              <p className="text-gray-600 leading-relaxed">
                 Record yourself responding to real-world prompts. Choose your AI coach's tone - 
                 supportive, inspiring, or even bossy!
               </p>
@@ -399,8 +428,8 @@ export default async function HomePage() {
               <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-4xl font-bold text-white mx-auto mb-6 shadow-2xl">
                 3
               </div>
-              <h3 className="text-2xl font-bold text-white mb-4">Get Instant Feedback</h3>
-              <p className="text-purple-200 leading-relaxed">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Get Instant Feedback</h3>
+              <p className="text-gray-600 leading-relaxed">
                 Receive detailed AI feedback with scores, strengths, areas to improve, and even 
                 hear how AI would deliver the same message.
               </p>
@@ -410,33 +439,35 @@ export default async function HomePage() {
       </div>
 
       {/* Categories Showcase */}
-      <div className="bg-white/5 backdrop-blur-md py-20 border-y border-white/10">
+      <div className="bg-gray-50 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
               6 Comprehensive Categories
             </h2>
-            <p className="text-xl text-purple-200">
+            <p className="text-xl text-gray-600">
               Over 300 lessons designed by speaking experts
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: '🎤', name: 'Public Speaking', desc: 'Master presentations and speeches' },
-              { icon: '📖', name: 'Storytelling', desc: 'Craft compelling narratives' },
-              { icon: '🎥', name: 'Creator Speaking', desc: 'Engage your video audience' },
-              { icon: '💬', name: 'Casual Conversation', desc: 'Build social confidence' },
-              { icon: '💼', name: 'Workplace Communication', desc: 'Excel in professional settings' },
-              { icon: '💰', name: 'Pitch Anything', desc: 'Master persuasive pitching' },
-            ].map((category) => (
+              { name: 'Public Speaking', desc: 'Master presentations and speeches', color: 'from-indigo-500 to-indigo-600' },
+              { name: 'Storytelling', desc: 'Craft compelling narratives', color: 'from-violet-500 to-violet-600' },
+              { name: 'Creator Speaking', desc: 'Engage your video audience', color: 'from-pink-500 to-pink-600' },
+              { name: 'Casual Conversation', desc: 'Build social confidence', color: 'from-blue-500 to-blue-600' },
+              { name: 'Workplace Communication', desc: 'Excel in professional settings', color: 'from-green-500 to-green-600' },
+              { name: 'Pitch Anything', desc: 'Master persuasive pitching', color: 'from-orange-500 to-orange-600' },
+            ].map((category, index) => (
               <div 
                 key={category.name}
-                className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:border-purple-400/50 transition-all"
+                className="bg-white rounded-xl p-6 border border-gray-200 hover:border-indigo-300 transition-all shadow-lg group"
               >
-                <div className="text-4xl mb-3">{category.icon}</div>
-                <h3 className="text-xl font-bold text-white mb-2">{category.name}</h3>
-                <p className="text-purple-200">{category.desc}</p>
+                <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                  <div className={`w-6 h-6 bg-gradient-to-br ${category.color} rounded-lg animate-pulse`} style={{animationDelay: `${index * 0.2}s`}}></div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{category.name}</h3>
+                <p className="text-gray-600">{category.desc}</p>
               </div>
             ))}
           </div>
@@ -444,23 +475,23 @@ export default async function HomePage() {
       </div>
 
       {/* CTA Section */}
-      <div className="py-20">
+      <div className="py-20 bg-gradient-to-br from-indigo-50 to-violet-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="bg-gradient-to-br from-purple-500/20 to-indigo-500/20 backdrop-blur-md rounded-3xl p-12 border border-white/20">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+          <div className="bg-white rounded-3xl p-12 border border-gray-200 shadow-xl">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
               Ready to Transform Your Speaking?
             </h2>
-            <p className="text-xl text-purple-200 mb-8">
+            <p className="text-xl text-gray-600 mb-8">
               Join thousands of users improving their communication skills with AI-powered practice.
               Start your journey today - completely free!
             </p>
             <Link
               href="/auth/signup"
-              className="inline-block bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-12 py-5 rounded-xl font-bold text-xl hover:shadow-2xl hover:scale-105 transition-all"
+              className="inline-block bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-12 py-5 rounded-xl font-bold text-xl hover:shadow-2xl hover:scale-105 transition-all"
             >
               Get Started Free 🚀
             </Link>
-            <p className="text-purple-300 mt-4 text-sm">
+            <p className="text-gray-500 mt-4 text-sm">
               No credit card required • Start practicing in 30 seconds
             </p>
           </div>
@@ -468,16 +499,20 @@ export default async function HomePage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-white/5 backdrop-blur-md border-t border-white/10 py-8">
+      <footer className="bg-gray-900 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-xl flex items-center justify-center">
-                <span className="text-2xl">🎤</span>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center">
+                <img 
+                  src="/logo.png" 
+                  alt="Locuta.ai Logo" 
+                  className="w-full h-full object-contain"
+                />
               </div>
               <span className="text-xl font-bold text-white">Locuta.ai</span>
             </div>
-            <p className="text-purple-200">
+            <p className="text-gray-300">
               © 2025 Locuta.ai. Elevate your voice.
             </p>
           </div>
