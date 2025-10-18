@@ -1,8 +1,5 @@
-'use client'
-
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { useRef } from "react"
 import Link from "next/link";
 
 // Helper for floating 3D decorative shapes (tailwind + styles only)
