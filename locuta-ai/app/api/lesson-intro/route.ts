@@ -159,7 +159,9 @@ Remember: Be ${toneDescription} and make this introduction feel like a real coac
       audioBase64: audioBase64,
       transcript: enhancedIntro,
       lessonTitle: lesson.level_title,
-      moduleTitle: lesson.module_title
+      moduleTitle: lesson.module_title,
+      practice_prompt: lesson.practice_prompt,
+      practice_example: lesson.practice_example
     })
 
   } catch (error) {
