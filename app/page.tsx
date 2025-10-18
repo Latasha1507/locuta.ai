@@ -1,7 +1,9 @@
+'use client'
+
+import { createClient } from "@/lib/supabase/server"
+import { redirect } from "next/navigation"
+import { useRef } from "react"
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import { useRef } from "react";
 
 // Helper for floating 3D decorative shapes (tailwind + styles only)
 function FloatingShapes() {
@@ -299,11 +301,11 @@ export default async function HomePage() {
             <Feature3DShape type="sphere" />
             <h3 className="text-2xl font-semibold mb-3 text-gray-900">Track Your Progress</h3>
             <p className="text-base text-gray-500 font-medium">
-              See your growth with rich analytics: speaking trends, scores, lesson completion, and areas to focus on. Make your progress visible and motivating.
+              Watch your skills improve over time with detailed analytics. See your scores, completion rates, and areas of strength across all categories.
             </p>
           </div>
           <div className="group bg-gradient-to-br from-white/90 via-indigo-50/80 to-white/70 rounded-3xl p-10 shadow-xl border border-gray-100 flex flex-col items-center text-center
-            transition-all duration-400 will-change-transform hover:-rotate-x-6 hover:scale-105
+            transition-all duration-400 will-change-transform hover:rotate-x-6 hover:scale-105
             animate-fade-in-del3"
             style={{
               perspective: "800px",
@@ -312,163 +314,178 @@ export default async function HomePage() {
             <Feature3DShape type="pyramid" />
             <h3 className="text-2xl font-semibold mb-3 text-gray-900">Real-World Scenarios</h3>
             <p className="text-base text-gray-500 font-medium">
-              Practice realistic situations: public speaking, interviews, pitches, and more. Locuta adapts lessons to your needs and speaking goals.
+              Practice situations you'll actually encounter - from public speaking to casual conversations. 300+ lessons across 6 comprehensive categories.
             </p>
           </div>
         </div>
-        {/* Floating decor */}
-        <FloatingShapes />
       </section>
 
-      {/* HOW IT WORKS */}
-      <section id="how" className="relative py-28 px-5 max-w-7xl mx-auto animate-parallax-fade-in">
-        <div className="text-center mb-20">
-          <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-5 tracking-tight animate-fade-in">
-            How It Works
-          </h2>
-          <p className="text-lg text-gray-500 font-medium animate-fade-in-del1">
-            Start improving your speaking skills in 3 simple steps.
-          </p>
-        </div>
-        <div className="flex flex-col md:flex-row items-start md:items-stretch md:gap-12 gap-20 justify-center max-w-4xl mx-auto">
-          <Step3D
-            number={1}
-            title="Choose Your Category"
-            desc="Select from public speaking, storytelling, creator content, workplace communication, casual conversation, or persuasive pitches."
-          />
-          <div className="hidden md:block flex-1 relative">
-            {/* Custom parallax connecting line for 3D */}
-            <div className="absolute left-1/2 top-10 -translate-x-1/2 w-2 h-[80%] bg-gradient-to-b from-indigo-100 via-violet-100 to-gray-200 rounded-full blur-sm opacity-60" />
+      {/* Features Section */}
+      <div id="features" className="bg-white/5 backdrop-blur-md py-20 border-y border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Why Locuta.ai?
+            </h2>
+            <p className="text-xl text-purple-200">
+              Everything you need to become a confident speaker
+            </p>
           </div>
-          <Step3D
-            number={2}
-            title="Practice Speaking"
-            desc="Record yourself responding to real prompts, and choose your AI coach's tone—supportive, inspiring, or even bossy!"
-          />
-          <div className="hidden md:block flex-1 relative">
-            <div className="absolute left-1/2 top-10 -translate-x-1/2 w-2 h-[80%] bg-gradient-to-b from-indigo-100 via-violet-100 to-gray-200 rounded-full blur-sm opacity-60" />
-          </div>
-          <Step3D
-            number={3}
-            title="Get Instant Feedback"
-            desc="Receive AI feedback with scores, targeted suggestions, and even see how an expert would deliver your message."
-            last
-          />
-        </div>
-      </section>
 
-      {/* 6 Categories - 3D lift cards */}
-      <section id="categories" className="relative py-28 px-5 bg-gradient-to-t from-white/82 via-gray-50/98 to-white/88">
-        <div className="max-w-7xl mx-auto text-center mb-20">
-          <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-5 tracking-tight">6 Comprehensive Categories</h2>
-          <p className="text-lg text-gray-500 font-medium">Over 300 lessons designed by communication experts.</p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {[
-            { name: "Public Speaking", desc: "Master presentations and speeches" },
-            { name: "Storytelling", desc: "Craft compelling narratives" },
-            { name: "Creator Speaking", desc: "Engage your video audience" },
-            { name: "Casual Conversation", desc: "Build social confidence" },
-            { name: "Workplace Communication", desc: "Excel in professional settings" },
-            { name: "Pitch Anything", desc: "Master persuasive pitching" },
-          ].map((category, i) => (
-            <div
-              key={category.name}
-              className="group bg-gradient-to-br from-white via-gray-50 to-indigo-50/80 rounded-2xl p-7 border border-gray-100 shadow-lg flex flex-col items-start
-                transition-all duration-400 will-change-transform hover:-rotate-x-4 hover:-rotate-y-4 hover:scale-105
-                hover:z-10
-              "
-              style={{
-                perspective: "600px",
-              }}
-            >
-              {/* Abstract 3D shape per card */}
-              <div
-                className="mb-5 w-9 h-9 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-[34%] shadow-md transition-transform duration-400 group-hover:scale-110"
-                style={{
-                  transform: `perspective(400px) rotateY(${i % 2 === 0 ? 18 : -14}deg) rotateX(${i % 3 ? 8 : -8}deg)`
-                }}
-              ></div>
-              <h3 className="text-xl font-bold mb-2 text-gray-900">{category.name}</h3>
-              <p className="text-gray-600 font-medium">{category.desc}</p>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="bg-gradient-to-br from-purple-500/10 to-indigo-500/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:border-purple-400/50 transition-all hover:scale-105">
+              <div className="text-5xl mb-4">🎯</div>
+              <h3 className="text-2xl font-bold text-white mb-3">AI-Powered Feedback</h3>
+              <p className="text-purple-200 leading-relaxed">
+                Get detailed, personalized feedback on every practice session. Our AI analyzes your 
+                speaking patterns and provides actionable insights to improve.
+              </p>
             </div>
-          ))}
-        </div>
-        <FloatingShapes />
-      </section>
 
-      {/* Final CTA */}
-      <section className="relative z-10 py-24 px-5 bg-gradient-to-r from-indigo-50 via-white to-violet-50">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-white/80 rounded-3xl p-12 shadow-2xl border border-gray-100 pointer-events-auto 
-            transition-transform duration-500 hover:scale-105 hover:-rotate-y-3 hover:shadow-[0_15px_60px_0_rgba(97,80,234,0.13)]
-            flex flex-col items-center animate-fade-in"
-          >
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6">Ready to Transform Your Speaking?</h2>
-            <p className="text-lg text-gray-500 mb-9">
-              Join thousands of users upgrading their communication skills with AI-powered practice.<br />
-              Start your journey today – completely free!
+            <div className="bg-gradient-to-br from-pink-500/10 to-rose-500/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:border-pink-400/50 transition-all hover:scale-105">
+              <div className="text-5xl mb-4">📊</div>
+              <h3 className="text-2xl font-bold text-white mb-3">Track Your Progress</h3>
+              <p className="text-purple-200 leading-relaxed">
+                Watch your skills improve over time with detailed analytics. See your scores, 
+                completion rates, and areas of strength across all categories.
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:border-blue-400/50 transition-all hover:scale-105">
+              <div className="text-5xl mb-4">🎤</div>
+              <h3 className="text-2xl font-bold text-white mb-3">Real-World Scenarios</h3>
+              <p className="text-purple-200 leading-relaxed">
+                Practice situations you'll actually encounter - from public speaking to casual 
+                conversations. 300+ lessons across 6 comprehensive categories.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* How It Works */}
+      <div className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              How It Works
+            </h2>
+            <p className="text-xl text-purple-200">
+              Start improving your speaking skills in 3 simple steps
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-12">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-4xl font-bold text-white mx-auto mb-6 shadow-2xl">
+                1
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4">Choose Your Category</h3>
+              <p className="text-purple-200 leading-relaxed">
+                Select from Public Speaking, Storytelling, Creator Content, Workplace Communication, 
+                Casual Conversation, or Pitches for anything
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-pink-500 to-rose-600 rounded-full flex items-center justify-center text-4xl font-bold text-white mx-auto mb-6 shadow-2xl">
+                2
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4">Practice Speaking</h3>
+              <p className="text-purple-200 leading-relaxed">
+                Record yourself responding to real-world prompts. Choose your AI coach's tone - 
+                supportive, inspiring, or even bossy!
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-4xl font-bold text-white mx-auto mb-6 shadow-2xl">
+                3
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4">Get Instant Feedback</h3>
+              <p className="text-purple-200 leading-relaxed">
+                Receive detailed AI feedback with scores, strengths, areas to improve, and even 
+                hear how AI would deliver the same message.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Categories Showcase */}
+      <div className="bg-white/5 backdrop-blur-md py-20 border-y border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              6 Comprehensive Categories
+            </h2>
+            <p className="text-xl text-purple-200">
+              Over 300 lessons designed by speaking experts
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { icon: '🎤', name: 'Public Speaking', desc: 'Master presentations and speeches' },
+              { icon: '📖', name: 'Storytelling', desc: 'Craft compelling narratives' },
+              { icon: '🎥', name: 'Creator Speaking', desc: 'Engage your video audience' },
+              { icon: '💬', name: 'Casual Conversation', desc: 'Build social confidence' },
+              { icon: '💼', name: 'Workplace Communication', desc: 'Excel in professional settings' },
+              { icon: '💰', name: 'Pitch Anything', desc: 'Master persuasive pitching' },
+            ].map((category) => (
+              <div 
+                key={category.name}
+                className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:border-purple-400/50 transition-all"
+              >
+                <div className="text-4xl mb-3">{category.icon}</div>
+                <h3 className="text-xl font-bold text-white mb-2">{category.name}</h3>
+                <p className="text-purple-200">{category.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* CTA Section */}
+      <div className="py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="bg-gradient-to-br from-purple-500/20 to-indigo-500/20 backdrop-blur-md rounded-3xl p-12 border border-white/20">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Ready to Transform Your Speaking?
+            </h2>
+            <p className="text-xl text-purple-200 mb-8">
+              Join thousands of users improving their communication skills with AI-powered practice.
+              Start your journey today - completely free!
             </p>
             <Link
               href="/auth/signup"
-              className="inline-block bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-10 py-4 rounded-xl font-bold text-xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-400"
+              className="inline-block bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-12 py-5 rounded-xl font-bold text-xl hover:shadow-2xl hover:scale-105 transition-all"
             >
-              Get Started Free <span aria-hidden>🚀</span>
+              Get Started Free 🚀
             </Link>
-            <p className="text-indigo-400 mt-4 text-sm font-medium">
+            <p className="text-purple-300 mt-4 text-sm">
               No credit card required • Start practicing in 30 seconds
             </p>
           </div>
         </div>
-        <FloatingShapes />
-      </section>
+      </div>
 
-      {/* Professional Footer */}
-      <footer className="relative bg-white/80 border-t border-gray-100 backdrop-blur-xl py-12 px-5">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8 md:gap-0">
-          {/* Logo and brand */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-violet-200 to-indigo-200 rounded-xl flex items-center justify-center shadow-md">
-              <div className="w-5 h-5 bg-gradient-to-br from-indigo-400/80 to-violet-500/70 rounded-lg"></div>
+      {/* Footer */}
+      <footer className="bg-white/5 backdrop-blur-md border-t border-white/10 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-xl flex items-center justify-center">
+                <span className="text-2xl">🎤</span>
+              </div>
+              <span className="text-xl font-bold text-white">Locuta.ai</span>
             </div>
-            <span className="text-xl font-bold text-gray-900">Locuta.ai</span>
-          </div>
-          {/* Footer navigation */}
-          <div className="flex flex-wrap gap-6 mt-4 md:mt-0 text-sm text-gray-500">
-            <Link href="#about" className="hover:text-indigo-700 transition-colors">About</Link>
-            <Link href="#use-cases" className="hover:text-indigo-700 transition-colors">Use Cases</Link>
-            <Link href="/blog" className="hover:text-indigo-700 transition-colors">Blog</Link>
-            <Link href="/faq" className="hover:text-indigo-700 transition-colors">FAQ</Link>
-            <Link href="/auth/login" className="hover:text-indigo-700 transition-colors">Sign In</Link>
-          </div>
-          {/* Copy */}
-          <div className="text-gray-400 text-xs mt-6 md:mt-0">
-            © 2025 Locuta.ai. Elevate your communication.
+            <p className="text-purple-200">
+              © 2025 Locuta.ai. Elevate your voice.
+            </p>
           </div>
         </div>
-        {/* Minimal floating shape */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-gradient-to-r from-violet-100 to-indigo-100 rounded-full blur-xl opacity-40 pointer-events-none" aria-hidden />
       </footer>
-
-      {/* Tailwind custom keyframes for waveform, float, fade-in, etc. */}
-      <style>{`
-        @keyframes waveformPulse {
-          0%, 100% { height: 18px; }
-          50% { height: 42px; }
-        }
-        .animate-float-slow { animation: floatY 8s ease-in-out infinite alternate; }
-        .animate-float-med { animation: floatY 5.5s ease-in-out infinite alternate; }
-        .animate-float-fast { animation: floatY 3.2s ease-in-out infinite alternate; }
-        @keyframes floatY { 0%{ transform: translateY(0px); } 100%{ transform: translateY(16px); } }
-        .animate-fade-in { animation: fadeIn 0.8s both; }
-        .animate-fade-in-del1 { animation: fadeIn 1s 0.25s both; }
-        .animate-fade-in-del2 { animation: fadeIn 1.4s 0.45s both; }
-        .animate-fade-in-del3 { animation: fadeIn 1.7s 0.65s both; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(36px); } to { opacity: 1; transform: none; } }
-        .animate-parallax-fade-in { animation: fadeIn 1.3s 0.2s both; }
-        /* Animate transform on viewport entry for major sections */
-        /* For a real project, consider IntersectionObserver for viewport fade-in/slide-in */
-      `}</style>
     </div>
-  );
+  )
 }
