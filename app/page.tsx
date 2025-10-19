@@ -118,56 +118,106 @@ export default async function HomePage() {
   if (user) redirect("/dashboard");
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-tr from-white via-gray-50 to-indigo-50 text-gray-900">
+    <>
+      <script dangerouslySetInnerHTML={{
+        __html: `
+          document.addEventListener('DOMContentLoaded', function() {
+            const menuButton = document.querySelector('button[aria-label="Toggle mobile menu"]');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            if (menuButton && mobileMenu) {
+              menuButton.addEventListener('click', function() {
+                mobileMenu.classList.toggle('hidden');
+              });
+            }
+          });
+        `
+      }} />
+      <div className="relative min-h-screen bg-gradient-to-tr from-white via-gray-50 to-indigo-50 text-gray-900">
       <FloatingShapes />
       {/* Sticky Header */}
       <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl backdrop-saturate-150 border-b border-gray-100 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between h-20">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
-              <img 
-                src="/Icon.png" 
-                alt="Locuta.ai Logo" 
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <span className="text-2xl font-bold text-gray-900 tracking-tight">Locuta.ai</span>
-          </Link>
-          {/* Centered Navigation */}
-          <nav className="hidden md:flex items-center gap-6 text-base font-medium">
-            <Link href="#about" className="text-gray-700 hover:text-indigo-600 transition-colors">About</Link>
-            <Link href="#use-cases" className="text-gray-700 hover:text-indigo-600 transition-colors">Use Cases</Link>
-            <div className="relative group">
-              <span className="cursor-pointer text-gray-700 hover:text-indigo-600 transition-colors">
-                Resources
-              </span>
-              <div className="absolute left-0 top-8 min-w-[160px] bg-white bg-opacity-90 shadow-lg rounded-xl border border-gray-100 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-300 translate-y-4 group-hover:translate-y-0">
-                <Link href="/blog" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors">Blog</Link>
-                <Link href="/faq" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors">FAQ</Link>
+        <div className="max-w-7xl mx-auto px-5 sm:px-8">
+          <div className="flex items-center justify-between h-20">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
+                <img 
+                  src="/Icon.png" 
+                  alt="Locuta.ai Logo" 
+                  className="w-full h-full object-contain"
+                />
               </div>
+              <span className="text-2xl font-bold text-gray-900 tracking-tight">Locuta.ai</span>
+            </Link>
+            
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-6 text-base font-medium">
+              <Link href="#about" className="text-gray-700 hover:text-indigo-600 transition-colors">About</Link>
+              <Link href="#use-cases" className="text-gray-700 hover:text-indigo-600 transition-colors">Use Cases</Link>
+              <div className="relative group">
+                <span className="cursor-pointer text-gray-700 hover:text-indigo-600 transition-colors">
+                  Resources
+                </span>
+                <div className="absolute left-0 top-8 min-w-[160px] bg-white bg-opacity-90 shadow-lg rounded-xl border border-gray-100 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-300 translate-y-4 group-hover:translate-y-0">
+                  <Link href="/blog" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors">Blog</Link>
+                  <Link href="/faq" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors">FAQ</Link>
+                </div>
+              </div>
+            </nav>
+            
+            {/* Desktop CTA Buttons */}
+            <div className="hidden md:flex items-center gap-2">
+              <Link
+                href="/auth/login"
+                className="px-4 py-2 text-gray-700 font-semibold hover:text-indigo-600 transition-colors"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/auth/signup"
+                className="ml-2 px-5 py-2 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-lg font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-400"
+              >
+                Try Locuta Free
+              </Link>
             </div>
-          </nav>
-          {/* Right Actions */}
-          <div className="flex items-center gap-2">
-            <Link
-              href="/auth/login"
-              className="px-4 py-2 text-gray-700 font-semibold hover:text-indigo-600 transition-colors"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/auth/signup"
-              className="ml-2 px-5 py-2 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-lg font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-400"
-            >
-              Try Locuta Free
-            </Link>
+            
+            {/* Mobile Menu Button */}
+            <button className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Toggle mobile menu">
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Mobile Menu */}
+          <div id="mobile-menu" className="md:hidden hidden border-t border-gray-100 py-4">
+            <nav className="flex flex-col space-y-4">
+              <Link href="#about" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">About</Link>
+              <Link href="#use-cases" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Use Cases</Link>
+              <Link href="/blog" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Blog</Link>
+              <Link href="/faq" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">FAQ</Link>
+              <div className="pt-4 border-t border-gray-100 flex flex-col space-y-3">
+                <Link
+                  href="/auth/login"
+                  className="px-4 py-2 text-gray-700 font-semibold hover:text-indigo-600 transition-colors text-center"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  className="px-5 py-2 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-lg font-bold shadow-lg hover:shadow-xl transition-all duration-400 text-center"
+                >
+                  Try Locuta Free
+                </Link>
+              </div>
+            </nav>
           </div>
         </div>
       </header>
 
       {/* HERO SECTION */}
-      <section className="relative z-10 px-5 sm:px-10 max-w-7xl mx-auto py-24 flex flex-col md:flex-row items-center gap-x-16">
+      <section className="relative z-10 px-5 sm:px-10 max-w-7xl mx-auto py-12 md:py-16 flex flex-col md:flex-row items-center gap-x-16">
         {/* Left: Text */}
         <div className="flex-1 relative flex flex-col items-start" style={{ zIndex: 3 }}>
           <span className="mb-5 bg-gradient-to-r from-indigo-50/80 to-violet-100/80 text-indigo-700 uppercase font-semibold px-4 py-1.5 rounded-full text-xs tracking-wider shadow-sm backdrop-blur-[2.5px]">
@@ -598,6 +648,7 @@ export default async function HomePage() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   )
 }
