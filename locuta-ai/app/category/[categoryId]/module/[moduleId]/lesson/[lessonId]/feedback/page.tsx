@@ -42,9 +42,9 @@ export default async function FeedbackPage({
   const score = feedback.overall_score || 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -56,6 +56,9 @@ export default async function FeedbackPage({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </Link>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center">
+                <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
+              </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Your Feedback</h1>
                 <p className="text-sm text-gray-600">Lesson {lessonId} • {session.tone} Tone</p>
@@ -73,7 +76,7 @@ export default async function FeedbackPage({
             <div className="text-8xl font-bold mb-4">{score}</div>
             <div className="text-2xl font-semibold">Overall Score</div>
             <p className="text-white/90 mt-2">
-              {score >= 90 ? 'Excellent! 🎉' : score >= 75 ? 'Great job! 👏' : score >= 60 ? 'Good effort! 💪' : 'Keep practicing! 📚'}
+              {score >= 90 ? 'Excellent!' : score >= 75 ? 'Great job!' : score >= 60 ? 'Good effort!' : 'Keep practicing!'}
             </p>
           </div>
 
@@ -95,7 +98,7 @@ export default async function FeedbackPage({
 
         {/* Detailed Feedback */}
         <div className="bg-white rounded-3xl shadow-xl border border-gray-200 p-8 mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">📝 Detailed Feedback</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Detailed Feedback</h2>
           <p className="text-gray-700 leading-relaxed text-lg mb-8">
             {feedback.detailed_feedback}
           </p>
@@ -103,8 +106,8 @@ export default async function FeedbackPage({
           <div className="grid md:grid-cols-2 gap-6">
             {/* Strengths */}
             <div className="bg-green-50 rounded-xl p-6 border border-green-200">
-              <h3 className="font-bold text-lg text-green-900 mb-4 flex items-center gap-2">
-                <span>✅</span> Strengths
+              <h3 className="font-bold text-lg text-green-900 mb-4">
+                Strengths
               </h3>
               <ul className="space-y-3">
                 {feedback.strengths?.map((strength: string, i: number) => (
@@ -118,8 +121,8 @@ export default async function FeedbackPage({
 
             {/* Improvements */}
             <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
-              <h3 className="font-bold text-lg text-blue-900 mb-4 flex items-center gap-2">
-                <span>💡</span> Areas to Improve
+              <h3 className="font-bold text-lg text-blue-900 mb-4">
+                Areas to Improve
               </h3>
               <ul className="space-y-3">
                 {feedback.improvements?.map((improvement: string, i: number) => (
@@ -135,8 +138,8 @@ export default async function FeedbackPage({
 
         {/* Your Transcript */}
         <div className="bg-white rounded-3xl shadow-xl border border-gray-200 p-8 mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <span>🎤</span> What You Said
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            What You Said
           </h2>
           <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
             <p className="text-gray-700 leading-relaxed italic">
@@ -146,10 +149,10 @@ export default async function FeedbackPage({
         </div>
 
         {/* AI Example */}
-        <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden mb-8">
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden mb-8">
           <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-6 text-white">
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <span>🤖</span> How I Would Have Done It
+            <h2 className="text-2xl font-bold">
+              How I Would Have Done It
             </h2>
             <p className="text-white/90 mt-1">Listen to an example response</p>
           </div>
@@ -182,7 +185,7 @@ export default async function FeedbackPage({
             href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}`}
             className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-xl transition-transform hover:scale-105"
           >
-            🔄 Practice Again
+            Practice Again
           </Link>
           <Link
             href={`/category/${categoryId}/modules?tone=${session.tone}`}

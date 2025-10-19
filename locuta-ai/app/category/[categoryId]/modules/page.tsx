@@ -82,10 +82,10 @@ export default async function CategoryModulesPage({
   const gradientColor = categoryColors[categoryId] || 'from-purple-500 to-indigo-600'
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <Link
               href={`/category/${categoryId}/tone`}
@@ -95,6 +95,9 @@ export default async function CategoryModulesPage({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center">
+              <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
+            </div>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900">{categoryName}</h1>
               <p className="text-sm text-gray-600 mt-1">

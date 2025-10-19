@@ -201,16 +201,19 @@ export default function PracticePage({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div className="bg-white/70 backdrop-blur-xl border-b border-slate-200 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <Link
             href={`/category/${resolvedParams.categoryId}/modules?tone=${tone}`}
-            className="text-purple-600 hover:text-purple-700 font-medium"
+            className="text-slate-700 hover:text-indigo-600 font-medium"
           >
             ← Back to Lessons
           </Link>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+            <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
+          </div>
         </div>
       </div>
 
@@ -218,7 +221,7 @@ export default function PracticePage({
         {/* Start Screen */}
         {step === 'start' && (
           <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-3xl shadow-2xl p-12 text-center text-white">
-            <div className="text-6xl mb-6">🎤</div>
+            <div className="w-16 h-16 rounded-2xl bg-white/30 mx-auto mb-6 animate-pulse" />
             <h1 className="text-4xl font-bold mb-4">Ready to Begin?</h1>
             <p className="text-xl text-purple-100 mb-8">
               Your AI coach will guide you through this lesson

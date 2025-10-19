@@ -85,10 +85,10 @@ export default async function CategoryToneSelectionPage({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <Link
               href="/dashboard"
@@ -108,6 +108,9 @@ export default async function CategoryToneSelectionPage({
                 />
               </svg>
             </Link>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center">
+              <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
+            </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{categoryName}</h1>
               <p className="text-sm text-gray-600 mt-1">
@@ -123,7 +126,7 @@ export default async function CategoryToneSelectionPage({
         {/* Intro Section */}
         <div className="text-center mb-12">
           <div className="inline-block p-4 bg-white rounded-2xl shadow-lg mb-6">
-            <span className="text-6xl">🎤</span>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-100 to-indigo-200 animate-pulse mx-auto" />
           </div>
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
             Choose Your AI Coach Tone
@@ -142,8 +145,8 @@ export default async function CategoryToneSelectionPage({
               className="group"
             >
               <div className={`relative bg-gradient-to-br ${tone.bgGradient} border-2 border-transparent hover:border-purple-400 rounded-2xl p-8 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 h-full`}>
-                {/* Icon */}
-                <div className="text-6xl mb-4">{tone.icon}</div>
+                {/* Animated accent (no icons) */}
+                <div className="w-10 h-10 rounded-xl bg-white/40 animate-pulse mb-4" />
                 
                 {/* Title */}
                 <h3 className="text-2xl font-bold text-gray-900 mb-3">

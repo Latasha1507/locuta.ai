@@ -106,9 +106,9 @@ export default async function LessonToneSelectionPage({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <Link
@@ -129,6 +129,9 @@ export default async function LessonToneSelectionPage({
                 />
               </svg>
             </Link>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center">
+              <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
+            </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 {lesson.level_title}
@@ -147,7 +150,7 @@ export default async function LessonToneSelectionPage({
         <div className="bg-white rounded-xl shadow-sm p-8 mb-8 border border-gray-200">
           <div className="flex items-start gap-4 mb-6">
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
-              📚
+              <div className="w-6 h-6 rounded-md bg-gradient-to-br from-purple-300 to-indigo-300 animate-pulse" />
             </div>
             <div className="flex-1">
               <h2 className="text-xl font-bold text-gray-900 mb-2">
@@ -161,7 +164,7 @@ export default async function LessonToneSelectionPage({
 
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
             <h3 className="font-semibold text-purple-900 mb-2">
-              📝 Your Task:
+              Your Task
             </h3>
             <p className="text-purple-800">{lesson.practice_prompt}</p>
             <p className="text-sm text-purple-600 mt-2">
@@ -184,9 +187,9 @@ export default async function LessonToneSelectionPage({
               <Link
                 key={tone.id}
                 href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${tone.id}`}
-                className={`bg-gradient-to-br ${tone.bgGradient} border-2 border-${tone.borderGradient.split(' ')[0].replace('from-', '')} rounded-2xl p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl block`}
+                className={`bg-gradient-to-br ${tone.bgGradient} border-2 border-transparent hover:border-purple-400 rounded-2xl p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl block`}
               >
-                <div className="text-4xl mb-3">{tone.icon}</div>
+                <div className="w-8 h-8 rounded-lg bg-white/50 animate-pulse mb-3" />
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
                   {tone.name}
                 </h3>
