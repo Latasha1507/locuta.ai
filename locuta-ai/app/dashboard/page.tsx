@@ -200,10 +200,10 @@ export default async function DashboardPage() {
       <aside className="hidden md:flex flex-col justify-between h-screen w-[82px] lg:w-64 sticky top-0 left-0 bg-white/40 dark:bg-slate-900/50 backdrop-blur-xl border-r border-slate-200 z-20 transition-all shadow-lg pb-4">
         <div>
           <div className="px-0 py-7 flex flex-col items-center lg:flex-row lg:items-center lg:space-x-3">
-            <div className="w-11 h-11 flex items-center justify-center bg-gradient-to-br from-purple-400 to-indigo-500 rounded-xl shadow-lg">
-              <span className="text-3xl">🎤</span>
+            <div className="w-11 h-11 flex items-center justify-center rounded-xl shadow-lg">
+              <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
             </div>
-            <span className="ml-0 lg:ml-2 mt-2 lg:mt-0 text-xl font-bold bg-gradient-to-tr from-purple-700 to-indigo-600 bg-clip-text text-transparent hidden lg:inline-block select-none">Locuta.ai</span>
+            <span className="ml-0 lg:ml-2 mt-2 lg:mt-0 text-xl font-bold text-slate-900 hidden lg:inline-block select-none">Locuta.ai</span>
           </div>
           <nav className="mt-2">
             <ul className="flex flex-col gap-1">
@@ -246,10 +246,10 @@ export default async function DashboardPage() {
         {/* Header bar for mobile/small screens */}
         <header className="md:hidden flex items-center justify-between bg-white/70 backdrop-blur-xl border-b border-slate-200 px-4 py-4 shadow-sm z-10 sticky top-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center">
-              <span className="text-2xl">🎤</span>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center">
+              <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-xl font-bold bg-gradient-to-tr from-purple-700 to-indigo-600 bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold text-slate-900">
               Locuta.ai
             </h1>
           </div>
@@ -272,9 +272,9 @@ export default async function DashboardPage() {
             </div>
 
             {/* Modern Stat Cards */}
-            <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <section className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
               {/* Progress circle */}
-              <div className="p-5 rounded-2xl glass-card bg-gradient-to-br from-purple-200/60 via-white/5 to-indigo-100/60 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.017] transition-transform duration-200">
+              <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
                 <AnimatedRadialProgress percentage={overallPercentage} size={88} color="#8b5cf6" />
                 <div>
                   <div className="text-lg font-bold text-slate-800">Your Progress</div>
@@ -282,16 +282,16 @@ export default async function DashboardPage() {
                 </div>
               </div>
               {/* Avg Score */}
-              <div className="p-5 rounded-2xl glass-card bg-gradient-to-bl from-fuchsia-200/60 to-blue-100/50 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.017] transition-transform duration-200">
-                <svg className="w-14 h-14 text-pink-500" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="26" fill="#f9fafb"/><rect x="18" y="19" width="20" height="18" rx="4" fill="#f472b6"/><rect x="21" y="22" width="14" height="12" rx="2" fill="#fff"/></svg>
+              <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-100 to-pink-200 animate-pulse" />
                 <div>
                   <div className="text-lg font-bold text-slate-800">Recent Avg Score</div>
                   <div className="text-slate-500">{recentSessions && recentSessions.length > 0 ? avgScore : '-'}</div>
                 </div>
               </div>
               {/* Next to do */}
-              <div className="p-5 rounded-2xl glass-card bg-gradient-to-br from-sky-200/70 to-emerald-100/60 border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.017] transition-transform duration-200">
-                <svg className="w-14 h-14 text-sky-400" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="26" fill="#f9fafb"/><rect x="18" y="24" width="20" height="8" rx="4" fill="#38bdf8"/><rect x="25" y="20" width="6" height="16" rx="2" fill="#fff"/></svg>
+              <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-sky-100 to-emerald-100 animate-pulse" />
                 <div>
                   <div className="text-lg font-bold text-slate-800">Categories Started</div>
                   <div className="text-slate-500">{categoryStats.filter(c => c.hasStarted).length} / {categoryStats.length}</div>
@@ -352,7 +352,7 @@ export default async function DashboardPage() {
               <h3 className="text-2xl font-bold text-slate-900 mb-6">
                 Choose Your Practice Category
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {categoryStats.map((category) => (
                   <Link
                     key={category.id}
@@ -360,24 +360,24 @@ export default async function DashboardPage() {
                     className="group focus:outline-none"
                   >
                     {/* Glassmorphic Card */}
-                    <div className="relative bg-white/70 dark:bg-slate-900/60 border border-white/30 shadow-xl rounded-2xl hover:shadow-2xl group-hover:scale-[1.027] active:scale-[1.01] transition-all duration-200 overflow-hidden glass-card backdrop-blur-xl"
+                    <div className="relative bg-white/70 dark:bg-slate-900/60 border border-white/30 shadow-xl rounded-xl md:rounded-2xl hover:shadow-2xl group-hover:scale-[1.02] active:scale-[1.01] transition-all duration-200 overflow-hidden glass-card backdrop-blur-xl"
                       style={{
                         boxShadow:
                           `0 4px 24px -3px ${category.gradient.includes('purple') ? 'rgba(139,92,246,0.13)' : 'rgba(0,0,0,0.07)'}`
                       }}
                     >
                       {/* HEADER */}
-                      <div className={`bg-gradient-to-br ${category.gradient} p-6 text-white`}>
-                        <div className="flex items-start justify-between mb-4">
-                          <span className="text-5xl drop-shadow">{category.icon}</span>
+                      <div className={`bg-gradient-to-br ${category.gradient} p-5 md:p-6 text-white`}>
+                        <div className="flex items-start justify-between mb-2 md:mb-4">
+                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white/20 animate-pulse" />
                           {category.completionPercentage > 0 && (
                             <div className="bg-white/20/80 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-bold">
                               {category.completionPercentage}%
                             </div>
                           )}
                         </div>
-                        <h3 className="text-2xl font-bold mb-2 drop-shadow-md">{category.name}</h3>
-                        <p className="text-white/90 text-sm">{category.description}</p>
+                        <h3 className="text-xl md:text-2xl font-bold mb-1 md:mb-2 drop-shadow-md">{category.name}</h3>
+                        <p className="text-white/90 text-xs md:text-sm">{category.description}</p>
                       </div>
                       {/* Body */}
                       <div className="p-6">
