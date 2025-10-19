@@ -107,14 +107,25 @@ export async function POST(request: NextRequest) {
     const levelExpectations = getLevelExpectations(levelNumber)
     const weights = SCORING_WEIGHTS.getAdjustedWeights(levelNumber)
 
-    // Get lesson details
-    const { data: lesson, error: lessonError } = await supabase
-      .from('lessons')
-      .select('*')
-      .eq('category', categoryName)
-      .eq('module_number', parseInt(moduleId))
-      .eq('level_number', levelNumber)
-      .single()
+    // Get lesson details - try level_number first, fallback to lesson_number
+const { data: lessons, error: lessonError } = await supabase
+.from('lessons')
+.select('*')
+.eq('category', categoryName)
+.eq('module_number', parseInt(moduleId))
+.or(`level_number.eq.${levelNumber},lesson_number.eq.${levelNumber}`)
+
+const lesson = lessons?.[0]
+
+if (lessonError || !lesson) {
+console.error('❌ Lesson not found:', lessonError)
+console.error('❌ Query params:', { categoryName, moduleId: parseInt(moduleId), lessonId: levelNumber })
+return NextResponse.json({ 
+  error: 'Lesson not found', 
+  details: lessonError?.message || 'No matching lesson found',
+  query: { category: categoryName, module: parseInt(moduleId), lesson: levelNumber }
+}, { status: 404 })
+}
 
     if (lessonError || !lesson) {
       console.error('❌ Lesson not found:', lessonError)
