@@ -107,29 +107,24 @@ export async function POST(request: NextRequest) {
     const levelExpectations = getLevelExpectations(levelNumber)
     const weights = SCORING_WEIGHTS.getAdjustedWeights(levelNumber)
 
-    // Get lesson details - try level_number first, fallback to lesson_number
-const { data: lessons, error: lessonError } = await supabase
-.from('lessons')
-.select('*')
-.eq('category', categoryName)
-.eq('module_number', parseInt(moduleId))
-.or(`level_number.eq.${levelNumber},lesson_number.eq.${levelNumber}`)
+    // Get lesson details - query by level_number
+    const { data: lessons, error: lessonError } = await supabase
+      .from('lessons')
+      .select('*')
+      .eq('category', categoryName)
+      .eq('module_number', parseInt(moduleId))
+      .eq('level_number', levelNumber)
 
-const lesson = lessons?.[0]
-
-if (lessonError || !lesson) {
-console.error('❌ Lesson not found:', lessonError)
-console.error('❌ Query params:', { categoryName, moduleId: parseInt(moduleId), lessonId: levelNumber })
-return NextResponse.json({ 
-  error: 'Lesson not found', 
-  details: lessonError?.message || 'No matching lesson found',
-  query: { category: categoryName, module: parseInt(moduleId), lesson: levelNumber }
-}, { status: 404 })
-}
+    const lesson = lessons?.[0]
 
     if (lessonError || !lesson) {
       console.error('❌ Lesson not found:', lessonError)
-      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
+      console.error('❌ Query params:', { categoryName, moduleId: parseInt(moduleId), levelNumber })
+      return NextResponse.json({ 
+        error: 'Lesson not found', 
+        details: lessonError?.message || 'No matching lesson found',
+        query: { category: categoryName, module: parseInt(moduleId), level: levelNumber }
+      }, { status: 404 })
     }
 
     console.log('✅ Lesson found:', lesson.level_title)
@@ -367,7 +362,7 @@ Respond with ONLY the speech text - no explanations, no markdown, just the natur
     const aiAudioBuffer = Buffer.from(await aiAudioResponse.arrayBuffer())
     console.log('✅ Authentic audio generated')
 
-    // Step 5: Save to database
+    // Step 5: Save to database - using level_number
     console.log('💾 Saving to database...')
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
@@ -378,8 +373,7 @@ Respond with ONLY the speech text - no explanations, no markdown, just the natur
         user_id: user.id,
         category: categoryName,
         module_number: parseInt(moduleId),
-        lesson_number: levelNumber,
-        level_number: levelNumber,
+        level_number: levelNumber,  // Using level_number as required
         tone: tone,
         user_transcript: userTranscript,
         ai_example_text: aiExampleText,
@@ -398,28 +392,33 @@ Respond with ONLY the speech text - no explanations, no markdown, just the natur
 
     console.log('✅ Session saved:', sessionId)
 
-    // Step 6: Update progress
+    // Step 6: Update progress - needs to match your user_progress table structure
     console.log('📊 Updating progress...')
+    
+    // Check if user_progress table uses lesson_number or level_number
+    // Adjust this based on your actual table structure
     await supabase
       .from('user_progress')
       .upsert({
         user_id: user.id,
         category: categoryName,
         module_number: parseInt(moduleId),
-        lesson_number: levelNumber,
+        lesson_number: levelNumber,  // Or level_number if your user_progress table uses that
         completed: true,
         best_score: feedback.overall_score,
         last_practiced: new Date().toISOString(),
       }, {
-        onConflict: 'user_id,category,module_number,lesson_number'
+        onConflict: 'user_id,category,module_number,lesson_number'  // Adjust based on your actual constraint
       })
 
     console.log('✅ Progress updated')
     console.log('🎉 Authentic coaching feedback complete!')
 
+    // Return with practice_prompt for frontend display
     return NextResponse.json({
       success: true,
       sessionId: sessionId,
+      practice_prompt: lesson.practice_prompt,  // Include for frontend task display
     })
 
   } catch (error) {
