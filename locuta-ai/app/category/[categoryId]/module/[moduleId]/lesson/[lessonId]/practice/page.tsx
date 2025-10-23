@@ -1,18 +1,18 @@
+'use client'
+
 import { useState, useRef, useEffect } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 export default function PracticePage() {
-  // Use the new Next.js 13+ hooks instead of props
   const params = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
   
-  // Get params directly
-  const categoryId = params.categoryId as string
-  const moduleId = params.moduleId as string
-  const lessonId = params.lessonId as string
-  const tone = searchParams.get('tone') || 'Normal'
+  const categoryId = params?.categoryId as string
+  const moduleId = params?.moduleId as string
+  const lessonId = params?.lessonId as string
+  const tone = searchParams?.get('tone') || 'Normal'
 
   const [step, setStep] = useState<'start' | 'intro' | 'recording'>('start')
   const [introAudio, setIntroAudio] = useState<string>('')
@@ -35,7 +35,6 @@ export default function PracticePage() {
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Log params on mount
   useEffect(() => {
     console.log('Component mounted with params:', {
       categoryId,
@@ -45,8 +44,12 @@ export default function PracticePage() {
     })
   }, [categoryId, moduleId, lessonId, tone])
 
-  // Load lesson intro
   const loadIntro = async () => {
+    if (!categoryId || !moduleId || !lessonId) {
+      setError('Missing required parameters')
+      return
+    }
+
     setError(null)
     
     const requestBody = {
@@ -97,7 +100,6 @@ export default function PracticePage() {
     }
   }
 
-  // Audio controls
   const playAudio = () => {
     if (audioRef.current && introAudio) {
       audioRef.current.play().catch(err => {
@@ -134,14 +136,12 @@ export default function PracticePage() {
     setStep('recording')
   }
 
-  // Recording
   const startRecording = async () => {
     setError(null)
     
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       
-      // Check for supported mime types
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
         ? 'audio/webm;codecs=opus' 
         : 'audio/webm'
@@ -170,7 +170,7 @@ export default function PracticePage() {
         stream.getTracks().forEach(track => track.stop())
       }
 
-      mediaRecorder.start(100) // Collect data every 100ms
+      mediaRecorder.start(100)
       setIsRecording(true)
       setRecordingTime(0)
 
@@ -245,12 +245,10 @@ export default function PracticePage() {
       const data = await response.json()
       console.log('Feedback response:', data)
       
-      // Store practice_prompt in sessionStorage for the feedback page if needed
       if (data.practice_prompt) {
         sessionStorage.setItem(`practice_prompt_${data.sessionId}`, data.practice_prompt)
       }
       
-      // Store lesson info for feedback page
       sessionStorage.setItem(`lesson_info_${data.sessionId}`, JSON.stringify({
         title: lessonInfo.title,
         prompt: data.practice_prompt || lessonInfo.prompt,
@@ -274,7 +272,6 @@ export default function PracticePage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -287,7 +284,6 @@ export default function PracticePage() {
     }
   }, [isRecording])
 
-  // Show loading while params are being resolved
   if (!categoryId || !moduleId || !lessonId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -298,7 +294,6 @@ export default function PracticePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
-      {/* Header */}
       <div className="bg-white/70 backdrop-blur-xl border-b border-slate-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <Link
@@ -314,14 +309,12 @@ export default function PracticePage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Error Display */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
             <p className="font-medium">Error: {error}</p>
           </div>
         )}
 
-        {/* Start Screen */}
         {step === 'start' && (
           <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-3xl shadow-2xl p-12 text-center text-white">
             <div className="w-16 h-16 rounded-2xl bg-white/30 mx-auto mb-6 animate-pulse" />
@@ -338,7 +331,6 @@ export default function PracticePage() {
           </div>
         )}
 
-        {/* Intro Screen */}
         {step === 'intro' && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -346,7 +338,6 @@ export default function PracticePage() {
                 {lessonInfo.title || 'Lesson Introduction'}
               </h2>
 
-              {/* Audio Player with Controls */}
               <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 mb-6">
                 <div className="flex items-center justify-center gap-4 mb-4">
                   {!isPlaying ? (
@@ -400,10 +391,8 @@ export default function PracticePage() {
           </div>
         )}
 
-        {/* Recording Screen */}
         {step === 'recording' && (
           <div className="space-y-6">
-            {/* Instructions Card */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg p-6 border-2 border-blue-200">
               <div className="flex items-start justify-between mb-4">
                 <h3 className="text-xl font-bold text-blue-900 flex items-center gap-2">
@@ -433,7 +422,6 @@ export default function PracticePage() {
               )}
             </div>
 
-            {/* Recording Card */}
             <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
               {!isRecording && !audioBlob && (
                 <>
