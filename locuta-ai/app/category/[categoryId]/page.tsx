@@ -25,7 +25,7 @@ const categoryColors: { [key: string]: string } = {
 export default async function CategoryPage({
   params,
 }: {
-  params: { categoryId: string }
+  params: Promise<{ categoryId: string }>
 }) {
   const supabase = await createClient()
 
@@ -35,7 +35,8 @@ export default async function CategoryPage({
     redirect('/auth/login')
   }
 
-  const categoryId = params.categoryId
+  const resolvedParams = await params
+  const categoryId = resolvedParams.categoryId
   const categoryName = categoryMap[categoryId]
 
   if (!categoryName) {
