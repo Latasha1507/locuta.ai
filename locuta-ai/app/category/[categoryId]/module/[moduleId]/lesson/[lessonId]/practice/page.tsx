@@ -256,7 +256,7 @@ export default function PracticePage() {
       }))
       
       router.push(
-        `/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/feedback?sessionId=${data.sessionId}`
+        `/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/feedback?session=${data.sessionId}`
       )
     } catch (error) {
       console.error('Error submitting recording:', error)
@@ -294,6 +294,7 @@ export default function PracticePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
+      {/* Header */}
       <div className="bg-white/70 backdrop-blur-xl border-b border-slate-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <Link
@@ -309,12 +310,14 @@ export default function PracticePage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error Display */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
             <p className="font-medium">Error: {error}</p>
           </div>
         )}
 
+        {/* Start Screen */}
         {step === 'start' && (
           <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-3xl shadow-2xl p-12 text-center text-white">
             <div className="w-16 h-16 rounded-2xl bg-white/30 mx-auto mb-6 animate-pulse" />
@@ -331,6 +334,7 @@ export default function PracticePage() {
           </div>
         )}
 
+        {/* Intro Screen */}
         {step === 'intro' && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -338,6 +342,7 @@ export default function PracticePage() {
                 {lessonInfo.title || 'Lesson Introduction'}
               </h2>
 
+              {/* Audio Player with Controls */}
               <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 mb-6">
                 <div className="flex items-center justify-center gap-4 mb-4">
                   {!isPlaying ? (
@@ -391,8 +396,10 @@ export default function PracticePage() {
           </div>
         )}
 
+        {/* Recording Screen */}
         {step === 'recording' && (
           <div className="space-y-6">
+            {/* Instructions Card */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg p-6 border-2 border-blue-200">
               <div className="flex items-start justify-between mb-4">
                 <h3 className="text-xl font-bold text-blue-900 flex items-center gap-2">
@@ -422,6 +429,7 @@ export default function PracticePage() {
               )}
             </div>
 
+            {/* Recording Card */}
             <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
               {!isRecording && !audioBlob && (
                 <>

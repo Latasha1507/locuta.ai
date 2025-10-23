@@ -149,7 +149,7 @@ export default async function FeedbackPage({
         </div>
 
         {/* AI Example */}
-          <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden mb-8">
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden mb-8">
           <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-6 text-white">
             <h2 className="text-2xl font-bold">
               How I Would Have Done It
