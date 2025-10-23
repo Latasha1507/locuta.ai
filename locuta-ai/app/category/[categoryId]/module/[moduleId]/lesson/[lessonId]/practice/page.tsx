@@ -1,19 +1,20 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function PracticePage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ categoryId: string; moduleId: string; lessonId: string }>
-  searchParams: Promise<{ tone?: string }>
-}) {
-  const [resolvedParams, setResolvedParams] = useState<{ categoryId: string; moduleId: string; lessonId: string } | null>(null)
-  const [tone, setTone] = useState<string>('')
+export default function PracticePage() {
+  // Use the new Next.js 13+ hooks instead of props
+  const params = useParams()
+  const searchParams = useSearchParams()
   const router = useRouter()
+  
+  // Get params directly
+  const categoryId = params.categoryId as string
+  const moduleId = params.moduleId as string
+  const lessonId = params.lessonId as string
+  const tone = searchParams.get('tone') || 'Normal'
 
   const [step, setStep] = useState<'start' | 'intro' | 'recording'>('start')
   const [introAudio, setIntroAudio] = useState<string>('')
@@ -36,35 +37,25 @@ export default function PracticePage({
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Log params on mount
   useEffect(() => {
-    const resolveParams = async () => {
-      const p = await params
-      const sp = await searchParams
-      setResolvedParams(p)
-      setTone(sp.tone || 'Normal')
-      
-      // Log resolved params for debugging
-      console.log('Resolved params:', {
-        categoryId: p.categoryId,
-        moduleId: p.moduleId,
-        lessonId: p.lessonId,
-        tone: sp.tone || 'Normal'
-      })
-    }
-    resolveParams()
-  }, [params, searchParams])
+    console.log('Component mounted with params:', {
+      categoryId,
+      moduleId,
+      lessonId,
+      tone
+    })
+  }, [categoryId, moduleId, lessonId, tone])
 
   // Load lesson intro
   const loadIntro = async () => {
-    if (!resolvedParams) return
-
     setError(null)
     
     const requestBody = {
       tone,
-      categoryId: resolvedParams.categoryId,
-      moduleId: resolvedParams.moduleId,
-      lessonId: resolvedParams.lessonId,
+      categoryId,
+      moduleId,
+      lessonId,
     }
     
     console.log('Loading intro with params:', requestBody)
@@ -152,9 +143,12 @@ export default function PracticePage({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       
-      const mediaRecorder = new MediaRecorder(stream, { 
-        mimeType: 'audio/webm;codecs=opus' 
-      })
+      // Check for supported mime types
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+        ? 'audio/webm;codecs=opus' 
+        : 'audio/webm'
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType })
       
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
@@ -166,7 +160,7 @@ export default function PracticePage({
       }
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        const blob = new Blob(chunksRef.current, { type: mimeType })
         setAudioBlob(blob)
         stream.getTracks().forEach(track => track.stop())
         console.log('Recording stopped, blob size:', blob.size)
@@ -213,7 +207,7 @@ export default function PracticePage({
   }
 
   const submitRecording = async () => {
-    if (!audioBlob || !resolvedParams) {
+    if (!audioBlob) {
       setError('No recording to submit')
       return
     }
@@ -224,15 +218,15 @@ export default function PracticePage({
     const formData = new FormData()
     formData.append('audio', audioBlob, 'recording.webm')
     formData.append('tone', tone)
-    formData.append('categoryId', resolvedParams.categoryId)
-    formData.append('moduleId', resolvedParams.moduleId)
-    formData.append('lessonId', resolvedParams.lessonId)
+    formData.append('categoryId', categoryId)
+    formData.append('moduleId', moduleId)
+    formData.append('lessonId', lessonId)
 
     console.log('Submitting recording with params:', {
       tone,
-      categoryId: resolvedParams.categoryId,
-      moduleId: resolvedParams.moduleId,
-      lessonId: resolvedParams.lessonId,
+      categoryId,
+      moduleId,
+      lessonId,
       audioSize: audioBlob.size
     })
 
@@ -266,7 +260,7 @@ export default function PracticePage({
       }))
       
       router.push(
-        `/category/${resolvedParams.categoryId}/module/${resolvedParams.moduleId}/lesson/${resolvedParams.lessonId}/feedback?sessionId=${data.sessionId}`
+        `/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/feedback?sessionId=${data.sessionId}`
       )
     } catch (error) {
       console.error('Error submitting recording:', error)
@@ -295,7 +289,8 @@ export default function PracticePage({
     }
   }, [isRecording])
 
-  if (!resolvedParams) {
+  // Show loading while params are being resolved
+  if (!categoryId || !moduleId || !lessonId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-xl">Loading...</div>
@@ -309,7 +304,7 @@ export default function PracticePage({
       <div className="bg-white/70 backdrop-blur-xl border-b border-slate-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <Link
-            href={`/category/${resolvedParams.categoryId}/modules?tone=${tone}`}
+            href={`/category/${categoryId}/modules?tone=${tone}`}
             className="text-slate-700 hover:text-indigo-600 font-medium"
           >
             ← Back to Lessons
@@ -410,7 +405,7 @@ export default function PracticePage({
         {/* Recording Screen */}
         {step === 'recording' && (
           <div className="space-y-6">
-            {/* Instructions Card - Always Visible */}
+            {/* Instructions Card */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg p-6 border-2 border-blue-200">
               <div className="flex items-start justify-between mb-4">
                 <h3 className="text-xl font-bold text-blue-900 flex items-center gap-2">
