@@ -8,12 +8,12 @@ export default async function FeedbackPage({
   searchParams,
 }: {
   params: Promise<{ categoryId: string; moduleId: string; lessonId: string }>
-  searchParams: Promise<{ session?: string }>
+  searchParams: Promise<{ session?: string; sessionId?: string }>
 }) {
   const resolvedParams = await params
   const resolvedSearchParams = await searchParams
   const { categoryId, moduleId, lessonId } = resolvedParams
-  const sessionId = resolvedSearchParams.session
+  const sessionId = resolvedSearchParams.session || resolvedSearchParams.sessionId
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
