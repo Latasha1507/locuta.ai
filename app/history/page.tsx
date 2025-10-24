@@ -65,25 +65,25 @@ export default async function HistoryPage({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white/70 backdrop-blur-xl border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="text-slate-600 hover:text-slate-900 transition-colors">
               ← Back
             </Link>
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center">
-              <span className="text-2xl">📊</span>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center">
+              <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold text-slate-900">
               Practice History
             </h1>
           </div>
           <form action="/auth/signout" method="post">
             <button 
               type="submit"
-              className="text-slate-600 hover:text-slate-900 transition-colors"
+              className="px-4 py-2 text-slate-700 font-semibold hover:text-indigo-600 transition-colors"
             >
               Sign Out
             </button>
@@ -93,25 +93,29 @@ export default async function HistoryPage({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl shadow-lg p-6 text-white">
-            <div className="text-4xl mb-2">🎤</div>
-            <div className="text-3xl font-bold mb-1">{totalSessions}</div>
-            <div className="text-purple-100">Total Sessions</div>
-          </div>
-          
-          <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg p-6 text-white">
-            <div className="text-4xl mb-2">📈</div>
-            <div className="text-3xl font-bold mb-1">{avgScore}</div>
-            <div className="text-green-100">Average Score</div>
-          </div>
-          
-          <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl shadow-lg p-6 text-white">
-            <div className="text-4xl mb-2">🏆</div>
-            <div className="text-3xl font-bold mb-1">
-              {sessions && sessions.length > 0 ? Math.max(...sessions.map(s => s.overall_score || 0)) : 0}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
+          <div className="bg-white/80 backdrop-blur-md border border-white/60 rounded-xl shadow-lg p-6 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-100 to-indigo-200 animate-pulse" />
+            <div>
+              <div className="text-sm text-slate-500">Total Sessions</div>
+              <div className="text-2xl font-bold text-slate-900">{totalSessions}</div>
             </div>
-            <div className="text-blue-100">Best Score</div>
+          </div>
+          
+          <div className="bg-white/80 backdrop-blur-md border border-white/60 rounded-xl shadow-lg p-6 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-100 to-pink-200 animate-pulse" />
+            <div>
+              <div className="text-sm text-slate-500">Average Score</div>
+              <div className="text-2xl font-bold text-slate-900">{avgScore}</div>
+            </div>
+          </div>
+          
+          <div className="bg-white/80 backdrop-blur-md border border-white/60 rounded-xl shadow-lg p-6 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 animate-pulse" />
+            <div>
+              <div className="text-sm text-slate-500">Best Score</div>
+              <div className="text-2xl font-bold text-slate-900">{sessions && sessions.length > 0 ? Math.max(...sessions.map(s => s.overall_score || 0)) : 0}</div>
+            </div>
           </div>
         </div>
 
@@ -268,7 +272,7 @@ export default async function HistoryPage({
           </div>
         ) : (
           <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-            <div className="text-6xl mb-4">📊</div>
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-100 to-indigo-200 animate-pulse mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-slate-900 mb-2">
               No Sessions Yet
             </h3>
