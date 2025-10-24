@@ -1,19 +1,18 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function PracticePage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ categoryId: string; moduleId: string; lessonId: string }>
-  searchParams: Promise<{ tone?: string }>
-}) {
-  const [resolvedParams, setResolvedParams] = useState<{ categoryId: string; moduleId: string; lessonId: string } | null>(null)
-  const [tone, setTone] = useState<string>('')
+export default function PracticePage() {
+  const params = useParams()
+  const searchParams = useSearchParams()
   const router = useRouter()
+  
+  const categoryId = params?.categoryId as string
+  const moduleId = params?.moduleId as string
+  const lessonId = params?.lessonId as string
+  const tone = searchParams?.get('tone') || 'Normal'
 
   const [step, setStep] = useState<'start' | 'intro' | 'recording'>('start')
   const [introAudio, setIntroAudio] = useState<string>('')
@@ -29,6 +28,7 @@ export default function PracticePage({
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showInstructions, setShowInstructions] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -36,36 +36,57 @@ export default function PracticePage({
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    const resolveParams = async () => {
-      const p = await params
-      const sp = await searchParams
-      setResolvedParams(p)
-      setTone(sp.tone || 'Normal')
-    }
-    resolveParams()
-  }, [params, searchParams])
+    console.log('Component mounted with params:', {
+      categoryId,
+      moduleId,
+      lessonId,
+      tone
+    })
+  }, [categoryId, moduleId, lessonId, tone])
 
-  // Load lesson intro
   const loadIntro = async () => {
-    if (!resolvedParams) return
+    if (!categoryId || !moduleId || !lessonId) {
+      setError('Missing required parameters')
+      return
+    }
+
+    setError(null)
+    
+    const requestBody = {
+      tone,
+      categoryId,
+      moduleId,
+      lessonId,
+    }
+    
+    console.log('Loading intro with params:', requestBody)
 
     try {
       const response = await fetch('/api/lesson-intro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tone,
-          categoryId: resolvedParams.categoryId,
-          moduleId: resolvedParams.moduleId,
-          lessonId: resolvedParams.lessonId,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
-      if (!response.ok) throw new Error('Failed to load intro')
+      console.log('Intro API response status:', response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('Intro API error:', errorData)
+        throw new Error(errorData.error || `Failed to load intro (${response.status})`)
+      }
 
       const data = await response.json()
-      setIntroAudio(data.audioBase64)
-      setIntroTranscript(data.transcript)
+      console.log('Intro data received:', {
+        hasAudio: !!data.audioBase64,
+        hasTranscript: !!data.transcript,
+        lessonTitle: data.lessonTitle,
+        practice_prompt: data.practice_prompt,
+        practice_example: data.practice_example
+      })
+      
+      setIntroAudio(data.audioBase64 || '')
+      setIntroTranscript(data.transcript || '')
       setLessonInfo({
         title: data.lessonTitle || '',
         prompt: data.practice_prompt || '',
@@ -74,14 +95,17 @@ export default function PracticePage({
       setStep('intro')
     } catch (error) {
       console.error('Error loading intro:', error)
-      alert('Failed to load lesson intro')
+      setError(error instanceof Error ? error.message : 'Failed to load lesson intro')
+      alert('Failed to load lesson intro: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 
-  // Audio controls
   const playAudio = () => {
-    if (audioRef.current) {
-      audioRef.current.play()
+    if (audioRef.current && introAudio) {
+      audioRef.current.play().catch(err => {
+        console.error('Error playing audio:', err)
+        setError('Failed to play audio')
+      })
       setIsPlaying(true)
     }
   }
@@ -94,9 +118,12 @@ export default function PracticePage({
   }
 
   const replayAudio = () => {
-    if (audioRef.current) {
+    if (audioRef.current && introAudio) {
       audioRef.current.currentTime = 0
-      audioRef.current.play()
+      audioRef.current.play().catch(err => {
+        console.error('Error replaying audio:', err)
+        setError('Failed to replay audio')
+      })
       setIsPlaying(true)
     }
   }
@@ -105,38 +132,57 @@ export default function PracticePage({
     if (audioRef.current) {
       audioRef.current.pause()
     }
+    setIsPlaying(false)
     setStep('recording')
   }
 
-  // Recording
   const startRecording = async () => {
+    setError(null)
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      mediaRecorderRef.current = new MediaRecorder(stream)
+      
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+        ? 'audio/webm;codecs=opus' 
+        : 'audio/webm'
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType })
+      
+      mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
 
-      mediaRecorderRef.current.ondataavailable = (e) => {
+      mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           chunksRef.current.push(e.data)
         }
       }
 
-      mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mimeType })
         setAudioBlob(blob)
+        stream.getTracks().forEach(track => track.stop())
+        console.log('Recording stopped, blob size:', blob.size)
+      }
+
+      mediaRecorder.onerror = (e) => {
+        console.error('MediaRecorder error:', e)
+        setError('Recording error occurred')
         stream.getTracks().forEach(track => track.stop())
       }
 
-      mediaRecorderRef.current.start()
+      mediaRecorder.start(100)
       setIsRecording(true)
       setRecordingTime(0)
 
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1)
       }, 1000)
+      
+      console.log('Recording started')
     } catch (error) {
       console.error('Error starting recording:', error)
-      alert('Failed to access microphone')
+      setError('Failed to access microphone. Please check your browser permissions.')
+      alert('Failed to access microphone. Please ensure you have granted microphone permissions.')
     }
   }
 
@@ -146,42 +192,76 @@ export default function PracticePage({
       setIsRecording(false)
       if (timerRef.current) {
         clearInterval(timerRef.current)
+        timerRef.current = null
       }
+      console.log('Stopping recording...')
     }
   }
 
   const reRecord = () => {
     setAudioBlob(null)
     setRecordingTime(0)
+    setError(null)
   }
 
   const submitRecording = async () => {
-    if (!audioBlob || !resolvedParams) return
+    if (!audioBlob) {
+      setError('No recording to submit')
+      return
+    }
 
     setIsSubmitting(true)
+    setError(null)
+
+    const formData = new FormData()
+    formData.append('audio', audioBlob, 'recording.webm')
+    formData.append('tone', tone)
+    formData.append('categoryId', categoryId)
+    formData.append('moduleId', moduleId)
+    formData.append('lessonId', lessonId)
+
+    console.log('Submitting recording with params:', {
+      tone,
+      categoryId,
+      moduleId,
+      lessonId,
+      audioSize: audioBlob.size
+    })
 
     try {
-      const formData = new FormData()
-      formData.append('audio', audioBlob, 'recording.webm')
-      formData.append('tone', tone)
-      formData.append('categoryId', resolvedParams.categoryId)
-      formData.append('moduleId', resolvedParams.moduleId)
-      formData.append('lessonId', resolvedParams.lessonId)
-
       const response = await fetch('/api/feedback', {
         method: 'POST',
         body: formData,
       })
 
-      if (!response.ok) throw new Error('Failed to submit')
+      console.log('Feedback API response status:', response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('Feedback API error:', errorData)
+        throw new Error(errorData.error || `Failed to submit (${response.status})`)
+      }
 
       const data = await response.json()
+      console.log('Feedback response:', data)
+      
+      if (data.practice_prompt) {
+        sessionStorage.setItem(`practice_prompt_${data.sessionId}`, data.practice_prompt)
+      }
+      
+      sessionStorage.setItem(`lesson_info_${data.sessionId}`, JSON.stringify({
+        title: lessonInfo.title,
+        prompt: data.practice_prompt || lessonInfo.prompt,
+        example: lessonInfo.example
+      }))
+      
       router.push(
-        `/category/${resolvedParams.categoryId}/module/${resolvedParams.moduleId}/lesson/${resolvedParams.lessonId}/feedback?sessionId=${data.sessionId}`
+        `/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/feedback?session=${data.sessionId}`
       )
     } catch (error) {
-      console.error('Error submitting:', error)
-      alert('Failed to submit recording')
+      console.error('Error submitting recording:', error)
+      setError(error instanceof Error ? error.message : 'Failed to submit recording')
+      alert('Failed to submit recording: ' + (error instanceof Error ? error.message : 'Unknown error'))
       setIsSubmitting(false)
     }
   }
@@ -192,7 +272,19 @@ export default function PracticePage({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  if (!resolvedParams) {
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+      if (mediaRecorderRef.current && isRecording) {
+        mediaRecorderRef.current.stop()
+        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop())
+      }
+    }
+  }, [isRecording])
+
+  if (!categoryId || !moduleId || !lessonId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-xl">Loading...</div>
@@ -201,24 +293,34 @@ export default function PracticePage({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div className="bg-white/70 backdrop-blur-xl border-b border-slate-200 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <Link
-            href={`/category/${resolvedParams.categoryId}/modules?tone=${tone}`}
-            className="text-purple-600 hover:text-purple-700 font-medium"
+            href={`/category/${categoryId}/modules?tone=${tone}`}
+            className="text-slate-700 hover:text-indigo-600 font-medium"
           >
             ← Back to Lessons
           </Link>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+            <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
+          </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            <p className="font-medium">Error: {error}</p>
+          </div>
+        )}
+
         {/* Start Screen */}
         {step === 'start' && (
           <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-3xl shadow-2xl p-12 text-center text-white">
-            <div className="text-6xl mb-6">🎤</div>
+            <div className="w-16 h-16 rounded-2xl bg-white/30 mx-auto mb-6 animate-pulse" />
             <h1 className="text-4xl font-bold mb-4">Ready to Begin?</h1>
             <p className="text-xl text-purple-100 mb-8">
               Your AI coach will guide you through this lesson
@@ -246,7 +348,8 @@ export default function PracticePage({
                   {!isPlaying ? (
                     <button
                       onClick={playAudio}
-                      className="w-16 h-16 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors shadow-lg"
+                      disabled={!introAudio}
+                      className="w-16 h-16 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <span className="text-2xl">▶️</span>
                     </button>
@@ -260,21 +363,26 @@ export default function PracticePage({
                   )}
                   <button
                     onClick={replayAudio}
-                    className="w-16 h-16 bg-slate-200 text-slate-700 rounded-full flex items-center justify-center hover:bg-slate-300 transition-colors"
+                    disabled={!introAudio}
+                    className="w-16 h-16 bg-slate-200 text-slate-700 rounded-full flex items-center justify-center hover:bg-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="text-2xl">🔁</span>
                   </button>
                 </div>
 
-                <audio
-                  ref={audioRef}
-                  src={`data:audio/mpeg;base64,${introAudio}`}
-                  onEnded={() => setIsPlaying(false)}
-                  className="w-full"
-                />
+                {introAudio && (
+                  <audio
+                    ref={audioRef}
+                    src={`data:audio/mpeg;base64,${introAudio}`}
+                    onEnded={() => setIsPlaying(false)}
+                    className="hidden"
+                  />
+                )}
 
                 <div className="mt-4 p-4 bg-white rounded-lg">
-                  <p className="text-slate-700 leading-relaxed">{introTranscript}</p>
+                  <p className="text-slate-700 leading-relaxed">
+                    {introTranscript || 'Loading transcript...'}
+                  </p>
                 </div>
               </div>
 
@@ -291,7 +399,7 @@ export default function PracticePage({
         {/* Recording Screen */}
         {step === 'recording' && (
           <div className="space-y-6">
-            {/* Instructions Card - Always Visible */}
+            {/* Instructions Card */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg p-6 border-2 border-blue-200">
               <div className="flex items-start justify-between mb-4">
                 <h3 className="text-xl font-bold text-blue-900 flex items-center gap-2">
@@ -309,7 +417,7 @@ export default function PracticePage({
                 <div className="space-y-3">
                   <div className="bg-white rounded-lg p-4">
                     <p className="text-slate-700 font-medium mb-2">Practice Prompt:</p>
-                    <p className="text-slate-800">{lessonInfo.prompt}</p>
+                    <p className="text-slate-800">{lessonInfo.prompt || 'Loading...'}</p>
                   </div>
                   {lessonInfo.example && (
                     <div className="bg-white rounded-lg p-4">
