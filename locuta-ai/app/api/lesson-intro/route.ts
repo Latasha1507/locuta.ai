@@ -6,7 +6,6 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 })
 
-// Category mapping - MUST match your Supabase database exactly
 const CATEGORY_MAP: Record<string, string> = {
   'public-speaking': 'Public Speaking',
   'storytelling': 'Storytelling',
@@ -16,32 +15,55 @@ const CATEGORY_MAP: Record<string, string> = {
   'pitch-anything': 'Pitch Anything',
 }
 
-// Voice mapping for different tones
+// Voice mapping based on tone characterization
 const VOICE_MAP: Record<string, 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'> = {
-  'Normal': 'shimmer',
-  'Supportive': 'nova',
-  'Inspiring': 'fable',
-  'Funny': 'onyx',
-  'Diplomatic': 'nova',
-  'Bossy': 'echo'
+  'Normal': 'shimmer',      // Clear, simple, everyday conversational
+  'Supportive': 'nova',     // Soft, kind, reassuring (using nova as closest to Marin)
+  'Inspiring': 'fable',     // Energizing, passionate (using fable as closest to Sage)
+  'Funny': 'onyx',          // Entertaining, playful (using onyx as closest to Coral)
+  'Diplomatic': 'nova',     // Calm, professional, trustworthy
+  'Bossy': 'echo'           // Commanding, authoritative (using echo as closest to Ash)
 }
 
-// Tone descriptions for AI
-const TONE_DESCRIPTIONS: Record<string, string> = {
-  'Normal': 'friendly, clear, and professional',
-  'Supportive': 'warm, encouraging, and empathetic',
-  'Inspiring': 'motivational, enthusiastic, and uplifting',
-  'Funny': 'witty, lighthearted, and engaging with appropriate humor',
-  'Diplomatic': 'tactful, balanced, and thoughtful',
-  'Bossy': 'direct, commanding, and no-nonsense'
+// Detailed tone descriptions for AI coach personality
+const TONE_CHARACTERISTICS: Record<string, { goal: string; style: string; delivery: string }> = {
+  'Normal': {
+    goal: 'Clear, simple, everyday conversational style',
+    style: 'Speak in a neutral, natural tone like a friendly everyday person—neither too formal nor too casual',
+    delivery: 'Use clear words, steady pacing, and straightforward delivery'
+  },
+  'Supportive': {
+    goal: 'Soft, kind, reassuring',
+    style: 'Speak gently and empathetically, like a supportive friend or mentor',
+    delivery: 'Use a slower pace, softer intonation, and warmth in your voice. Emphasize comfort and reassurance, making the listener feel safe and cared for. Provide comfort and warmth while maintaining a normal pitch'
+  },
+  'Inspiring': {
+    goal: 'Energize, lift confidence, sound passionate',
+    style: 'Speak with passion and energy, like a motivational coach',
+    delivery: 'Use an uplifting tone, slightly faster pacing, and emphasize positive words. Add warmth and confidence, making the listener feel capable and empowered'
+  },
+  'Funny': {
+    goal: 'Entertaining, playful, casual',
+    style: 'Speak in a playful and humorous way, like a friend cracking light-hearted jokes',
+    delivery: 'Use lively intonation, slight exaggeration, and occasional pauses for comedic timing. Keep it friendly and engaging'
+  },
+  'Diplomatic': {
+    goal: 'Calm, professional, trustworthy',
+    style: 'Speak in a balanced, professional, and respectful tone, like a skilled diplomat',
+    delivery: 'Use moderate pacing, steady intonation, and avoid extremes. Sound thoughtful, fair, and neutral while keeping a friendly undertone'
+  },
+  'Bossy': {
+    goal: 'Commanding, no-nonsense, authoritative',
+    style: 'Speak with firmness and authority, like a confident leader giving instructions',
+    delivery: 'Use direct words and faster pacing. Sound assertive and commanding, but not rude'
+  }
 }
 
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
-    
-    // Authenticate user
     const { data: { user } } = await supabase.auth.getUser()
+    
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -49,42 +71,26 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { tone, categoryId, moduleId, lessonId } = body
 
-    console.log('📥 Lesson intro request:', { tone, categoryId, moduleId, lessonId })
-
-    // Convert category ID to database name using map
     const categoryName = CATEGORY_MAP[categoryId]
-    
     if (!categoryName) {
-      console.error('❌ Invalid category ID:', categoryId)
       return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
     }
 
-    console.log('🔍 Looking for lesson:', { categoryName, moduleId, lessonId })
-
-    // Fetch lesson from database
+    // Fetch lesson
     const { data: lesson, error: lessonError } = await supabase
       .from('lessons')
-      .select('level_title, module_title, lesson_explanation, practice_prompt, practice_example, feedback_focus_areas')
+      .select('*')
       .eq('category', categoryName)
       .eq('module_number', parseInt(moduleId))
       .eq('level_number', parseInt(lessonId))
       .single()
 
-    if (lessonError) {
-      console.error('❌ Lesson query error:', lessonError)
-      return NextResponse.json({ error: 'Lesson not found', details: lessonError.message }, { status: 404 })
-    }
-
-    if (!lesson) {
-      console.error('❌ No lesson found')
+    if (lessonError || !lesson) {
+      console.error('Lesson error:', lessonError)
       return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
     }
 
-    console.log('✅ Lesson found:', lesson.level_title)
-    console.log('🔍 practice_prompt value:', lesson.practice_prompt)
-    console.log('🔍 All lesson keys:', Object.keys(lesson))
-
-    // Get user's first name if available
+    // Get user's first name
     const { data: profile } = await supabase
       .from('profiles')
       .select('first_name')
@@ -92,13 +98,15 @@ export async function POST(request: Request) {
       .single()
 
     const userName = profile?.first_name || null
-
-    // Generate enhanced lesson introduction using GPT-4o
-    const toneDescription = TONE_DESCRIPTIONS[tone] || 'friendly and professional'
+    const toneChar = TONE_CHARACTERISTICS[tone] || TONE_CHARACTERISTICS['Normal']
     
-    const systemPrompt = `You are a ${toneDescription} speaking coach. Your job is to introduce a speaking lesson in an engaging, conversational way. 
+    const systemPrompt = `You are a speaking coach with a specific personality. Your coaching style is defined as:
 
-Your tone should be ${toneDescription}. Keep the introduction natural, motivating, and about 30-45 seconds when spoken aloud (approximately 90-120 words).
+**Goal**: ${toneChar.goal}
+**Communication Style**: ${toneChar.style}
+**Delivery Instructions**: ${toneChar.delivery}
+
+Your job is to introduce a speaking lesson in an engaging way that matches this personality perfectly. Keep the introduction natural, motivating, and about 30-45 seconds when spoken aloud (approximately 90-120 words).
 
 Structure your introduction as follows:
 1. Warm greeting ${userName ? `(use the name ${userName})` : ''}
@@ -107,24 +115,24 @@ Structure your introduction as follows:
 4. Give them a helpful tip or example to guide them
 5. End with an encouraging call to action to start recording
 
-Make it conversational and engaging, not robotic. Avoid overly formal language unless the tone calls for it.`
+CRITICAL: Embody the ${tone} coaching style throughout. ${toneChar.style} ${toneChar.delivery}
 
-    const userPrompt = `Create an engaging introduction for this speaking lesson:
+Make it conversational and engaging, not robotic. Let your ${tone} personality shine through!`
 
-Lesson Title: ${lesson.level_title}
-Module: ${lesson.module_title}
+    const userPrompt = `Create an engaging introduction for this speaking lesson in your ${tone} coaching style:
 
-Basic Explanation: ${lesson.lesson_explanation}
+Lesson Title: ${lesson.level_title || 'Speaking Practice'}
+Module: ${lesson.module_title || 'Practice Module'}
 
-Practice Task: ${lesson.practice_prompt}
+Basic Explanation: ${lesson.lesson_explanation || 'Practice your speaking skills'}
 
-Example/Tips: ${lesson.practice_example}
+Practice Task: ${lesson.practice_prompt || 'Speak clearly and confidently'}
 
-Focus Areas: ${Array.isArray(lesson.feedback_focus_areas) ? lesson.feedback_focus_areas.join(', ') : lesson.feedback_focus_areas}
+Example/Tips: ${lesson.practice_example || 'Focus on clarity and confidence'}
 
-Remember: Be ${toneDescription} and make this introduction feel like a real coach talking to the learner!`
+Focus Areas: ${Array.isArray(lesson.feedback_focus_areas) ? lesson.feedback_focus_areas.join(', ') : 'General speaking'}
 
-    console.log('🤖 Generating intro with GPT-4o...')
+Remember: You're a ${tone} coach. ${toneChar.goal}. ${toneChar.style}`
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -132,49 +140,36 @@ Remember: Be ${toneDescription} and make this introduction feel like a real coac
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      temperature: 0.8,
+      temperature: 0.85, // Slightly higher for more personality
       max_tokens: 300
     })
 
     const enhancedIntro = completion.choices[0].message.content || ''
-    console.log('✅ Intro generated:', enhancedIntro.substring(0, 100) + '...')
-
-    // Generate audio using OpenAI TTS with the tone-specific voice
     const voice = VOICE_MAP[tone] || 'shimmer'
-    
-    console.log('🔊 Generating audio with voice:', voice)
 
     const mp3Response = await openai.audio.speech.create({
-      model: 'tts-1',
+      model: 'tts-1-hd', // Using HD for better quality with personality
       voice: voice,
       input: enhancedIntro,
-      speed: 1.0
+      speed: tone === 'Inspiring' ? 1.05 : tone === 'Bossy' ? 1.1 : tone === 'Supportive' ? 0.95 : 1.0
     })
 
-    // Convert audio to base64
     const buffer = Buffer.from(await mp3Response.arrayBuffer())
     const audioBase64 = buffer.toString('base64')
-
-    console.log('✅ Audio generated successfully')
 
     return NextResponse.json({
       audioBase64: audioBase64,
       transcript: enhancedIntro,
-      lessonTitle: lesson.level_title,
-      moduleTitle: lesson.module_title,
-      practice_prompt: lesson.practice_prompt,
-      practice_example: lesson.practice_example  // Keep this for now
+      lessonTitle: lesson.level_title || 'Lesson',
+      moduleTitle: lesson.module_title || 'Module',
+      practice_prompt: lesson.practice_prompt || 'Practice speaking clearly and confidently.',
+      practice_example: lesson.practice_example || ''
     })
 
   } catch (error) {
-    console.error('❌ Error generating lesson intro:', error)
-    console.error('Stack:', error instanceof Error ? error.stack : 'No stack trace')
-    
+    console.error('Error:', error)
     return NextResponse.json(
-      { 
-        error: 'Failed to generate lesson introduction',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Failed to generate lesson introduction' },
       { status: 500 }
     )
   }
