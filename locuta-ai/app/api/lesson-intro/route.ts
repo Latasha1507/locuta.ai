@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
@@ -61,39 +62,56 @@ const TONE_CHARACTERISTICS: Record<string, { goal: string; style: string; delive
 
 export async function POST(request: Request) {
   try {
+    // Use regular client for auth
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
     const body = await request.json()
     const { tone, categoryId, moduleId, lessonId } = body
+
     const categoryName = CATEGORY_MAP[categoryId]
     if (!categoryName) {
       return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
     }
-    // Fetch lesson
-    const { data: lesson, error: lessonError } = await supabase
-      .from('lessons')
-      .select('*')
-      .eq('category', categoryName)
-      .eq('module_number', parseInt(moduleId))
-      .eq('level_number', parseInt(lessonId))
-      .single()
 
-    if (lessonError || !lesson) {
-      console.error('Lesson error:', lessonError)
-      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
-    }
-    // Get user's first name
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('first_name')
-      .eq('id', user.id)
-      .single()
-    const userName = profile?.first_name || null
-    const toneChar = TONE_CHARACTERISTICS[tone] || TONE_CHARACTERISTICS['Normal']
-    const systemPrompt = `You are a speaking coach with a specific personality. Your coaching style is defined as:
+    // Use SERVICE ROLE for lesson query (bypasses RLS)
+const supabaseAdmin = createServiceClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+const { data: lessons, error: lessonError } = await supabaseAdmin
+  .from('lessons')
+  .select('*')
+  .eq('category', categoryName)
+  .eq('module_number', parseInt(moduleId))
+  .eq('level_number', parseInt(lessonId))
+
+if (lessonError || !lessons || lessons.length === 0) {
+  console.error('Lesson error:', lessonError)
+  return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
+}
+const lesson = lessons[0]
+// Extract fields explicitly with fallbacks
+const levelTitle = lesson.level_title || 'Lesson'
+const moduleTitle = lesson.module_title || 'Module'
+const lessonExplanation = lesson.lesson_explanation || 'Practice your speaking skills'
+const practicePrompt = lesson.practice_prompt || 'Speak clearly and confidently'
+const practiceExample = lesson.practice_example || ''
+
+// Get user's first name
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('first_name')
+  .eq('id', user.id)
+  .single()
+const userName = profile?.first_name || null
+const toneChar = TONE_CHARACTERISTICS[tone] || TONE_CHARACTERISTICS['Normal']
+const systemPrompt = `You are a speaking coach with a specific personality. Your coaching style is defined as:
 
 **Goal**: ${toneChar.goal}
 **Communication Style**: ${toneChar.style}
@@ -146,7 +164,7 @@ Remember: You're a ${tone} coach. ${toneChar.goal}. ${toneChar.style}`
       practicePrompt: lesson.practice_prompt || 'Practice speaking clearly and confidently.', // Changed key name
       practiceExample: lesson.practice_example || ''
     })
-    
+
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(
