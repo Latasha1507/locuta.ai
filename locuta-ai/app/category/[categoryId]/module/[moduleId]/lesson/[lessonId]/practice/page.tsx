@@ -1,10 +1,16 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 })
+
+// Create admin client with service role (bypasses RLS)
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 const CATEGORY_MAP: Record<string, string> = {
   'public-speaking': 'Public Speaking',
@@ -59,13 +65,6 @@ const TONE_CHARACTERISTICS: Record<string, { goal: string; style: string; delive
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await request.json()
     const { tone, categoryId, moduleId, lessonId } = body
 
@@ -74,10 +73,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
     }
 
-    // Query with explicit RLS bypass for reading public lessons
-    const { data: lessons, error: lessonError } = await supabase
+    // Use admin client to bypass RLS
+    const { data: lessons, error: lessonError } = await supabaseAdmin
       .from('lessons')
-      .select('id, category, module_number, module_title, level_number, level_title, lesson_explanation, practice_prompt, practice_example, feedback_focus_areas')
+      .select('level_title, module_title, lesson_explanation, practice_prompt, practice_example, feedback_focus_areas')
       .eq('category', categoryName)
       .eq('module_number', parseInt(moduleId))
       .eq('level_number', parseInt(lessonId))
@@ -88,23 +87,6 @@ export async function POST(request: Request) {
     }
 
     const lesson = lessons[0]
-
-    // Extract fields explicitly with fallbacks
-    const levelTitle = lesson.level_title || 'Lesson'
-    const moduleTitle = lesson.module_title || 'Module'
-    const lessonExplanation = lesson.lesson_explanation || 'Practice your speaking skills'
-    const practicePrompt = lesson.practice_prompt || 'Speak clearly and confidently'
-    const practiceExample = lesson.practice_example || ''
-    const feedbackFocusAreas = lesson.feedback_focus_areas || []
-
-    // Get user's first name
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('first_name')
-      .eq('id', user.id)
-      .single()
-
-    const userName = profile?.first_name || null
     const toneChar = TONE_CHARACTERISTICS[tone] || TONE_CHARACTERISTICS['Normal']
     
     const systemPrompt = `You are a speaking coach with a specific personality. Your coaching style is defined as:
@@ -116,7 +98,7 @@ export async function POST(request: Request) {
 Your job is to introduce a speaking lesson in an engaging way that matches this personality perfectly. Keep the introduction natural, motivating, and about 30-45 seconds when spoken aloud (approximately 90-120 words).
 
 Structure your introduction as follows:
-1. Warm greeting ${userName ? `(use the name ${userName})` : ''}
+1. Warm greeting
 2. Briefly explain what the lesson is about and why it matters
 3. Clearly state the specific task they'll be practicing
 4. Give them a helpful tip or example to guide them
@@ -128,16 +110,14 @@ Make it conversational and engaging, not robotic. Let your ${tone} personality s
 
     const userPrompt = `Create an engaging introduction for this speaking lesson in your ${tone} coaching style:
 
-Lesson Title: ${levelTitle}
-Module: ${moduleTitle}
+Lesson Title: ${lesson.level_title}
+Module: ${lesson.module_title}
 
-Basic Explanation: ${lessonExplanation}
+Basic Explanation: ${lesson.lesson_explanation}
 
-Practice Task: ${practicePrompt}
+Practice Task: ${lesson.practice_prompt}
 
-Example/Tips: ${practiceExample}
-
-Focus Areas: ${Array.isArray(feedbackFocusAreas) ? feedbackFocusAreas.join(', ') : 'General speaking'}
+Example/Tips: ${lesson.practice_example || 'Focus on clarity and confidence'}
 
 Remember: You're a ${tone} coach. ${toneChar.goal}. ${toneChar.style}`
 
@@ -162,16 +142,14 @@ Remember: You're a ${tone} coach. ${toneChar.goal}. ${toneChar.style}`
     })
 
     const buffer = Buffer.from(await mp3Response.arrayBuffer())
-    const audioBase64 = buffer.toString('base64')
 
-    // Return with explicitly extracted values
     return NextResponse.json({
-      audioBase64: audioBase64,
+      audioBase64: buffer.toString('base64'),
       transcript: enhancedIntro,
-      lessonTitle: levelTitle,
-      moduleTitle: moduleTitle,
-      practice_prompt: practicePrompt,  // Using snake_case to match frontend expectation
-      practice_example: practiceExample
+      lessonTitle: lesson.level_title,
+      moduleTitle: lesson.module_title,
+      practice_prompt: lesson.practice_prompt,
+      practice_example: lesson.practice_example || ''
     })
 
   } catch (error) {
