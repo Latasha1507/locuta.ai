@@ -89,8 +89,8 @@ export default function PracticePage() {
       setIntroTranscript(data.transcript || '')
       setLessonInfo({
         title: data.lessonTitle || '',
-        prompt: data.practice_prompt || '',
-        example: data.practice_example || ''
+        prompt: data.practicePrompt || 'Practice speaking clearly and confidently.', // Changed to match API
+        example: data.practiceExample || ''
       })
       setStep('intro')
     } catch (error) {

@@ -63,19 +63,15 @@ export async function POST(request: Request) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
     const body = await request.json()
     const { tone, categoryId, moduleId, lessonId } = body
-
     const categoryName = CATEGORY_MAP[categoryId]
     if (!categoryName) {
       return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
     }
-
     // Fetch lesson
     const { data: lesson, error: lessonError } = await supabase
       .from('lessons')
@@ -89,17 +85,14 @@ export async function POST(request: Request) {
       console.error('Lesson error:', lessonError)
       return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
     }
-
     // Get user's first name
     const { data: profile } = await supabase
       .from('profiles')
       .select('first_name')
       .eq('id', user.id)
       .single()
-
     const userName = profile?.first_name || null
     const toneChar = TONE_CHARACTERISTICS[tone] || TONE_CHARACTERISTICS['Normal']
-    
     const systemPrompt = `You are a speaking coach with a specific personality. Your coaching style is defined as:
 
 **Goal**: ${toneChar.goal}
@@ -107,7 +100,6 @@ export async function POST(request: Request) {
 **Delivery Instructions**: ${toneChar.delivery}
 
 Your job is to introduce a speaking lesson in an engaging way that matches this personality perfectly. Keep the introduction natural, motivating, and about 30-45 seconds when spoken aloud (approximately 90-120 words).
-
 Structure your introduction as follows:
 1. Warm greeting ${userName ? `(use the name ${userName})` : ''}
 2. Briefly explain what the lesson is about and why it matters
@@ -116,22 +108,14 @@ Structure your introduction as follows:
 5. End with an encouraging call to action to start recording
 
 CRITICAL: Embody the ${tone} coaching style throughout. ${toneChar.style} ${toneChar.delivery}
-
 Make it conversational and engaging, not robotic. Let your ${tone} personality shine through!`
-
     const userPrompt = `Create an engaging introduction for this speaking lesson in your ${tone} coaching style:
-
 Lesson Title: ${lesson.level_title || 'Speaking Practice'}
 Module: ${lesson.module_title || 'Practice Module'}
-
 Basic Explanation: ${lesson.lesson_explanation || 'Practice your speaking skills'}
-
 Practice Task: ${lesson.practice_prompt || 'Speak clearly and confidently'}
-
 Example/Tips: ${lesson.practice_example || 'Focus on clarity and confidence'}
-
 Focus Areas: ${Array.isArray(lesson.feedback_focus_areas) ? lesson.feedback_focus_areas.join(', ') : 'General speaking'}
-
 Remember: You're a ${tone} coach. ${toneChar.goal}. ${toneChar.style}`
 
     const completion = await openai.chat.completions.create({
@@ -143,17 +127,14 @@ Remember: You're a ${tone} coach. ${toneChar.goal}. ${toneChar.style}`
       temperature: 0.85, // Slightly higher for more personality
       max_tokens: 300
     })
-
     const enhancedIntro = completion.choices[0].message.content || ''
     const voice = VOICE_MAP[tone] || 'shimmer'
-
     const mp3Response = await openai.audio.speech.create({
       model: 'tts-1-hd', // Using HD for better quality with personality
       voice: voice,
       input: enhancedIntro,
       speed: tone === 'Inspiring' ? 1.05 : tone === 'Bossy' ? 1.1 : tone === 'Supportive' ? 0.95 : 1.0
     })
-
     const buffer = Buffer.from(await mp3Response.arrayBuffer())
     const audioBase64 = buffer.toString('base64')
 
@@ -162,10 +143,10 @@ Remember: You're a ${tone} coach. ${toneChar.goal}. ${toneChar.style}`
       transcript: enhancedIntro,
       lessonTitle: lesson.level_title || 'Lesson',
       moduleTitle: lesson.module_title || 'Module',
-      practice_prompt: lesson.practice_prompt || 'Practice speaking clearly and confidently.',
-      practice_example: lesson.practice_example || ''
+      practicePrompt: lesson.practice_prompt || 'Practice speaking clearly and confidently.', // Changed key name
+      practiceExample: lesson.practice_example || ''
     })
-
+    
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(
