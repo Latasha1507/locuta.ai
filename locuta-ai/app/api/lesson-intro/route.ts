@@ -81,7 +81,8 @@ export async function POST(request: Request) {
     }
 
     console.log('✅ Lesson found:', lesson.level_title)
-    console.log('🔍 DEBUG - Full lesson object:', JSON.stringify(lesson, null, 2)) // ADD THIS LINE
+    console.log('🔍 practice_prompt value:', lesson.practice_prompt)
+    console.log('🔍 All lesson keys:', Object.keys(lesson))
 
     // Get user's first name if available
     const { data: profile } = await supabase
