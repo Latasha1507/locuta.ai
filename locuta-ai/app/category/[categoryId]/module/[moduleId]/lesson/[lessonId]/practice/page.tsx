@@ -17,7 +17,7 @@ export default function PracticePage() {
   const [step, setStep] = useState<'start' | 'intro' | 'recording'>('start')
   const [introAudio, setIntroAudio] = useState<string>('')
   const [introTranscript, setIntroTranscript] = useState<string>('')
-  const [practicePrompt, setPracticePrompt] = useState<string>('') // Store practice_prompt here
+  const [practice_prompt, setPracticePrompt] = useState<string>('')
   const [lessonTitle, setLessonTitle] = useState<string>('')
   const [isPlaying, setIsPlaying] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -50,7 +50,7 @@ export default function PracticePage() {
       
       setIntroAudio(data.audioBase64 || '')
       setIntroTranscript(data.transcript || '')
-      setPracticePrompt(data.practice_prompt || 'Practice speaking clearly and confidently') // Set practice_prompt
+      setPracticePrompt(data.practice_prompt || 'Practice speaking clearly and confidently')
       setLessonTitle(data.lessonTitle || 'Lesson')
       setStep('intro')
     } catch (error) {
@@ -228,7 +228,7 @@ export default function PracticePage() {
 
         {step === 'recording' && (
           <div className="space-y-6">
-            {/* Your Task Card */}
+            {/* Your Task Card - Always visible at the top */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg p-6 border-2 border-blue-200">
               <div className="flex items-start justify-between mb-4">
                 <h3 className="text-xl font-bold text-blue-900 flex items-center gap-2">
@@ -243,12 +243,13 @@ export default function PracticePage() {
               {showInstructions && (
                 <div className="bg-white rounded-lg p-4">
                   <p className="text-slate-800 text-lg leading-relaxed">
-                    {practicePrompt || 'Loading task...'}
+                    {practice_prompt || 'Loading task...'}
                   </p>
                 </div>
               )}
             </div>
 
+            {/* Recording Card */}
             <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
               {!isRecording && !audioBlob && (
                 <>
@@ -260,28 +261,7 @@ export default function PracticePage() {
                   </button>
                 </>
               )}
-{/* Your Task Card - ADD THIS ENTIRE BLOCK */}
-<div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg p-6 border-2 border-blue-200">
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="text-xl font-bold text-blue-900 flex items-center gap-2">
-                  📝 Your Task
-                </h3>
-                <button onClick={() => setShowInstructions(!showInstructions)}
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                  {showInstructions ? 'Hide' : 'Show'}
-                </button>
-              </div>
-              
-              {showInstructions && (
-                <div className="bg-white rounded-lg p-4">
-                  <p className="text-slate-800 text-lg leading-relaxed">
-                    {practicePrompt || 'Loading task...'}
-                  </p>
-                </div>
-              )}
-            </div>
 
-            {/* Recording Card */}
               {isRecording && (
                 <>
                   <div className="text-6xl mb-6 animate-pulse">🔴</div>
