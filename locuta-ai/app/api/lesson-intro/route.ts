@@ -161,8 +161,8 @@ Remember: You're a ${tone} coach. ${toneChar.goal}. ${toneChar.style}`
       transcript: enhancedIntro,
       lessonTitle: lesson.level_title || 'Lesson',
       moduleTitle: lesson.module_title || 'Module',
-      practicePrompt: lesson.practice_prompt || 'Practice speaking clearly and confidently.', // Changed key name
-      practiceExample: lesson.practice_example || ''
+      practice_prompt: lesson.practice_prompt || 'Practice speaking clearly and confidently.', // ✅ Correct key
+      practice_example: lesson.practice_example || ''
     })
 
   } catch (error) {
