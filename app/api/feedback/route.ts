@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -12,19 +13,19 @@ const categoryMap: { [key: string]: string } = {
   'creator-speaking': 'Creator Speaking',
   'casual-conversation': 'Casual Conversation',
   'workplace-communication': 'Workplace Communication',
-  'Pitch Anything': 'Pitch Anything',
+  'pitch-anything': 'Pitch Anything',
 }
 
 const toneVoiceMap: { [key: string]: string } = {
   'Normal': 'shimmer',
   'Supportive': 'nova',
-  'Inspiring': 'sage',
-  'Funny': 'coral',
+  'Inspiring': 'fable',
+  'Funny': 'onyx',
   'Diplomatic': 'nova',
-  'Bossy': 'ash',
+  'Bossy': 'echo',
 }
 
-// Scoring weights configuration
+// Scoring weights
 const SCORING_WEIGHTS = {
   CONTENT_WEIGHT: 0.6,
   LINGUISTIC_WEIGHT: 0.4,
@@ -44,19 +45,9 @@ const SCORING_WEIGHTS = {
 }
 
 interface LevelExpectation {
-  grammar: {
-    tolerance: string
-    focus: string[]
-  }
-  vocabulary: {
-    expected: string
-    complexity: string
-    variety: string
-  }
-  sentence_formation: {
-    complexity: string
-    transitions: string
-  }
+  grammar: { tolerance: string; focus: string[] }
+  vocabulary: { expected: string; complexity: string; variety: string }
+  sentence_formation: { complexity: string; transitions: string }
 }
 
 function getLevelExpectations(levelNumber: number): LevelExpectation {
@@ -65,49 +56,19 @@ function getLevelExpectations(levelNumber: number): LevelExpectation {
   
   const expectations: Record<string, LevelExpectation> = {
     beginner: {
-      grammar: {
-        tolerance: 'high',
-        focus: ['basic sentence structure', 'simple tenses', 'basic questions'],
-      },
-      vocabulary: {
-        expected: 'basic conversational vocabulary',
-        complexity: 'simple everyday words',
-        variety: 'moderate repetition acceptable',
-      },
-      sentence_formation: {
-        complexity: 'simple and compound sentences',
-        transitions: 'basic connectors (and, but, so)',
-      },
+      grammar: { tolerance: 'high', focus: ['basic sentence structure', 'simple tenses', 'basic questions'] },
+      vocabulary: { expected: 'basic conversational vocabulary', complexity: 'simple everyday words', variety: 'moderate repetition acceptable' },
+      sentence_formation: { complexity: 'simple and compound sentences', transitions: 'basic connectors (and, but, so)' },
     },
     intermediate: {
-      grammar: {
-        tolerance: 'medium',
-        focus: ['consistent tenses', 'proper conjunctions', 'varied sentence types'],
-      },
-      vocabulary: {
-        expected: 'expanded casual vocabulary',
-        complexity: 'mix of simple and intermediate words',
-        variety: 'good variety expected',
-      },
-      sentence_formation: {
-        complexity: 'mix of compound and complex sentences',
-        transitions: 'varied transitions and connectors',
-      },
+      grammar: { tolerance: 'medium', focus: ['consistent tenses', 'proper conjunctions', 'varied sentence types'] },
+      vocabulary: { expected: 'expanded casual vocabulary', complexity: 'mix of simple and intermediate words', variety: 'good variety expected' },
+      sentence_formation: { complexity: 'mix of compound and complex sentences', transitions: 'varied transitions and connectors' },
     },
     advanced: {
-      grammar: {
-        tolerance: 'low',
-        focus: ['complex sentences', 'advanced grammar', 'nuanced expressions'],
-      },
-      vocabulary: {
-        expected: 'rich conversational vocabulary',
-        complexity: 'sophisticated word choices',
-        variety: 'minimal repetition, creative expression',
-      },
-      sentence_formation: {
-        complexity: 'sophisticated sentence variety',
-        transitions: 'smooth, natural flow with advanced transitions',
-      },
+      grammar: { tolerance: 'low', focus: ['complex sentences', 'advanced grammar', 'nuanced expressions'] },
+      vocabulary: { expected: 'rich conversational vocabulary', complexity: 'sophisticated word choices', variety: 'minimal repetition, creative expression' },
+      sentence_formation: { complexity: 'sophisticated sentence variety', transitions: 'smooth, natural flow with advanced transitions' },
     },
   }
   
@@ -144,26 +105,36 @@ export async function POST(request: NextRequest) {
 
     const categoryName = categoryMap[categoryId]
     const levelNumber = parseInt(lessonId)
+    const levelExpectations = getLevelExpectations(levelNumber)
+    const weights = SCORING_WEIGHTS.getAdjustedWeights(levelNumber)
 
-    // Get lesson details
-    const { data: lesson, error: lessonError } = await supabase
+    // ✅ FIX: Use SERVICE ROLE client to bypass RLS (same as lesson-intro)
+    const supabaseAdmin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // Get lesson details - query by level_number using SERVICE ROLE
+    const { data: lessons, error: lessonError } = await supabaseAdmin
       .from('lessons')
       .select('*')
       .eq('category', categoryName)
       .eq('module_number', parseInt(moduleId))
       .eq('level_number', levelNumber)
-      .single()
+
+    const lesson = lessons?.[0]
 
     if (lessonError || !lesson) {
       console.error('❌ Lesson not found:', lessonError)
-      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
+      console.error('❌ Query params:', { categoryName, moduleId: parseInt(moduleId), levelNumber })
+      return NextResponse.json({ 
+        error: 'Lesson not found', 
+        details: lessonError?.message || 'No matching lesson found',
+        query: { category: categoryName, module: parseInt(moduleId), level: levelNumber }
+      }, { status: 404 })
     }
 
     console.log('✅ Lesson found:', lesson.level_title)
-
-    // Get level expectations and weights
-    const levelExpectations = getLevelExpectations(levelNumber)
-    const weights = SCORING_WEIGHTS.getAdjustedWeights(levelNumber)
 
     // Step 1: Transcribe audio
     console.log('🎤 Transcribing audio...')
@@ -175,61 +146,80 @@ export async function POST(request: NextRequest) {
     const userTranscript = transcription.text
     console.log('✅ Transcription:', userTranscript.substring(0, 100) + '...')
 
-    // Step 2: Generate enhanced feedback with linguistic analysis
-    console.log('💬 Generating enhanced feedback...')
+    // Step 2: Generate enhanced feedback with authentic coaching voice
+    console.log('💬 Generating authentic coaching feedback...')
     
-    const focusAreas = lesson.feedback_focus_areas || ['Clarity', 'Confidence', 'Delivery']
-    const focusAreasStr = Array.isArray(focusAreas) ? focusAreas.join(', ') : focusAreas
+    const focusAreas = Array.isArray(lesson.feedback_focus_areas) 
+      ? lesson.feedback_focus_areas 
+      : (lesson.feedback_focus_areas || 'Clarity, Confidence, Delivery').split(',').map((s: string) => s.trim())
+    
+    const focusAreasStr = focusAreas.join(', ')
 
-    const feedbackPrompt = `You are an expert communication coach specializing in speaking skills. Analyze this practice session and provide comprehensive feedback.
+    const feedbackPrompt = `You are one of the world's most renowned and experienced public speaking coaches. You've helped thousands of people find their authentic voice and build genuine human connections through communication. You're known for your creative, honest, and deeply human approach to coaching - you never sugarcoat, but you always inspire.
+
+Your coaching philosophy: Authenticity matters above all else. Real human connection beats perfect technique every time. You help people speak from the heart, not from a script.
+
+**CRITICAL TONE INSTRUCTIONS:**
+- Write like you're having a real conversation with this person over coffee
+- Use natural, flowing language - never robotic or formulaic
+- Be specific and personal - reference actual things they said
+- Mix encouragement with honest observations
+- Show genuine excitement about their strengths
+- Be creative and unexpected in your feedback - avoid clichés
+- Write as if you really care about helping this human being grow
 
 **Lesson Context:**
 - Level: ${levelNumber} (out of 50)
 - Title: ${lesson.level_title}
 - Task: ${lesson.practice_prompt}
 - Focus Areas: ${focusAreasStr}
-- Communication Style: ${tone}
+
+**User's Response:** "${userTranscript}"
 
 **Level Expectations for Level ${levelNumber}:**
 - Grammar: ${JSON.stringify(levelExpectations.grammar)}
 - Vocabulary: ${JSON.stringify(levelExpectations.vocabulary)}
 - Sentence Formation: ${JSON.stringify(levelExpectations.sentence_formation)}
 
-**User's Response:** "${userTranscript}"
-
 **Evaluation Criteria:**
 
 1. CONTENT & DELIVERY (${weights.CONTENT_WEIGHT * 100}% of total score):
-   - How well did they address the task?
-   - Relevance to focus areas: ${focusAreasStr}
-   - Overall communication effectiveness
+   - How authentically did they engage with the task?
+   - Did they create a genuine human moment?
+   - Relevance to: ${focusAreasStr}
 
 2. LINGUISTIC QUALITY (${weights.LINGUISTIC_WEIGHT * 100}% of total score):
    
-   A. Grammar (${SCORING_WEIGHTS.GRAMMAR_WEIGHT * 100}% of linguistic score):
-      - Grammatical correctness appropriate for level ${levelNumber}
-      - Tense consistency and proper usage
-      - Article and preposition usage
+   A. Grammar (${SCORING_WEIGHTS.GRAMMAR_WEIGHT * 100}% of linguistic):
+      - Natural, conversational correctness for level ${levelNumber}
+      - Don't penalize casual speech patterns if they're authentic
       
-   B. Sentence Formation (${SCORING_WEIGHTS.SENTENCE_FORMATION_WEIGHT * 100}% of linguistic score):
-      - Sentence complexity appropriate for level ${levelNumber}
-      - Variety in sentence structures
-      - Flow and transitions between ideas
+   B. Sentence Formation (${SCORING_WEIGHTS.SENTENCE_FORMATION_WEIGHT * 100}% of linguistic):
+      - Does it flow like real human speech?
+      - Appropriate variety for level ${levelNumber}
       
-   C. Vocabulary (${SCORING_WEIGHTS.VOCABULARY_WEIGHT * 100}% of linguistic score):
-      - Vocabulary richness appropriate for level ${levelNumber}
-      - Word variety and appropriateness
-      - Natural language usage for the context
+   C. Vocabulary (${SCORING_WEIGHTS.VOCABULARY_WEIGHT * 100}% of linguistic):
+      - Words that feel natural, not forced
+      - Appropriate richness for level ${levelNumber}
 
-Respond with ONLY valid JSON in this EXACT structure (no markdown, no code blocks):
+**CRITICAL: Your feedback must feel HUMAN, not AI-generated. Respond with valid JSON but make every word count:**
+
 {
   "overall_score": 85,
   "content_score": 80,
   "linguistic_score": 90,
   "weighted_overall_score": 84,
-  "strengths": ["strength 1", "strength 2", "strength 3"],
-  "improvements": ["improvement 1", "improvement 2", "improvement 3"],
-  "detailed_feedback": "A comprehensive paragraph explaining overall performance",
+  "strengths": [
+    "Write 3-4 specific, genuine observations about what they did well - reference actual moments from their speech",
+    "Be enthusiastic but authentic - show you really heard them",
+    "Mix technical and emotional/human elements"
+  ],
+  "improvements": [
+    "Give 2-3 honest, actionable suggestions",
+    "Be direct but caring",
+    "Include specific examples of what they could try next time"
+  ],
+  "detailed_feedback": "Write 4-6 sentences as if you're talking directly to them. Start with something specific you noticed. Build to your main observation. End with genuine encouragement. Make it personal and conversational - never generic or robotic.",
   "focus_area_scores": {
     "Clarity": 80,
     "Confidence": 85,
@@ -238,40 +228,43 @@ Respond with ONLY valid JSON in this EXACT structure (no markdown, no code block
   "linguistic_analysis": {
     "grammar": {
       "score": 85,
-      "issues": ["issue 1 if any", "issue 2 if any"],
-      "suggestions": ["suggestion 1", "suggestion 2"]
+      "issues": ["Only mention real issues - be specific about what you heard"],
+      "suggestions": ["Give practical, human advice - not textbook rules"]
     },
     "sentence_formation": {
       "score": 88,
       "complexity_level": "intermediate",
       "variety_score": 85,
       "flow_score": 90,
-      "issues": ["issue if any"],
-      "suggestions": ["suggestion 1", "suggestion 2"]
+      "issues": ["Be honest about flow or rhythm issues"],
+      "suggestions": ["Suggest natural ways to vary their speaking"]
     },
     "vocabulary": {
       "score": 82,
       "level_appropriateness": 85,
       "variety_score": 80,
       "casual_tone_score": 85,
-      "advanced_words_used": ["word1", "word2"],
+      "advanced_words_used": ["List actual impressive words they used"],
       "suggested_alternatives": {
-        "word": ["alternative1", "alternative2"]
+        "word": ["alternatives"]
       },
-      "issues": ["issue if any"]
+      "issues": ["Note any vocabulary that felt forced or unnatural"]
     }
   }
 }
 
-Be encouraging but honest. Give specific, actionable feedback.`
+Remember: You're a world-class coach who builds authentic human connection. Every word should feel real, personal, and genuinely helpful. Never sound like a bot.`
 
     const feedbackResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an expert communication coach. Respond ONLY with valid JSON, no markdown or code blocks.' },
+        { 
+          role: 'system', 
+          content: 'You are a world-renowned public speaking coach known for authentic, creative, deeply human feedback. You write like you talk - natural, flowing, genuine. Never robotic. Respond ONLY with valid JSON.' 
+        },
         { role: 'user', content: feedbackPrompt }
       ],
-      temperature: 0.7,
+      temperature: 0.85,
       response_format: { type: "json_object" }
     })
 
@@ -279,23 +272,23 @@ Be encouraging but honest. Give specific, actionable feedback.`
     try {
       const feedbackText = feedbackResponse.choices[0].message.content || '{}'
       feedback = JSON.parse(feedbackText)
-      console.log('✅ Feedback generated with score:', feedback.overall_score)
+      console.log('✅ Authentic feedback generated:', feedback.overall_score)
       
-      // Calculate weighted scores if not provided by AI
+      // Calculate scores if missing
       if (!feedback.content_score && feedback.focus_area_scores) {
-        const focusAreaScores = Object.values(feedback.focus_area_scores) as number[]
-        feedback.content_score = focusAreaScores.reduce((a: number, b: number) => a + b, 0) / focusAreaScores.length
+        const scores = Object.values(feedback.focus_area_scores) as number[]
+        feedback.content_score = scores.reduce((a: number, b: number) => a + b, 0) / scores.length
       }
       
       if (!feedback.linguistic_score && feedback.linguistic_analysis) {
-        const grammarScore = feedback.linguistic_analysis.grammar.score || 75
-        const sentenceScore = feedback.linguistic_analysis.sentence_formation.score || 75
-        const vocabularyScore = feedback.linguistic_analysis.vocabulary.score || 75
+        const g = feedback.linguistic_analysis.grammar.score || 75
+        const s = feedback.linguistic_analysis.sentence_formation.score || 75
+        const v = feedback.linguistic_analysis.vocabulary.score || 75
         
         feedback.linguistic_score = (
-          grammarScore * SCORING_WEIGHTS.GRAMMAR_WEIGHT +
-          sentenceScore * SCORING_WEIGHTS.SENTENCE_FORMATION_WEIGHT +
-          vocabularyScore * SCORING_WEIGHTS.VOCABULARY_WEIGHT
+          g * SCORING_WEIGHTS.GRAMMAR_WEIGHT +
+          s * SCORING_WEIGHTS.SENTENCE_FORMATION_WEIGHT +
+          v * SCORING_WEIGHTS.VOCABULARY_WEIGHT
         )
       }
       
@@ -306,7 +299,6 @@ Be encouraging but honest. Give specific, actionable feedback.`
         )
       }
       
-      // Ensure overall_score matches weighted_overall_score
       feedback.overall_score = Math.round(feedback.weighted_overall_score)
       
     } catch (e) {
@@ -316,77 +308,68 @@ Be encouraging but honest. Give specific, actionable feedback.`
         content_score: 75,
         linguistic_score: 75,
         weighted_overall_score: 75,
-        strengths: ['Good effort', 'Clear speaking', 'Engaged with task'],
-        improvements: ['Practice more', 'Work on pacing', 'Add more detail'],
-        detailed_feedback: 'You did well! Keep practicing to improve your speaking skills.',
-        focus_area_scores: {
-          'Clarity': 75,
-          'Confidence': 75,
-          'Delivery': 75
-        },
+        strengths: ['You showed up and practiced - that takes courage', 'Your message came through', 'You engaged with the task authentically'],
+        improvements: ['Keep practicing to build confidence', 'Work on finding your natural rhythm', 'Experiment with varying your delivery'],
+        detailed_feedback: "I can tell you put thought into this. The foundation is there - now it's about finding your authentic voice and letting it shine through. Keep practicing, and remember: the goal isn't perfection, it's connection.",
+        focus_area_scores: { 'Clarity': 75, 'Confidence': 75, 'Delivery': 75 },
         linguistic_analysis: {
-          grammar: {
-            score: 75,
-            issues: [],
-            suggestions: ['Focus on proper grammar usage']
-          },
-          sentence_formation: {
-            score: 75,
-            complexity_level: 'basic',
-            variety_score: 70,
-            flow_score: 75,
-            issues: [],
-            suggestions: ['Vary your sentence structures']
-          },
-          vocabulary: {
-            score: 75,
-            level_appropriateness: 75,
-            variety_score: 70,
-            casual_tone_score: 80,
-            advanced_words_used: [],
-            suggested_alternatives: {},
-            issues: []
-          }
+          grammar: { score: 75, issues: [], suggestions: ['Keep working on natural fluency'] },
+          sentence_formation: { score: 75, complexity_level: 'basic', variety_score: 70, flow_score: 75, issues: [], suggestions: ['Experiment with different sentence rhythms'] },
+          vocabulary: { score: 75, level_appropriateness: 75, variety_score: 70, casual_tone_score: 80, advanced_words_used: [], suggested_alternatives: {}, issues: [] }
         }
       }
     }
 
-    // Step 3: Generate AI example
-    console.log('🤖 Generating AI example...')
+    // Step 3: Generate AI example with authentic human voice
+    console.log('🤖 Generating authentic example...')
     
-    const aiExamplePrompt = `Create a perfect example response for this task. Respond with ONLY the speech text, no explanations.
+    const aiExamplePrompt = `You are one of the world's best public speaking coaches, demonstrating this speaking task. You're known for your authentic, natural, deeply human communication style. You never sound scripted - you sound real.
 
-Task: ${lesson.practice_prompt}
-Context: ${lesson.practice_example || 'Demonstrate excellent speaking skills'}
-Level: ${levelNumber}
+**Task:** ${lesson.practice_prompt}
+**Context:** ${lesson.practice_example || 'Show natural, authentic communication'}
+**Level:** ${levelNumber} (appropriate complexity)
 
-Create a natural, conversational response (30-60 seconds when spoken) that demonstrates excellent grammar, varied sentence structures, and appropriate vocabulary for level ${levelNumber}.`
+Create a demonstration response that:
+- Sounds like a real human having a genuine moment
+- Shows authentic emotion and connection
+- Flows naturally - not scripted or robotic
+- Includes natural pauses, emphasis, and human rhythm
+- Is 30-60 seconds when spoken (roughly 75-150 words)
+- Demonstrates the skill while staying true and real
+
+CRITICAL: Don't write a perfect speech. Write something that sounds like a real person speaking from the heart. Include natural imperfections that make it human. Make it conversational, warm, and genuine.
+
+Respond with ONLY the speech text - no explanations, no markdown, just the natural spoken words.`
 
     const aiExampleResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are demonstrating excellent speaking skills.' },
+        { 
+          role: 'system', 
+          content: 'You are a master communicator demonstrating authentic, natural speech. Never robotic. Always real and human.' 
+        },
         { role: 'user', content: aiExamplePrompt }
       ],
-      temperature: 0.8,
+      temperature: 0.9,
     })
 
     const aiExampleText = aiExampleResponse.choices[0].message.content || 'Example not available.'
-    console.log('✅ AI example generated')
+    console.log('✅ Authentic AI example generated')
 
-    // Step 4: Generate audio of AI example
-    console.log('🔊 Generating AI audio...')
+    // Step 4: Generate audio with natural, authentic voice
+    console.log('🔊 Generating authentic audio...')
     const voice = toneVoiceMap[tone] || 'shimmer'
     const aiAudioResponse = await openai.audio.speech.create({
-      model: 'tts-1',
+      model: 'tts-1-hd',
       voice: voice as any,
       input: aiExampleText,
+      speed: 0.95
     })
 
     const aiAudioBuffer = Buffer.from(await aiAudioResponse.arrayBuffer())
-    console.log('✅ AI audio generated')
+    console.log('✅ Authentic audio generated')
 
-    // Step 5: Save to database
+    // Step 5: Save to database using regular client (for RLS)
     console.log('💾 Saving to database...')
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
@@ -397,7 +380,6 @@ Create a natural, conversational response (30-60 seconds when spoken) that demon
         user_id: user.id,
         category: categoryName,
         module_number: parseInt(moduleId),
-        lesson_number: levelNumber,
         level_number: levelNumber,
         tone: tone,
         user_transcript: userTranscript,
@@ -419,6 +401,7 @@ Create a natural, conversational response (30-60 seconds when spoken) that demon
 
     // Step 6: Update progress
     console.log('📊 Updating progress...')
+    
     await supabase
       .from('user_progress')
       .upsert({
@@ -434,12 +417,12 @@ Create a natural, conversational response (30-60 seconds when spoken) that demon
       })
 
     console.log('✅ Progress updated')
-    console.log('🎉 Enhanced feedback complete!')
+    console.log('🎉 Authentic coaching feedback complete!')
 
     return NextResponse.json({
       success: true,
       sessionId: sessionId,
-      feedback: feedback,
+      practice_prompt: lesson.practice_prompt,
     })
 
   } catch (error) {
@@ -450,7 +433,6 @@ Create a natural, conversational response (30-60 seconds when spoken) that demon
       { 
         error: 'Failed to process feedback', 
         details: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
       },
       { status: 500 }
     )
