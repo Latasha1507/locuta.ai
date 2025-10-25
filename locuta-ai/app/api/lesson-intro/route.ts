@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     // Fetch lesson from database
     const { data: lesson, error: lessonError } = await supabase
       .from('lessons')
-      .select('*')
+      .select('level_title, module_title, lesson_explanation, practice_prompt, practice_example, feedback_focus_areas')
       .eq('category', categoryName)
       .eq('module_number', parseInt(moduleId))
       .eq('level_number', parseInt(lessonId))
@@ -162,7 +162,7 @@ Remember: Be ${toneDescription} and make this introduction feel like a real coac
       lessonTitle: lesson.level_title,
       moduleTitle: lesson.module_title,
       practice_prompt: lesson.practice_prompt,
-      practice_example: lesson.practice_example
+      practice_example: lesson.practice_example  // Keep this for now
     })
 
   } catch (error) {
