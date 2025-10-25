@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -107,8 +108,14 @@ export async function POST(request: NextRequest) {
     const levelExpectations = getLevelExpectations(levelNumber)
     const weights = SCORING_WEIGHTS.getAdjustedWeights(levelNumber)
 
-    // Get lesson details - query by level_number
-    const { data: lessons, error: lessonError } = await supabase
+    // ✅ FIX: Use SERVICE ROLE client to bypass RLS (same as lesson-intro)
+    const supabaseAdmin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // Get lesson details - query by level_number using SERVICE ROLE
+    const { data: lessons, error: lessonError } = await supabaseAdmin
       .from('lessons')
       .select('*')
       .eq('category', categoryName)
@@ -353,16 +360,16 @@ Respond with ONLY the speech text - no explanations, no markdown, just the natur
     console.log('🔊 Generating authentic audio...')
     const voice = toneVoiceMap[tone] || 'shimmer'
     const aiAudioResponse = await openai.audio.speech.create({
-      model: 'tts-1-hd', // Use HD for better quality
+      model: 'tts-1-hd',
       voice: voice as any,
       input: aiExampleText,
-      speed: 0.95 // Slightly slower for more natural feel
+      speed: 0.95
     })
 
     const aiAudioBuffer = Buffer.from(await aiAudioResponse.arrayBuffer())
     console.log('✅ Authentic audio generated')
 
-    // Step 5: Save to database - using level_number
+    // Step 5: Save to database using regular client (for RLS)
     console.log('💾 Saving to database...')
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
@@ -373,7 +380,7 @@ Respond with ONLY the speech text - no explanations, no markdown, just the natur
         user_id: user.id,
         category: categoryName,
         module_number: parseInt(moduleId),
-        level_number: levelNumber,  // Using level_number as required
+        level_number: levelNumber,
         tone: tone,
         user_transcript: userTranscript,
         ai_example_text: aiExampleText,
@@ -392,33 +399,30 @@ Respond with ONLY the speech text - no explanations, no markdown, just the natur
 
     console.log('✅ Session saved:', sessionId)
 
-    // Step 6: Update progress - needs to match your user_progress table structure
+    // Step 6: Update progress
     console.log('📊 Updating progress...')
     
-    // Check if user_progress table uses lesson_number or level_number
-    // Adjust this based on your actual table structure
     await supabase
       .from('user_progress')
       .upsert({
         user_id: user.id,
         category: categoryName,
         module_number: parseInt(moduleId),
-        lesson_number: levelNumber,  // Or level_number if your user_progress table uses that
+        lesson_number: levelNumber,
         completed: true,
         best_score: feedback.overall_score,
         last_practiced: new Date().toISOString(),
       }, {
-        onConflict: 'user_id,category,module_number,lesson_number'  // Adjust based on your actual constraint
+        onConflict: 'user_id,category,module_number,lesson_number'
       })
 
     console.log('✅ Progress updated')
     console.log('🎉 Authentic coaching feedback complete!')
 
-    // Return with practice_prompt for frontend display
     return NextResponse.json({
       success: true,
       sessionId: sessionId,
-      practice_prompt: lesson.practice_prompt,  // Include for frontend task display
+      practice_prompt: lesson.practice_prompt,
     })
 
   } catch (error) {
