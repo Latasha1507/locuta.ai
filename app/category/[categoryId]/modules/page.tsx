@@ -21,17 +21,23 @@ const categoryColors: { [key: string]: string } = {
   'pitch-anything': 'from-teal-500 to-cyan-600',
 }
 
+// Make page dynamic to avoid caching issues
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function CategoryModulesPage({
   params,
   searchParams,
 }: {
   params: Promise<{ categoryId: string }>
-  searchParams: Promise<{ tone?: string }>
+  searchParams: Promise<{ tone?: string; module?: string }>
 }) {
   const resolvedParams = await params
   const resolvedSearchParams = await searchParams
   const { categoryId } = resolvedParams
   const tone = resolvedSearchParams.tone || 'Normal'
+  const currentModuleParam = resolvedSearchParams.module || '1'
+  const currentModuleNumber = parseInt(currentModuleParam)
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -81,6 +87,29 @@ export default async function CategoryModulesPage({
 
   const gradientColor = categoryColors[categoryId] || 'from-purple-500 to-indigo-600'
 
+  // Check if module is unlocked
+  const isModuleUnlocked = (moduleNum: number): boolean => {
+    if (moduleNum === 1) return true
+    
+    const previousModule = modules[moduleNum - 1]
+    if (!previousModule) return true
+    
+    const allPreviousCompleted = previousModule.every(
+      (lesson) => progressMap[`${moduleNum - 1}-${lesson.level_number}`]?.completed
+    )
+    
+    return allPreviousCompleted
+  }
+
+  const moduleNumbers = Object.keys(modules).map(Number).sort((a, b) => a - b)
+  const currentModule = moduleNumbers.includes(currentModuleNumber) 
+    ? currentModuleNumber 
+    : moduleNumbers[0]
+  
+  const currentModuleIndex = moduleNumbers.indexOf(currentModule)
+  const hasNextModule = currentModuleIndex < moduleNumbers.length - 1
+  const hasPrevModule = currentModuleIndex > 0
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -98,7 +127,7 @@ export default async function CategoryModulesPage({
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900">{categoryName}</h1>
               <p className="text-sm text-gray-600 mt-1">
-                {Object.keys(modules).length} modules • {totalLessons} lessons • {tone} Tone
+                {moduleNumbers.length} modules • {totalLessons} lessons • {tone} Tone
               </p>
             </div>
             <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-6 py-3 rounded-xl shadow-lg">
@@ -112,7 +141,7 @@ export default async function CategoryModulesPage({
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {Object.keys(modules).length === 0 ? (
+        {moduleNumbers.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-200">
             <div className="text-6xl mb-4">📚</div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">No lessons yet</h2>
@@ -122,22 +151,89 @@ export default async function CategoryModulesPage({
             </Link>
           </div>
         ) : (
-          <div className="space-y-6">
-            {Object.keys(modules).map(Number).sort((a, b) => a - b).map((moduleNumber) => {
+          <>
+            {/* Module Navigation */}
+            <div className="flex items-center justify-center gap-4 mb-8">
+              <Link
+                href={hasPrevModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex - 1]}` : '#'}
+                className={`p-3 rounded-full transition-all ${
+                  hasPrevModule
+                    ? 'bg-white hover:bg-purple-50 text-purple-600 shadow-lg hover:shadow-xl border-2 border-purple-200'
+                    : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                }`}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </Link>
+
+              <div className="flex gap-2">
+                {moduleNumbers.map((moduleNum) => {
+                  const isUnlocked = isModuleUnlocked(moduleNum)
+                  const isCurrent = moduleNum === currentModule
+                  
+                  return (
+                    <Link
+                      key={moduleNum}
+                      href={isUnlocked ? `?tone=${tone}&module=${moduleNum}` : '#'}
+                      className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
+                        isCurrent
+                          ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg scale-110'
+                          : isUnlocked
+                          ? 'bg-white text-gray-700 hover:bg-purple-50 border-2 border-gray-200 hover:border-purple-300'
+                          : 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      {isUnlocked ? moduleNum : '🔒'}
+                    </Link>
+                  )
+                })}
+              </div>
+
+              <Link
+                href={hasNextModule && isModuleUnlocked(moduleNumbers[currentModuleIndex + 1]) 
+                  ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex + 1]}` 
+                  : '#'}
+                className={`p-3 rounded-full transition-all ${
+                  hasNextModule && isModuleUnlocked(moduleNumbers[currentModuleIndex + 1])
+                    ? 'bg-white hover:bg-purple-50 text-purple-600 shadow-lg hover:shadow-xl border-2 border-purple-200'
+                    : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                }`}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+
+            {/* Current Module Display */}
+            {moduleNumbers.map((moduleNumber) => {
+              if (moduleNumber !== currentModule) return null
+
               const moduleLessons = modules[moduleNumber]
               const moduleTitle = moduleLessons[0]?.module_title || `Module ${moduleNumber}`
               const completedCount = moduleLessons.filter(
                 (lesson) => progressMap[`${moduleNumber}-${lesson.level_number}`]?.completed
               ).length
               const moduleProgress = Math.round((completedCount / moduleLessons.length) * 100)
+              const isUnlocked = isModuleUnlocked(moduleNumber)
 
               return (
-                <div key={moduleNumber} className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                <div key={moduleNumber} className={`relative bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 ${!isUnlocked ? 'filter blur-sm pointer-events-none' : ''}`}>
+                  {!isUnlocked && (
+                    <div className="absolute inset-0 bg-gray-900/30 backdrop-blur-sm z-10 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-6xl mb-4">🔒</div>
+                        <p className="text-white font-bold text-xl">Complete Module {moduleNumber - 1} to unlock</p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className={`bg-gradient-to-r ${gradientColor} px-6 py-6 text-white`}>
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h2 className="text-2xl font-bold">Module {moduleNumber}</h2>
-                        <p className="text-white/90 mt-1">{moduleTitle}</p>
+                        <h2 className="text-3xl font-bold mb-1">{moduleTitle}</h2>
+                        <p className="text-white/80 text-sm">Module {moduleNumber}</p>
                       </div>
                       <div className="text-right">
                         <div className="text-4xl font-bold">{moduleProgress}%</div>
@@ -145,7 +241,10 @@ export default async function CategoryModulesPage({
                       </div>
                     </div>
                     <div className="bg-white/20 h-3 rounded-full overflow-hidden backdrop-blur-sm">
-                      <div className="h-full bg-white rounded-full transition-all duration-500 shadow-lg" style={{ width: `${moduleProgress}%` }}></div>
+                      <div 
+                        className="h-full bg-white rounded-full transition-all duration-500 shadow-lg" 
+                        style={{ width: `${moduleProgress}%` }}
+                      ></div>
                     </div>
                     <p className="text-sm text-white/90 mt-2">{completedCount} of {moduleLessons.length} lessons completed</p>
                   </div>
@@ -165,7 +264,7 @@ export default async function CategoryModulesPage({
                           >
                             {isCompleted && (
                               <div className="absolute top-4 right-4 flex items-center gap-2">
-                                <div className="bg-gradient-to-r from-green-400 to-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                                <div className="bg-gradient-to-r from-green-400 to-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1 animate-pulse">
                                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                   </svg>
@@ -175,10 +274,19 @@ export default async function CategoryModulesPage({
                             )}
 
                             <div className="flex items-start gap-4">
-                              <div className={`w-16 h-16 rounded-xl flex items-center justify-center font-bold text-2xl flex-shrink-0 transition-all duration-300 shadow-lg ${
+                              <div className={`relative w-16 h-16 rounded-xl flex items-center justify-center font-bold text-2xl flex-shrink-0 transition-all duration-300 shadow-lg ${
                                 isCompleted ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white' : 'bg-gradient-to-br from-purple-100 to-indigo-100 text-purple-700 group-hover:from-purple-200 group-hover:to-indigo-200'
                               }`}>
-                                {isCompleted ? '✓' : lesson.level_number}
+                                {isCompleted ? (
+                                  <span className="text-3xl">✓</span>
+                                ) : (
+                                  lesson.level_number
+                                )}
+                                {isCompleted && (
+                                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center animate-bounce">
+                                    <span className="text-lg">🌟</span>
+                                  </div>
+                                )}
                               </div>
 
                               <div className="flex-1 min-w-0">
@@ -222,7 +330,7 @@ export default async function CategoryModulesPage({
                 </div>
               )
             })}
-          </div>
+          </>
         )}
       </main>
     </div>
