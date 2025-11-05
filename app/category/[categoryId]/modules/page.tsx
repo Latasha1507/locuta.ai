@@ -152,59 +152,7 @@ export default async function CategoryModulesPage({
           </div>
         ) : (
           <>
-            {/* Module Navigation */}
-            <div className="flex items-center justify-center gap-4 mb-8">
-              <Link
-                href={hasPrevModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex - 1]}` : '#'}
-                className={`p-3 rounded-full transition-all ${
-                  hasPrevModule
-                    ? 'bg-white hover:bg-purple-50 text-purple-600 shadow-lg hover:shadow-xl border-2 border-purple-200'
-                    : 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                }`}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </Link>
 
-              <div className="flex gap-2">
-                {moduleNumbers.map((moduleNum) => {
-                  const isUnlocked = isModuleUnlocked(moduleNum)
-                  const isCurrent = moduleNum === currentModule
-                  
-                  return (
-                    <Link
-                      key={moduleNum}
-                      href={isUnlocked ? `?tone=${tone}&module=${moduleNum}` : '#'}
-                      className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                        isCurrent
-                          ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg scale-110'
-                          : isUnlocked
-                          ? 'bg-white text-gray-700 hover:bg-purple-50 border-2 border-gray-200 hover:border-purple-300'
-                          : 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
-                      }`}
-                    >
-                      {isUnlocked ? moduleNum : '🔒'}
-                    </Link>
-                  )
-                })}
-              </div>
-
-              <Link
-                href={hasNextModule && isModuleUnlocked(moduleNumbers[currentModuleIndex + 1]) 
-                  ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex + 1]}` 
-                  : '#'}
-                className={`p-3 rounded-full transition-all ${
-                  hasNextModule && isModuleUnlocked(moduleNumbers[currentModuleIndex + 1])
-                    ? 'bg-white hover:bg-purple-50 text-purple-600 shadow-lg hover:shadow-xl border-2 border-purple-200'
-                    : 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                }`}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
 
             {/* Current Module Display */}
             {moduleNumbers.map((moduleNumber) => {
@@ -219,17 +167,55 @@ export default async function CategoryModulesPage({
               const isUnlocked = isModuleUnlocked(moduleNumber)
 
               return (
-                <div key={moduleNumber} className={`relative bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 ${!isUnlocked ? 'filter blur-sm pointer-events-none' : ''}`}>
+                <div key={moduleNumber} className="relative bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
+                  {/* Navigation Buttons on Card */}
+                  <div className="absolute top-1/2 -translate-y-1/2 left-4 z-20">
+                    <Link
+                      href={hasPrevModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex - 1]}` : '#'}
+                      className={`flex items-center justify-center w-12 h-12 rounded-full transition-all shadow-xl ${
+                        hasPrevModule
+                          ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-110'
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </Link>
+                  </div>
+
+                  <div className="absolute top-1/2 -translate-y-1/2 right-4 z-20">
+                    <Link
+                      href={hasNextModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex + 1]}` : '#'}
+                      className={`flex items-center justify-center w-12 h-12 rounded-full transition-all shadow-xl ${
+                        hasNextModule
+                          ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-110'
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  </div>
+
+                  {/* Blur Overlay for Locked Modules */}
                   {!isUnlocked && (
-                    <div className="absolute inset-0 bg-gray-900/30 backdrop-blur-sm z-10 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="text-6xl mb-4">🔒</div>
-                        <p className="text-white font-bold text-xl">Complete Module {moduleNumber - 1} to unlock</p>
+                    <>
+                      <div className="absolute inset-0 backdrop-blur-md bg-white/30 z-10"></div>
+                      <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 text-center max-w-md mx-4 border-2 border-orange-300">
+                          <div className="text-7xl mb-4">🔒</div>
+                          <h3 className="text-2xl font-bold text-gray-900 mb-3">Module Locked</h3>
+                          <p className="text-gray-700 text-lg leading-relaxed">
+                            Complete all levels of <span className="font-bold text-purple-600">Module {moduleNumber - 1}</span> to unlock this module
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    </>
                   )}
 
-                  <div className={`bg-gradient-to-r ${gradientColor} px-6 py-6 text-white`}>
+                  <div className={`bg-gradient-to-r ${gradientColor} px-6 py-6 text-white ${!isUnlocked ? 'pointer-events-none' : ''}`}>
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h2 className="text-3xl font-bold mb-1">{moduleTitle}</h2>
