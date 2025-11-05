@@ -629,25 +629,38 @@ export default async function HomePage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-gray-900 py-8">
+      <footer className="bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border-t border-slate-200/70 py-8 mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center">
-                <img 
-                  src="/Icon.png" 
-                  alt="Locuta.ai Logo" 
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <span className="text-xl font-bold text-white">Locuta.ai</span>
+              <span className="text-xl font-bold text-slate-900 hover:scale-110 transition-transform duration-300 cursor-default">
+                Locuta.ai
+              </span>
             </div>
-            <p className="text-gray-300">
+            <p className="text-slate-600 text-sm footer-text">
               © 2025 Locuta.ai. Elevate your voice.
             </p>
           </div>
         </div>
       </footer>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          .footer-text {
+            animation: fadeInUp 1s ease-in-out 0.3s forwards;
+            opacity: 0;
+          }
+        `
+      }} />
     </div>
     </>
   )

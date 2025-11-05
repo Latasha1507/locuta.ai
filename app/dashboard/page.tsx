@@ -92,13 +92,20 @@ export default async function DashboardPage() {
     .from('lessons')
     .select('category, module_number, level_number')
 
-  // Fetch recent sessions (last 5)
+  // Fetch all sessions for analytics calculations
+  const { data: allSessions } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  // Fetch recent sessions for avg score calculation
   const { data: recentSessions } = await supabase
     .from('sessions')
     .select('*')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
-    .limit(5)
+    .limit(10)
 
   // Calculate progress per category
   const categories = [
@@ -148,23 +155,23 @@ export default async function DashboardPage() {
 
   // Calculate stats for each category
   const categoryStats = categories.map(category => {
-    const categoryLessons = lessons?.filter(l => 
+    const categoryLessons = lessons?.filter((l: any) => 
       l.category.toLowerCase().replace(/\s+/g, '-') === category.id
     ) || []
     
     const totalLessons = categoryLessons.length
     
-    const categoryProgress = progress?.filter(p => 
+    const categoryProgress = progress?.filter((p: any) => 
       p.category.toLowerCase().replace(/\s+/g, '-') === category.id
     ) || []
     
-    const completedLessons = categoryProgress.filter(p => p.completed).length
+    const completedLessons = categoryProgress.filter((p: any) => p.completed).length
     const completionPercentage = totalLessons > 0 
       ? Math.round((completedLessons / totalLessons) * 100) 
       : 0
     
     const bestScore = categoryProgress.length > 0
-      ? Math.max(...categoryProgress.map(p => p.best_score || 0))
+      ? Math.max(...categoryProgress.map((p: any) => p.best_score || 0))
       : 0
     
     const hasStarted = completedLessons > 0
@@ -180,16 +187,117 @@ export default async function DashboardPage() {
   })
 
   // Calculate overall stats
-  const totalCompleted = progress?.filter(p => p.completed).length || 0
+  const totalCompleted = progress?.filter((p: any) => p.completed).length || 0
   const totalAvailable = lessons?.length || 0
   const overallPercentage = totalAvailable > 0 
     ? Math.round((totalCompleted / totalAvailable) * 100) 
     : 0
 
+  // Calculate Current Streak
+  const calculateStreak = () => {
+    if (!allSessions || allSessions.length === 0) return 0
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    // Get unique dates from sessions
+    const sessionDates = new Set(
+      allSessions.map((s: any) => {
+        const date = new Date(s.created_at)
+        date.setHours(0, 0, 0, 0)
+        return date.getTime()
+      })
+    )
+    
+    let streak = 0
+    let currentDate = new Date(today)
+    
+    while (sessionDates.has(currentDate.getTime())) {
+      streak++
+      currentDate.setDate(currentDate.getDate() - 1)
+    }
+    
+    return streak
+  }
+
+  // Calculate This Week's Activity
+  const calculateWeeklyActivity = () => {
+    if (!allSessions) return { completed: 0, goal: 7, percentage: 0 }
+    
+    const today = new Date()
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - today.getDay())
+    startOfWeek.setHours(0, 0, 0, 0)
+    
+    const weeklySessions = allSessions.filter((s: any) => {
+      const sessionDate = new Date(s.created_at)
+      return sessionDate >= startOfWeek
+    })
+    
+    const completed = weeklySessions.length
+    const goal = 7
+    const percentage = Math.min(100, Math.round((completed / goal) * 100))
+    
+    return { completed, goal, percentage }
+  }
+
+  // Calculate Score Trend
+  const calculateScoreTrend = () => {
+    if (!recentSessions || recentSessions.length < 2) return { trend: 0, avgRecent: 0, avgPrevious: 0 }
+    
+    const midPoint = Math.floor(recentSessions.length / 2)
+    const recent = recentSessions.slice(0, midPoint)
+    const previous = recentSessions.slice(midPoint)
+    
+    const avgRecent = recent.reduce((sum: number, s: any) => sum + (s.overall_score || 0), 0) / recent.length
+    const avgPrevious = previous.reduce((sum: number, s: any) => sum + (s.overall_score || 0), 0) / previous.length
+    
+    return {
+      trend: avgRecent > avgPrevious ? 1 : avgRecent < avgPrevious ? -1 : 0,
+      avgRecent: Math.round(avgRecent),
+      avgPrevious: Math.round(avgPrevious)
+    }
+  }
+
+  // Calculate Study Time
+  const calculateStudyTime = () => {
+    if (!allSessions) return { weekly: 0, monthly: 0 }
+    
+    const today = new Date()
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - today.getDay())
+    startOfWeek.setHours(0, 0, 0, 0)
+    
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    
+    // Estimate 2-3 minutes per session (average practice time)
+    const avgMinutesPerSession = 2.5
+    
+    const weeklySessions = allSessions.filter((s: any) => {
+      const sessionDate = new Date(s.created_at)
+      return sessionDate >= startOfWeek
+    }).length
+    
+    const monthlySessions = allSessions.filter((s: any) => {
+      const sessionDate = new Date(s.created_at)
+      return sessionDate >= startOfMonth
+    }).length
+    
+    return {
+      weekly: Math.round(weeklySessions * avgMinutesPerSession),
+      monthly: Math.round(monthlySessions * avgMinutesPerSession)
+    }
+  }
+
+  const currentStreak = calculateStreak()
+  const weeklyActivity = calculateWeeklyActivity()
+  const scoreTrend = calculateScoreTrend()
+  const studyTime = calculateStudyTime()
+
   // Avg Score calculation
   const avgScore = recentSessions && recentSessions.length > 0
     ? Math.round(
-        recentSessions.reduce((sum, s) => sum + (s.overall_score || 0), 0) /
+        recentSessions.reduce((sum: number, s: any) => sum + (s.overall_score || 0), 0) /
         recentSessions.length
       )
     : 0
@@ -243,10 +351,10 @@ export default async function DashboardPage() {
 
       {/* Main Content - glassmorphism container */}
       <div className="flex-1 min-h-screen flex flex-col">
-        {/* Header bar for mobile/small screens */}
-        <header className="md:hidden flex items-center justify-between bg-white/70 backdrop-blur-xl border-b border-slate-200 px-4 py-4 shadow-sm z-10 sticky top-0">
+        {/* Header bar for mobile/small screens - Updated to match theme */}
+        <header className="md:hidden flex items-center justify-between bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border-b border-slate-200/70 px-4 py-4 shadow-lg z-10 sticky top-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-md">
               <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-xl font-bold text-slate-900">
@@ -255,10 +363,10 @@ export default async function DashboardPage() {
           </div>
           <Link
             href="/history"
-            className="flex items-center gap-1 text-slate-600 hover:text-slate-900 transition-colors font-medium"
+            className="flex items-center gap-1 text-slate-700 hover:text-purple-600 transition-colors font-medium px-3 py-2 rounded-lg hover:bg-white/50"
           >
             <svg width={20} height={20} fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5"><circle cx="12" cy="12" r="9" strokeWidth="1.7" /><path d="M12 8v5l3 3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7"/></svg>
-            History
+            <span className="hidden sm:inline">History</span>
           </Link>
         </header>
         {/* Actual content */}
@@ -271,8 +379,8 @@ export default async function DashboardPage() {
               <p className="text-slate-600 text-lg">Ready to improve your speaking skills today?</p>
             </div>
 
-            {/* Modern Stat Cards */}
-            <section className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
+            {/* Analytics Cards - Row 1: Core metrics (4 cards) */}
+            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
               {/* Progress circle */}
               <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
                 <AnimatedRadialProgress percentage={overallPercentage} size={88} color="#8b5cf6" />
@@ -283,69 +391,107 @@ export default async function DashboardPage() {
               </div>
               {/* Avg Score */}
               <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-100 to-pink-200 animate-pulse" />
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-100 to-pink-200 flex items-center justify-center">
+                  <span className="text-2xl">⭐</span>
+                </div>
                 <div>
                   <div className="text-lg font-bold text-slate-800">Recent Avg Score</div>
                   <div className="text-slate-500">{recentSessions && recentSessions.length > 0 ? avgScore : '-'}</div>
                 </div>
               </div>
-              {/* Next to do */}
-              <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-sky-100 to-emerald-100 animate-pulse" />
+              {/* Categories Started */}
+              <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-sky-100 to-emerald-100 flex items-center justify-center">
+                  <span className="text-2xl">📚</span>
+                </div>
                 <div>
                   <div className="text-lg font-bold text-slate-800">Categories Started</div>
-                  <div className="text-slate-500">{categoryStats.filter(c => c.hasStarted).length} / {categoryStats.length}</div>
+                  <div className="text-slate-500">{categoryStats.filter((c: any) => c.hasStarted).length} / {categoryStats.length}</div>
+                </div>
+              </div>
+              {/* Best Score */}
+              <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-100 to-amber-100 flex items-center justify-center">
+                  <span className="text-2xl">🏆</span>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-slate-800">Best Score</div>
+                  <div className="text-slate-500">
+                    {progress && progress.length > 0 
+                      ? Math.max(...progress.map((p: any) => p.best_score || 0))
+                      : '-'
+                    }
+                  </div>
                 </div>
               </div>
             </section>
 
-            {/* Recent Activity */}
-            {recentSessions && recentSessions.length > 0 && (
-              <section className="bg-white/90 dark:bg-slate-900/50 rounded-2xl shadow-xl px-6 py-6 mb-10 border border-slate-100/70 glass-card">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex gap-1 items-center">
-                    <svg className="w-6 h-6 text-indigo-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" strokeWidth="2" /><path d="M12 8v5l3 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    <h3 className="text-lg font-bold text-slate-900">Recent Activity</h3>
+            {/* Analytics Cards - Row 2: New analytics (4 cards) */}
+            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
+              {/* Current Streak - Formula: Count consecutive days with sessions from today backwards */}
+              <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-100 to-red-100 flex items-center justify-center">
+                  <span className="text-2xl">🔥</span>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-slate-800">Current Streak</div>
+                  <div className="text-slate-500">{currentStreak} day{currentStreak !== 1 ? 's' : ''}</div>
+                </div>
+              </div>
+              {/* This Week's Activity - Formula: Count sessions from start of week / goal of 7 lessons */}
+              <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl hover:scale-[1.01] transition-transform duration-200">
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
+                    <span className="text-2xl">📊</span>
                   </div>
-                  <Link 
-                    href="/history"
-                    className="text-purple-600 hover:text-purple-700 text-sm font-medium"
-                  >
-                    View All →
-                  </Link>
+                  <div>
+                    <div className="text-lg font-bold text-slate-800">This Week's Activity</div>
+                    <div className="text-slate-500">{weeklyActivity.completed} / {weeklyActivity.goal} lessons</div>
+                  </div>
                 </div>
-                <div className="divide-y divide-slate-200/60">
-                  {recentSessions.map((session) => (
-                    <div 
-                      key={session.id}
-                      className="flex items-center justify-between py-3 px-0 hover:bg-indigo-50/50 rounded-xl group transition"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-slate-900 truncate">
-                          {session.category} - Module {session.module_number}, Lesson {session.lesson_number}
-                        </div>
-                        <div className="text-xs text-slate-400">
-                          {new Date(session.created_at).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit'
-                          })}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 ml-4">
-                        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                          {session.tone}
-                        </span>
-                        <div className="text-xl font-bold text-purple-600">
-                          {session.overall_score}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="w-full h-2 bg-slate-200/70 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-purple-500 to-indigo-600 transition-all duration-700 rounded-full"
+                    style={{ width: `${weeklyActivity.percentage}%` }}
+                  />
                 </div>
-              </section>
-            )}
+              </div>
+              {/* Score Trend - Formula: Compare average of first half vs second half of recent sessions */}
+              <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
+                  {scoreTrend.trend === 1 ? (
+                    <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                  ) : scoreTrend.trend === -1 ? (
+                    <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  ) : (
+                    <svg className="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" />
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-slate-800">Score Trend</div>
+                  <div className="text-slate-500">
+                    {scoreTrend.trend === 1 ? 'Improving' : scoreTrend.trend === -1 ? 'Declining' : 'Stable'}
+                  </div>
+                </div>
+              </div>
+              {/* Study Time - Formula: Weekly/Monthly sessions × 2.5 minutes average per session */}
+              <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center">
+                  <span className="text-2xl">⏱️</span>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-slate-800">Study Time</div>
+                  <div className="text-slate-500">{studyTime.weekly} min this week</div>
+                  <div className="text-xs text-slate-400">{studyTime.monthly} min this month</div>
+                </div>
+              </div>
+            </section>
 
             {/* Categories Grid */}
             <section>
@@ -353,7 +499,7 @@ export default async function DashboardPage() {
                 Choose Your Practice Category
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {categoryStats.map((category) => (
+                {categoryStats.map((category: any) => (
                   <Link
                     key={category.id}
                     href={`/category/${category.id}/tone`}
@@ -434,6 +580,22 @@ export default async function DashboardPage() {
             )}
           </div>
         </main>
+        
+        {/* Footer */}
+        <footer className="bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border-t border-slate-200/70 py-6 mt-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-lg font-bold text-slate-900 hover:scale-110 transition-transform duration-300 cursor-default">
+                  Locuta.ai
+                </span>
+              </div>
+              <p className="text-slate-600 text-sm footer-text">
+                © 2025 Locuta.ai. Elevate your voice.
+              </p>
+            </div>
+          </div>
+        </footer>
       </div>
       <style>
         {`
@@ -441,6 +603,20 @@ export default async function DashboardPage() {
           /* fallback for Safari (no backdrop-blur on background-clip:padding-box) */
           background-clip: padding-box !important;
           box-shadow:0 4px 28px 0 rgba(51,57,83,0.09), 0 1.5px 5px 0 rgba(80,70,232,0.05);
+        }
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .footer-text {
+          animation: fadeInUp 1s ease-in-out 0.3s forwards;
+          opacity: 0;
         }
         `}
       </style>
