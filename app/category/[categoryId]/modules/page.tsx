@@ -167,39 +167,26 @@ export default async function CategoryModulesPage({
               const isUnlocked = isModuleUnlocked(moduleNumber)
 
               return (
-                <div key={moduleNumber} className="relative bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
-                  {/* Navigation Buttons at Top */}
-                  <div className="absolute top-4 left-4 z-20">
+                <div key={moduleNumber} className="relative flex items-start gap-4">
+                  {/* Previous Button - Outside Left */}
+                  <div className="flex-shrink-0 pt-8">
                     <Link
                       href={hasPrevModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex - 1]}` : '#'}
-                      className={`flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-lg ${
+                      className={`flex items-center justify-center w-12 h-12 rounded-full transition-all shadow-lg ${
                         hasPrevModule
-                          ? 'bg-white hover:bg-gray-100 text-gray-700 hover:scale-110'
+                          ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-110 border-2 border-purple-200'
                           : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
                       }`}
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                       </svg>
                     </Link>
                   </div>
 
-                  <div className="absolute top-4 right-4 z-20">
-                    <Link
-                      href={hasNextModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex + 1]}` : '#'}
-                      className={`flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-lg ${
-                        hasNextModule
-                          ? 'bg-white hover:bg-gray-100 text-gray-700 hover:scale-110'
-                          : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
-                      }`}
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </Link>
-                  </div>
-
-                  <div className={`bg-gradient-to-r ${gradientColor} px-6 py-6 text-white relative`}>
+                  {/* Module Card */}
+                  <div className="flex-1 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
+                    <div className={`bg-gradient-to-r ${gradientColor} px-6 py-6 text-white relative`}>
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h2 className="text-3xl font-bold mb-1">{moduleTitle}</h2>
@@ -333,6 +320,23 @@ export default async function CategoryModulesPage({
                         )
                       })}
                     </div>
+                  </div>
+                  </div>
+
+                  {/* Next Button - Outside Right */}
+                  <div className="flex-shrink-0 pt-8">
+                    <Link
+                      href={hasNextModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex + 1]}` : '#'}
+                      className={`flex items-center justify-center w-12 h-12 rounded-full transition-all shadow-lg ${
+                        hasNextModule
+                          ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-110 border-2 border-purple-200'
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
                   </div>
                 </div>
               )
