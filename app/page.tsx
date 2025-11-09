@@ -152,20 +152,22 @@ export default async function HomePage() {
           </Link>
             
             {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6 text-base font-medium">
-            <Link href="#about" className="text-gray-700 hover:text-indigo-600 transition-colors">About</Link>
-            <Link href="#use-cases" className="text-gray-700 hover:text-indigo-600 transition-colors">Use Cases</Link>
-            <div className="relative group">
-              <span className="cursor-pointer text-gray-700 hover:text-indigo-600 transition-colors">
-                Resources
-              </span>
-              <div className="absolute left-0 top-8 min-w-[160px] bg-white bg-opacity-90 shadow-lg rounded-xl border border-gray-100 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-300 translate-y-4 group-hover:translate-y-0">
-                <Link href="/blog" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors">Blog</Link>
-                <Link href="/faq" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors">FAQ</Link>
-              </div>
-            </div>
-          </nav>
-            
+<nav className="hidden md:flex items-center gap-6 text-base font-medium">
+  <Link href="/about" className="text-gray-700 hover:text-indigo-600 transition-colors">About</Link>
+  <Link href="/use-cases" className="text-gray-700 hover:text-indigo-600 transition-colors">Use Cases</Link>
+  <Link href="/pricing" className="text-gray-700 hover:text-indigo-600 transition-colors">Pricing</Link>
+  <div className="relative group">
+    <span className="cursor-pointer text-gray-700 hover:text-indigo-600 transition-colors">
+      Resources
+    </span>
+    <div className="absolute left-0 top-8 min-w-[160px] bg-white bg-opacity-90 shadow-lg rounded-xl border border-gray-100 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-300 translate-y-4 group-hover:translate-y-0">
+      <Link href="/blog" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors rounded-t-xl">Blog</Link>
+      <Link href="/faq" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors">FAQ</Link>
+      <Link href="/resources" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors rounded-b-xl">All Resources</Link>
+    </div>
+  </div>
+  <Link href="/contact" className="text-gray-700 hover:text-indigo-600 transition-colors">Contact</Link>
+</nav>
             {/* Desktop CTA Buttons */}
             <div className="hidden md:flex items-center gap-2">
             <Link
@@ -191,12 +193,15 @@ export default async function HomePage() {
           </div>
           
           {/* Mobile Menu */}
-          <div id="mobile-menu" className="md:hidden hidden border-t border-gray-100 py-4">
-            <nav className="flex flex-col space-y-4">
-              <Link href="#about" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">About</Link>
-              <Link href="#use-cases" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Use Cases</Link>
-              <Link href="/blog" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Blog</Link>
-              <Link href="/faq" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">FAQ</Link>
+<div id="mobile-menu" className="md:hidden hidden border-t border-gray-100 py-4">
+  <nav className="flex flex-col space-y-4">
+    <Link href="/about" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">About</Link>
+    <Link href="/use-cases" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Use Cases</Link>
+    <Link href="/pricing" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Pricing</Link>
+    <Link href="/blog" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Blog</Link>
+    <Link href="/faq" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">FAQ</Link>
+    <Link href="/resources" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Resources</Link>
+    <Link href="/contact" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Contact</Link>
               <div className="pt-4 border-t border-gray-100 flex flex-col space-y-3">
                 <Link
                   href="/auth/login"
