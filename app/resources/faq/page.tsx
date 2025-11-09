@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useState } from 'react';
 import { HelpCircle, ChevronDown, MessageCircle, Mail, Shield, Clock, DollarSign, Globe } from 'lucide-react';
 

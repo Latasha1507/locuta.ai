@@ -1,7 +1,9 @@
+"use client"
+
 import React, { useState } from 'react';
 import { Send, CheckCircle, AlertCircle } from 'lucide-react';
 
-const ContactPage: React.FC = () => {
+const ContactPage = () => {
   const [status, setStatus] = useState<{ type: '' | 'success' | 'error'; message: string }>({
     type: '',
     message: '',
@@ -14,7 +16,6 @@ const ContactPage: React.FC = () => {
     setStatus({ type: '', message: '' });
 
     try {
-      // e.currentTarget is typed as HTMLFormElement
       const formData = new FormData(e.currentTarget);
       formData.append('access_key', 'a14a2574-4970-4a8a-a303-b6a81e0051ea');
 
@@ -31,7 +32,6 @@ const ContactPage: React.FC = () => {
           message:
             "Thank you! Your message has been sent successfully. We'll get back to you soon.",
         });
-        // reset the form using the form element
         e.currentTarget.reset();
       } else {
         setStatus({
@@ -63,7 +63,6 @@ const ContactPage: React.FC = () => {
       <section className="py-16 px-4">
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 shadow-sm">
-            {/* Use a real form element */}
             <form onSubmit={handleSubmit}>
               <div className="space-y-6">
                 {/* Name Field */}

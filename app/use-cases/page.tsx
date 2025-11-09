@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useState } from 'react';
 import { Mic, Video, MessageCircle, Briefcase, Target, BookOpen, Heart, Sparkles, Zap, Shield, Smile, TrendingUp, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 
