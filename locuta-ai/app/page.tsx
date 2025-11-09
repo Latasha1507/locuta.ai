@@ -260,3 +260,36 @@ export default async function HomePage() {
     </div>
   )
 }
+{/* Desktop Navigation */}
+<nav className="hidden md:flex items-center gap-6 text-base font-medium">
+  <Link href="/about" className="text-gray-700 hover:text-indigo-600 transition-colors">About</Link>
+  <Link href="/use-cases" className="text-gray-700 hover:text-indigo-600 transition-colors">Use Cases</Link>
+  <Link href="/pricing" className="text-gray-700 hover:text-indigo-600 transition-colors">Pricing</Link>
+  <div className="relative group">
+    <span className="cursor-pointer text-gray-700 hover:text-indigo-600 transition-colors">
+      Resources
+    </span>
+    <div className="absolute left-0 top-8 min-w-[160px] bg-white bg-opacity-90 shadow-lg rounded-xl border border-gray-100 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-300 translate-y-4 group-hover:translate-y-0">
+      <Link href="/blog" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors">Blog</Link>
+      <Link href="/faq" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors">FAQ</Link>
+      <Link href="/resources" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors">All Resources</Link>
+    </div>
+  </div>
+  <Link href="/contact" className="text-gray-700 hover:text-indigo-600 transition-colors">Contact</Link>
+</nav>
+{/* Mobile Menu */}
+<div id="mobile-menu" className="md:hidden hidden border-t border-gray-100 py-4">
+  <nav className="flex flex-col space-y-4">
+    <Link href="/about" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">About</Link>
+    <Link href="/use-cases" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Use Cases</Link>
+    <Link href="/pricing" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Pricing</Link>
+    <Link href="/blog" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Blog</Link>
+    <Link href="/faq" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">FAQ</Link>
+    <Link href="/resources" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Resources</Link>
+    <Link href="/contact" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Contact</Link>
+    <div className="flex flex-col space-y-2 pt-4 border-t border-gray-200">
+      <Link href="/auth/login" className="text-gray-700 hover:text-indigo-600 transition-colors px-2 py-2">Sign In</Link>
+      <Link href="/auth/signup" className="bg-gradient-to-r from-violet-500 to-indigo-600 text-white text-center px-5 py-3 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all">Try Locuta Free</Link>
+    </div>
+  </nav>
+</div>
