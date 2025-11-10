@@ -57,7 +57,7 @@ const BlogPage = () => {
         }
 
         // Try different content type IDs
-        const contentTypes = ['blogPost', 'blog', 'post'];
+        const contentTypes = ['pageBlogPost'];
         let successfulFetch = false;
 
         for (const contentType of contentTypes) {
