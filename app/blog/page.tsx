@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { BookOpen, TrendingUp, Users, Mic, Video, Briefcase, Search, Calendar, Clock, ArrowRight } from 'lucide-react';
-import Image from 'next/image';
 
 interface BlogPost {
   title: string;
@@ -22,6 +21,8 @@ const BlogPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   const categories = [
     { id: 'all', name: 'All Articles', icon: BookOpen },
@@ -32,99 +33,135 @@ const BlogPage = () => {
     { id: 'tips', name: 'Tips & Techniques', icon: TrendingUp }
   ];
 
-  // Calculate read time based on content length
   const calculateReadTime = (content: any): string => {
     if (!content) return '5 min read';
-    
     const text = JSON.stringify(content);
     const wordCount = text.split(/\s+/).length;
-    const readTime = Math.ceil(wordCount / 200); // Average reading speed: 200 words/min
+    const readTime = Math.ceil(wordCount / 200);
     return `${readTime} min read`;
   };
 
-  // Fetch blog posts from Contentful
   useEffect(() => {
     const fetchBlogPosts = async () => {
       try {
         const spaceId = process.env.NEXT_PUBLIC_CONTENTFUL_SPACE_ID;
         const accessToken = process.env.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN;
 
+        console.log('Space ID:', spaceId);
+        console.log('Access Token exists:', !!accessToken);
+
         if (!spaceId || !accessToken) {
-          console.error('Contentful credentials not found');
+          setError('Contentful credentials not found in environment variables');
           setLoading(false);
           return;
         }
 
-        // Fetch entries with includes to get referenced author data
-        const response = await fetch(
-          `https://cdn.contentful.com/spaces/${spaceId}/entries?access_token=${accessToken}&content_type=blogPost&include=2&order=-fields.publishedDate`
-        );
+        // Try different content type IDs
+        const contentTypes = ['blogPost', 'blog', 'post'];
+        let successfulFetch = false;
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch blog posts');
-        }
+        for (const contentType of contentTypes) {
+          try {
+            console.log(`Trying content type: ${contentType}`);
+            
+            const response = await fetch(
+              `https://cdn.contentful.com/spaces/${spaceId}/entries?access_token=${accessToken}&content_type=${contentType}&include=2`
+            );
 
-        const data = await response.json();
-        
-        // Create a map of assets and entries for easy lookup
-        const assetsMap = new Map();
-        const entriesMap = new Map();
-        
-        if (data.includes?.Asset) {
-          data.includes.Asset.forEach((asset: any) => {
-            assetsMap.set(asset.sys.id, asset);
-          });
-        }
-        
-        if (data.includes?.Entry) {
-          data.includes.Entry.forEach((entry: any) => {
-            entriesMap.set(entry.sys.id, entry);
-          });
-        }
+            console.log(`Response status for ${contentType}:`, response.status);
 
-        const posts: BlogPost[] = data.items.map((item: any) => {
-          // Get author name from referenced entry
-          let authorName = 'Locuta Team';
-          if (item.fields.author?.sys?.id) {
-            const authorEntry = entriesMap.get(item.fields.author.sys.id);
-            authorName = authorEntry?.fields?.name || 'Locuta Team';
+            if (!response.ok) {
+              const errorData = await response.json();
+              console.error(`Error for ${contentType}:`, errorData);
+              continue;
+            }
+
+            const data = await response.json();
+            console.log(`Data for ${contentType}:`, data);
+            setDebugInfo(data);
+
+            if (data.items && data.items.length > 0) {
+              console.log('Found items:', data.items.length);
+              
+              // Create maps for assets and entries
+              const assetsMap = new Map();
+              const entriesMap = new Map();
+              
+              if (data.includes?.Asset) {
+                data.includes.Asset.forEach((asset: any) => {
+                  assetsMap.set(asset.sys.id, asset);
+                });
+              }
+              
+              if (data.includes?.Entry) {
+                data.includes.Entry.forEach((entry: any) => {
+                  entriesMap.set(entry.sys.id, entry);
+                });
+              }
+
+              const posts: BlogPost[] = data.items.map((item: any) => {
+                console.log('Processing item:', item);
+                
+                // Get author name
+                let authorName = 'Locuta Team';
+                if (item.fields.author) {
+                  if (typeof item.fields.author === 'string') {
+                    authorName = item.fields.author;
+                  } else if (item.fields.author?.sys?.id) {
+                    const authorEntry = entriesMap.get(item.fields.author.sys.id);
+                    authorName = authorEntry?.fields?.name || 'Locuta Team';
+                  }
+                }
+
+                // Get featured image
+                let featuredImageUrl = '';
+                if (item.fields.featuredImage?.sys?.id) {
+                  const imageAsset = assetsMap.get(item.fields.featuredImage.sys.id);
+                  featuredImageUrl = imageAsset?.fields?.file?.url ? `https:${imageAsset.fields.file.url}` : '';
+                }
+
+                return {
+                  title: item.fields.title || 'Untitled',
+                  slug: item.fields.slug || '',
+                  excerpt: item.fields.excerpt || '',
+                  category: item.fields.category || 'tips',
+                  author: authorName,
+                  date: item.fields.publishedDate || item.sys.createdAt
+                    ? new Date(item.fields.publishedDate || item.sys.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })
+                    : new Date().toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      }),
+                  readTime: calculateReadTime(item.fields.content),
+                  featured: item.fields.featured || false,
+                  featuredImage: featuredImageUrl,
+                  content: item.fields.content
+                };
+              });
+
+              setBlogPosts(posts);
+              successfulFetch = true;
+              break;
+            }
+          } catch (err) {
+            console.error(`Error fetching with content type ${contentType}:`, err);
+            continue;
           }
+        }
 
-          // Get featured image URL
-          let featuredImageUrl = '';
-          if (item.fields.featuredImage?.sys?.id) {
-            const imageAsset = assetsMap.get(item.fields.featuredImage.sys.id);
-            featuredImageUrl = imageAsset?.fields?.file?.url ? `https:${imageAsset.fields.file.url}` : '';
-          }
+        if (!successfulFetch) {
+          setError('Could not find blog posts. Check content type ID.');
+        }
 
-          return {
-            title: item.fields.title || 'Untitled',
-            slug: item.fields.slug || '',
-            excerpt: item.fields.excerpt || '',
-            category: item.fields.category || 'tips',
-            author: authorName,
-            date: item.fields.publishedDate 
-              ? new Date(item.fields.publishedDate).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric'
-                })
-              : new Date().toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric'
-                }),
-            readTime: calculateReadTime(item.fields.content),
-            featured: item.fields.featured || false,
-            featuredImage: featuredImageUrl,
-            content: item.fields.content
-          };
-        });
-
-        setBlogPosts(posts);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching blog posts:', error);
+        setError(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setLoading(false);
       }
     };
@@ -132,7 +169,6 @@ const BlogPage = () => {
     fetchBlogPosts();
   }, []);
 
-  // Get emoji based on category
   const getCategoryEmoji = (category: string): string => {
     const emojiMap: { [key: string]: string } = {
       'public-speaking': '🎤',
@@ -182,10 +218,31 @@ const BlogPage = () => {
         </div>
       </section>
 
+      {/* Debug Section - REMOVE THIS AFTER FIXING */}
+      {(error || debugInfo) && (
+        <section className="py-8 px-4 bg-yellow-50 border-b-2 border-yellow-200">
+          <div className="max-w-7xl mx-auto">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">🔍 Debug Information</h3>
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <p className="text-red-800 font-semibold">Error: {error}</p>
+              </div>
+            )}
+            {debugInfo && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <p className="font-semibold mb-2">Raw API Response:</p>
+                <pre className="text-xs overflow-auto max-h-96 bg-gray-50 p-4 rounded">
+                  {JSON.stringify(debugInfo, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Search & Categories */}
       <section className="py-12 px-4 bg-gradient-to-br from-gray-50 to-purple-50 border-b-2 border-gray-100">
         <div className="max-w-7xl mx-auto">
-          {/* Search Bar */}
           <div className="max-w-2xl mx-auto mb-8">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -199,7 +256,6 @@ const BlogPage = () => {
             </div>
           </div>
 
-          {/* Category Pills */}
           <div className="flex flex-wrap justify-center gap-3">
             {categories.map((category) => (
               <button
@@ -229,70 +285,7 @@ const BlogPage = () => {
         </section>
       )}
 
-      {/* Featured Articles */}
-      {!loading && selectedCategory === 'all' && searchQuery === '' && featuredPosts.length > 0 && (
-        <section className="py-16 px-4 bg-white">
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-3xl font-bold mb-8 text-gray-800">Featured Articles</h2>
-            
-            <div className="grid md:grid-cols-3 gap-8">
-              {featuredPosts.map((post, idx) => (
-                <article
-                  key={idx}
-                  className="group bg-gradient-to-br from-purple-50 to-blue-50 rounded-3xl overflow-hidden hover:shadow-2xl transition-all cursor-pointer border-2 border-purple-100"
-                >
-                  {post.featuredImage && (
-                    <div className="relative h-48 w-full overflow-hidden">
-                      <img 
-                        src={post.featuredImage} 
-                        alt={post.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-                  )}
-                  
-                  <div className="p-8">
-                    {!post.featuredImage && (
-                      <div className="text-6xl mb-4">{getCategoryEmoji(post.category)}</div>
-                    )}
-                    
-                    <div className="flex items-center gap-3 mb-4">
-                      <span className="text-xs font-semibold text-purple-600 bg-white px-3 py-1 rounded-full">
-                        Featured
-                      </span>
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {post.readTime}
-                      </span>
-                    </div>
-                    
-                    <h3 className="text-2xl font-bold mb-3 text-gray-800 leading-tight group-hover:text-purple-600 transition-colors">
-                      {post.title}
-                    </h3>
-                    
-                    <p className="text-gray-600 text-sm leading-relaxed mb-4">
-                      {post.excerpt}
-                    </p>
-                    
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                      <div className="text-xs text-gray-500">
-                        <p className="font-semibold text-gray-700">{post.author}</p>
-                        <p className="flex items-center gap-1 mt-1">
-                          <Calendar className="w-3 h-3" />
-                          {post.date}
-                        </p>
-                      </div>
-                      <ArrowRight className="w-5 h-5 text-purple-600 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* All Articles Grid */}
+      {/* Articles */}
       {!loading && (
         <section className="py-16 px-4 bg-white">
           <div className="max-w-7xl mx-auto">
@@ -307,15 +300,18 @@ const BlogPage = () => {
 
             {filteredPosts.length === 0 ? (
               <div className="text-center py-16">
-                <p className="text-gray-500 text-lg">
+                <p className="text-gray-500 text-lg mb-4">
                   {blogPosts.length === 0 
-                    ? 'No articles yet. Add your first blog post in Contentful!' 
+                    ? '📝 No articles found. Check the debug information above.' 
                     : 'No articles found matching your search.'}
+                </p>
+                <p className="text-sm text-gray-400">
+                  Make sure your Contentful credentials are correct and your blog post is published.
                 </p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {regularPosts.map((post, idx) => (
+                {filteredPosts.map((post, idx) => (
                   <article
                     key={idx}
                     className="group bg-white border-2 border-gray-100 rounded-2xl overflow-hidden hover:shadow-xl hover:border-purple-200 transition-all cursor-pointer"
