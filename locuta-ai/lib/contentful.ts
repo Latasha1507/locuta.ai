@@ -1,0 +1,14 @@
+import { createClient } from 'contentful';
+
+export const contentfulClient = createClient({
+  space: process.env.NEXT_PUBLIC_CONTENTFUL_SPACE_ID!,
+  accessToken: process.env.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN!,
+});
+
+export async function getBlogPosts() {
+  const response = await contentfulClient.getEntries({
+    content_type: 'blogPost', // This should match your Contentful content type ID
+  });
+
+  return response.items;
+}
