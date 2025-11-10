@@ -157,15 +157,14 @@ export default async function HomePage() {
   <Link href="/use-cases" className="text-gray-700 hover:text-indigo-600 transition-colors">Use Cases</Link>
   <Link href="/pricing" className="text-gray-700 hover:text-indigo-600 transition-colors">Pricing</Link>
   <div className="relative group">
-    <span className="cursor-pointer text-gray-700 hover:text-indigo-600 transition-colors">
-      Resources
-    </span>
-    <div className="absolute left-0 top-8 min-w-[160px] bg-white bg-opacity-90 shadow-lg rounded-xl border border-gray-100 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-300 translate-y-4 group-hover:translate-y-0">
-      <Link href="/blog" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors rounded-t-xl">Blog</Link>
-      <Link href="/faq" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors">FAQ</Link>
-      <Link href="/resources" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 transition-colors rounded-b-xl">All Resources</Link>
-    </div>
+  <span className="cursor-pointer text-gray-700 hover:text-indigo-600 transition-colors">
+    Resources
+  </span>
+  <div className="absolute left-0 top-full mt-2 min-w-[160px] bg-white shadow-lg rounded-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible pointer-events-none group-hover:pointer-events-auto transition-all duration-200 z-50">
+    <Link href="/blog" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 transition-colors rounded-t-xl">Blog</Link>
+    <Link href="/faq" className="block px-5 py-3 text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 transition-colors rounded-b-xl">FAQ</Link>
   </div>
+</div>
   <Link href="/contact" className="text-gray-700 hover:text-indigo-600 transition-colors">Contact</Link>
 </nav>
             {/* Desktop CTA Buttons */}
