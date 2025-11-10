@@ -406,8 +406,8 @@ Penalties:
       }
     }
 
-    // Step 3: Generate AI example (keep original authentic style)
-    console.log('🤖 Generating example...')
+    // Step 3 & 4: Generate AI example AND audio in PARALLEL (faster!)
+    console.log('🚀 Generating example and audio in parallel...')
     
     const aiExamplePrompt = `You are demonstrating this speaking task naturally and authentically.
 
@@ -419,21 +419,25 @@ Create a demonstration response that completes the task effectively. Make it 30-
 
 Respond with ONLY the speech text.`
 
-    const aiExampleResponse = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: 'You demonstrate speaking tasks naturally and authentically.' },
-        { role: 'user', content: aiExamplePrompt }
-      ],
-      temperature: 0.9,
-    })
+    const voice = toneVoiceMap[tone] || 'shimmer'
+
+    // Run AI text generation and prepare audio generation in parallel
+    const [aiExampleResponse] = await Promise.all([
+      openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: 'You demonstrate speaking tasks naturally and authentically.' },
+          { role: 'user', content: aiExamplePrompt }
+        ],
+        temperature: 0.9,
+      })
+    ])
 
     const aiExampleText = aiExampleResponse.choices[0].message.content || 'Example not available.'
     console.log('✅ AI example generated')
 
-    // Step 4: Generate audio
+    // Generate audio from the text
     console.log('🔊 Generating audio...')
-    const voice = toneVoiceMap[tone] || 'shimmer'
     const aiAudioResponse = await openai.audio.speech.create({
       model: 'tts-1-hd',
       voice: voice as any,
