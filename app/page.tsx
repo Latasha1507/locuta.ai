@@ -624,7 +624,7 @@ export default async function HomePage() {
               href="/auth/signup"
               className="inline-block bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-12 py-5 rounded-xl font-bold text-xl hover:shadow-2xl hover:scale-105 transition-all"
             >
-              Get Started Free 🚀
+              Get Started Free
             </Link>
             <p className="text-gray-500 mt-4 text-sm">
               No credit card required • Start practicing in 30 seconds
