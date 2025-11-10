@@ -25,7 +25,7 @@ async function getBlogPost(slug: string): Promise<BlogPost | null> {
   try {
     const response = await fetch(
       `https://cdn.contentful.com/spaces/${spaceId}/entries?access_token=${accessToken}&content_type=pageBlogPost&fields.slug=${slug}&include=2`,
-      { next: { revalidate: 60 } } // Revalidate every 60 seconds
+      { next: { revalidate: 60 } }
     );
 
     if (!response.ok) {
@@ -40,7 +40,6 @@ async function getBlogPost(slug: string): Promise<BlogPost | null> {
 
     const item = data.items[0];
 
-    // Create maps for assets and entries
     const assetsMap = new Map();
     const entriesMap = new Map();
     
@@ -56,7 +55,6 @@ async function getBlogPost(slug: string): Promise<BlogPost | null> {
       });
     }
 
-    // Get author name
     let authorName = 'Locuta Team';
     if (item.fields.auther) {
       if (typeof item.fields.auther === 'string') {
@@ -67,14 +65,12 @@ async function getBlogPost(slug: string): Promise<BlogPost | null> {
       }
     }
 
-    // Get featured image
     let featuredImageUrl = '';
     if (item.fields.featuredImage?.sys?.id) {
       const imageAsset = assetsMap.get(item.fields.featuredImage.sys.id);
       featuredImageUrl = imageAsset?.fields?.file?.url ? `https:${imageAsset.fields.file.url}` : '';
     }
 
-    // Calculate read time
     const calculateReadTime = (content: any): string => {
       if (!content) return '5 min read';
       const text = JSON.stringify(content);
@@ -110,7 +106,6 @@ async function getBlogPost(slug: string): Promise<BlogPost | null> {
   }
 }
 
-// Render rich text content from Contentful
 function renderRichText(content: any) {
   if (!content || !content.content) {
     return null;
@@ -200,8 +195,15 @@ function renderRichText(content: any) {
   });
 }
 
-export default async function BlogPostPage({ params }: { params: { slug: string } }) {
-  const post = await getBlogPost(params.slug);
+// FIXED: Updated for Next.js 15 - params is now async
+export default async function BlogPostPage({ 
+  params 
+}: { 
+  params: Promise<{ slug: string }> 
+}) {
+  // Await params in Next.js 15
+  const { slug } = await params;
+  const post = await getBlogPost(slug);
 
   if (!post) {
     notFound();
@@ -220,7 +222,6 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Back Button */}
       <div className="bg-gradient-to-br from-gray-50 to-purple-50 border-b border-gray-100">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <Link 
@@ -233,7 +234,6 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         </div>
       </div>
 
-      {/* Hero Section with Featured Image */}
       {post.featuredImage && (
         <div className="relative h-96 w-full overflow-hidden bg-gray-900">
           <img 
@@ -245,9 +245,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         </div>
       )}
 
-      {/* Article Content */}
       <article className="max-w-4xl mx-auto px-4 py-12">
-        {/* Category Badge */}
         <div className="flex items-center gap-2 mb-6">
           <span className="text-4xl">{getCategoryEmoji(post.category)}</span>
           <span className="text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-2 rounded-full capitalize">
@@ -255,17 +253,14 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
           </span>
         </div>
 
-        {/* Title */}
         <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
           {post.title}
         </h1>
 
-        {/* Excerpt */}
         <p className="text-xl text-gray-600 mb-8 leading-relaxed">
           {post.excerpt}
         </p>
 
-        {/* Meta Information */}
         <div className="flex flex-wrap items-center gap-6 pb-8 mb-8 border-b border-gray-200">
           <div className="flex items-center gap-2 text-gray-600">
             <User className="w-5 h-5 text-purple-600" />
@@ -281,12 +276,10 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
           </div>
         </div>
 
-        {/* Article Content */}
         <div className="prose prose-lg max-w-none">
           {renderRichText(post.content)}
         </div>
 
-        {/* Share Section */}
         <div className="mt-12 pt-8 border-t border-gray-200">
           <h3 className="text-xl font-bold text-gray-900 mb-4">Share this article</h3>
           <div className="flex gap-4">
@@ -300,7 +293,6 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         </div>
       </article>
 
-      {/* CTA Section */}
       <section className="py-16 px-4 bg-gradient-to-br from-purple-600 to-blue-600 mt-12">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-4 text-white">
@@ -321,7 +313,6 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
   );
 }
 
-// Generate static params for all blog posts (optional, for better performance)
 export async function generateStaticParams() {
   const spaceId = process.env.NEXT_PUBLIC_CONTENTFUL_SPACE_ID;
   const accessToken = process.env.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN;
