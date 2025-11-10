@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BookOpen, TrendingUp, Users, Mic, Video, Briefcase, Search, Calendar, Clock, ArrowRight } from 'lucide-react';
+import Image from 'next/image';
 
 interface BlogPost {
   title: string;
@@ -12,6 +13,7 @@ interface BlogPost {
   date: string;
   readTime: string;
   featured: boolean;
+  featuredImage?: string;
   content?: any;
 }
 
@@ -30,6 +32,16 @@ const BlogPage = () => {
     { id: 'tips', name: 'Tips & Techniques', icon: TrendingUp }
   ];
 
+  // Calculate read time based on content length
+  const calculateReadTime = (content: any): string => {
+    if (!content) return '5 min read';
+    
+    const text = JSON.stringify(content);
+    const wordCount = text.split(/\s+/).length;
+    const readTime = Math.ceil(wordCount / 200); // Average reading speed: 200 words/min
+    return `${readTime} min read`;
+  };
+
   // Fetch blog posts from Contentful
   useEffect(() => {
     const fetchBlogPosts = async () => {
@@ -43,8 +55,9 @@ const BlogPage = () => {
           return;
         }
 
+        // Fetch entries with includes to get referenced author data
         const response = await fetch(
-          `https://cdn.contentful.com/spaces/${spaceId}/entries?access_token=${accessToken}&content_type=blogPost&order=-fields.date`
+          `https://cdn.contentful.com/spaces/${spaceId}/entries?access_token=${accessToken}&content_type=blogPost&include=2&order=-fields.publishedDate`
         );
 
         if (!response.ok) {
@@ -53,21 +66,60 @@ const BlogPage = () => {
 
         const data = await response.json();
         
-        const posts: BlogPost[] = data.items.map((item: any) => ({
-          title: item.fields.title,
-          slug: item.fields.slug,
-          excerpt: item.fields.excerpt,
-          category: item.fields.category,
-          author: item.fields.author,
-          date: new Date(item.fields.date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-          }),
-          readTime: item.fields.readTime,
-          featured: item.fields.featured || false,
-          content: item.fields.content
-        }));
+        // Create a map of assets and entries for easy lookup
+        const assetsMap = new Map();
+        const entriesMap = new Map();
+        
+        if (data.includes?.Asset) {
+          data.includes.Asset.forEach((asset: any) => {
+            assetsMap.set(asset.sys.id, asset);
+          });
+        }
+        
+        if (data.includes?.Entry) {
+          data.includes.Entry.forEach((entry: any) => {
+            entriesMap.set(entry.sys.id, entry);
+          });
+        }
+
+        const posts: BlogPost[] = data.items.map((item: any) => {
+          // Get author name from referenced entry
+          let authorName = 'Locuta Team';
+          if (item.fields.author?.sys?.id) {
+            const authorEntry = entriesMap.get(item.fields.author.sys.id);
+            authorName = authorEntry?.fields?.name || 'Locuta Team';
+          }
+
+          // Get featured image URL
+          let featuredImageUrl = '';
+          if (item.fields.featuredImage?.sys?.id) {
+            const imageAsset = assetsMap.get(item.fields.featuredImage.sys.id);
+            featuredImageUrl = imageAsset?.fields?.file?.url ? `https:${imageAsset.fields.file.url}` : '';
+          }
+
+          return {
+            title: item.fields.title || 'Untitled',
+            slug: item.fields.slug || '',
+            excerpt: item.fields.excerpt || '',
+            category: item.fields.category || 'tips',
+            author: authorName,
+            date: item.fields.publishedDate 
+              ? new Date(item.fields.publishedDate).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })
+              : new Date().toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                }),
+            readTime: calculateReadTime(item.fields.content),
+            featured: item.fields.featured || false,
+            featuredImage: featuredImageUrl,
+            content: item.fields.content
+          };
+        });
 
         setBlogPosts(posts);
         setLoading(false);
@@ -189,8 +241,20 @@ const BlogPage = () => {
                   key={idx}
                   className="group bg-gradient-to-br from-purple-50 to-blue-50 rounded-3xl overflow-hidden hover:shadow-2xl transition-all cursor-pointer border-2 border-purple-100"
                 >
+                  {post.featuredImage && (
+                    <div className="relative h-48 w-full overflow-hidden">
+                      <img 
+                        src={post.featuredImage} 
+                        alt={post.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  )}
+                  
                   <div className="p-8">
-                    <div className="text-6xl mb-4">{getCategoryEmoji(post.category)}</div>
+                    {!post.featuredImage && (
+                      <div className="text-6xl mb-4">{getCategoryEmoji(post.category)}</div>
+                    )}
                     
                     <div className="flex items-center gap-3 mb-4">
                       <span className="text-xs font-semibold text-purple-600 bg-white px-3 py-1 rounded-full">
@@ -256,8 +320,20 @@ const BlogPage = () => {
                     key={idx}
                     className="group bg-white border-2 border-gray-100 rounded-2xl overflow-hidden hover:shadow-xl hover:border-purple-200 transition-all cursor-pointer"
                   >
+                    {post.featuredImage && (
+                      <div className="relative h-48 w-full overflow-hidden">
+                        <img 
+                          src={post.featuredImage} 
+                          alt={post.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    )}
+                    
                     <div className="p-6">
-                      <div className="text-5xl mb-4">{getCategoryEmoji(post.category)}</div>
+                      {!post.featuredImage && (
+                        <div className="text-5xl mb-4">{getCategoryEmoji(post.category)}</div>
+                      )}
                       
                       <div className="flex items-center gap-3 mb-4">
                         <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-3 py-1 rounded-full capitalize">
