@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { Mic, Square } from 'lucide-react'
 
 // Loader messages for LESSON INTRO
 const INTRO_LOADER_MESSAGES = [
@@ -483,36 +484,30 @@ export default function PracticePage() {
             <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
               {!isRecording && !audioBlob && !isSubmitting && (
                 <>
-                  {/* Interactive animated microphone */}
-                  <div className="relative w-32 h-32 mx-auto mb-6">
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full animate-pulse opacity-20"></div>
-                    <div className="absolute inset-4 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center">
-                      <span className="text-5xl">🎤</span>
-                    </div>
+                  <h2 className="text-3xl font-bold text-slate-900 mb-8">Ready to Record</h2>
+                  {/* Animated button with pulsing background */}
+                  <div className="relative inline-block">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full animate-pulse opacity-30 scale-110"></div>
+                    <button onClick={startRecording}
+                      className="relative w-32 h-32 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-full flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all">
+                      <Mic className="w-16 h-16" strokeWidth={2} />
+                    </button>
                   </div>
-                  <h2 className="text-3xl font-bold text-slate-900 mb-4">Ready to Record</h2>
-                  <button onClick={startRecording}
-                    className="w-32 h-32 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-full flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all mx-auto">
-                    <span className="text-5xl">🎤</span>
-                  </button>
                 </>
               )}
 
               {isRecording && (
                 <>
-                  {/* Recording animation */}
-                  <div className="relative w-32 h-32 mx-auto mb-6">
-                    <div className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-40"></div>
-                    <div className="absolute inset-0 bg-red-500 rounded-full animate-pulse flex items-center justify-center">
-                      <span className="text-6xl">🔴</span>
-                    </div>
-                  </div>
                   <h2 className="text-3xl font-bold text-red-600 mb-4">Recording...</h2>
                   <div className="text-4xl font-bold text-slate-900 mb-8">{formatTime(recordingTime)}</div>
-                  <button onClick={stopRecording}
-                    className="w-32 h-32 bg-gradient-to-br from-red-500 to-pink-600 text-white rounded-full flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all mx-auto">
-                    <span className="text-5xl">⏹️</span>
-                  </button>
+                  {/* Animated stop button with ping effect */}
+                  <div className="relative inline-block">
+                    <div className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-40"></div>
+                    <button onClick={stopRecording}
+                      className="relative w-32 h-32 bg-gradient-to-br from-red-500 to-pink-600 text-white rounded-full flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all">
+                      <Square className="w-12 h-12" strokeWidth={2} fill="white" />
+                    </button>
+                  </div>
                 </>
               )}
 
