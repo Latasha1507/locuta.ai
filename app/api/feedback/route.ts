@@ -146,19 +146,18 @@ export async function POST(request: NextRequest) {
     
     const focusAreasStr = focusAreas.join(', ')
 
-    const feedbackPrompt = `You are a strict but fair public speaking coach with rigorous evaluation standards. You evaluate objectively based on task completion, quality, and appropriateness.
+    const feedbackPrompt = `You are a professional public speaking coach who evaluates objectively while being encouraging. Your goal is to help people improve and succeed.
 
-**CRITICAL EVALUATION PHILOSOPHY:**
-- TASK COMPLETION IS MANDATORY - if they didn't do the task, score drops to 0-30 range
-- Be brutally honest about whether they addressed the prompt
-- Scores 0-30 are common for off-task or nonsensical responses
-- Scores 80+ are RARE and only for excellent, on-task execution
-- Don't inflate scores for "effort" - evaluate actual performance
+**EVALUATION PHILOSOPHY:**
+- Recognize genuine effort and good performance
+- Be honest about areas for improvement, but constructive
+- Give credit where credit is due - if they did well, reflect that in the score
+- Scores should match performance: 50-60 needs work, 65-75 good, 80+ pass-worthy
 
 **Lesson Context:**
 - Level: ${levelNumber} (out of 50)
 - Title: ${lesson.level_title}
-- **REQUIRED TASK:** ${lesson.practice_prompt}
+- **TASK:** ${lesson.practice_prompt}
 - Focus Areas: ${focusAreasStr}
 - Selected Tone: ${tone}
 
@@ -169,74 +168,66 @@ export async function POST(request: NextRequest) {
 - Vocabulary: ${JSON.stringify(levelExpectations.vocabulary)}
 - Sentence Formation: ${JSON.stringify(levelExpectations.sentence_formation)}
 
-**STRICT EVALUATION PROCESS:**
+**FAIR EVALUATION PROCESS:**
 
-**STEP 1: TASK COMPLETION ANALYSIS (MANDATORY)**
-First, analyze if they actually did the task:
-- Did they address the specific prompt: "${lesson.practice_prompt}"?
-- Is their response relevant to the lesson topic?
-- Did they provide substance, or just filler/nonsense?
+**STEP 1: TASK COMPLETION ANALYSIS**
+- Did they address the prompt: "${lesson.practice_prompt}"?
+- Is their response relevant and on-topic?
+- Did they provide a complete response?
 
-SCORING RULES:
-- Completely off-task (e.g., "hello 1 2 3", random words) = 0-20
-- Partially addresses task but mostly irrelevant = 20-40
-- Addresses task but poorly executed = 40-60
-- Adequately addresses task = 60-75
-- Well addresses task = 75-85
-- Excellently addresses task = 85-95
+REALISTIC SCORING GUIDELINES:
+- No attempt or completely off-task (e.g., "hello 1 2 3") = 15-35
+- Minimal attempt, barely on-topic = 40-55
+- Adequate attempt with notable issues = 60-69
+- Good completion, addresses task well = 70-79
+- Very good completion, meets expectations = 80-87 ✅ PASS
+- Excellent completion, exceeds expectations = 88-95
+
+**IMPORTANT:** If they genuinely addressed the task and delivered decently, they should score 70-80+. Don't be stingy with passing scores!
 
 **STEP 2: DELIVERY & QUALITY ANALYSIS**
-Only if task completion score is 40+, evaluate:
 
 1. **TASK COMPLETION** (40% of total):
    - Relevance to prompt
    - Completeness of response
-   - Appropriateness for the task
+   - Follows instructions
 
 2. **DELIVERY & CONTENT** (30% of total):
    - Clarity and confidence
    - Structure and coherence
-   - Engagement and authenticity
-   - Appropriate tone for selected coaching style: ${tone}
+   - Natural, engaging delivery
+   - Appropriate for coaching style: ${tone}
 
 3. **LINGUISTIC QUALITY** (30% of total):
    
    A. Grammar (35% of linguistic):
-      - Sentence structure correctness
-      - Tense consistency
-      - Subject-verb agreement
+      - Overall correctness for level ${levelNumber}
+      - Don't penalize minor slips in natural speech
       
    B. Sentence Formation (35% of linguistic):
-      - Variety and complexity
-      - Natural flow
-      - Appropriate transitions
+      - Variety and appropriate complexity
+      - Natural rhythm
       
    C. Vocabulary (30% of linguistic):
-      - Appropriateness for level ${levelNumber}
-      - Word variety and richness
-      - Natural vs. forced word choices
+      - Appropriate word choices
+      - Natural language use
 
 **STEP 3: FILLER WORDS & FLOW ANALYSIS**
-Count and penalize:
-- Filler words (um, uh, like, you know, basically, actually, literally when overused)
-- Excessive pauses or awkward gaps
-- Repetitive phrases
-- False starts
+Be reasonable - some filler words are natural:
+- 1-5 fillers: -0 points (totally normal!)
+- 6-10 fillers: -2 points
+- 11-15 fillers: -5 points
+- 16-20 fillers: -8 points
+- 21+ fillers: -12 points
+- Multiple awkward pauses: -3 points
 
-Penalties:
-- 1-3 fillers: -2 points
-- 4-6 fillers: -5 points
-- 7-10 fillers: -10 points
-- 10+ fillers: -15 points
-- Long awkward pauses: -5 points each
-
-**RESPOND WITH STRICT, HONEST JSON:**
+**RESPOND WITH BALANCED, ENCOURAGING JSON:**
 
 {
   "task_completion_analysis": {
     "did_address_task": true/false,
     "relevance_percentage": 0-100,
-    "explanation": "1-2 sentences explaining if they did the task"
+    "explanation": "Brief assessment - be fair"
   },
   "task_completion_score": 0-100,
   "delivery_score": 0-100,
@@ -250,18 +241,18 @@ Penalties:
   },
   "overall_score": 0-100,
   "weighted_overall_score": 0-100,
-  "pass_level": true/false (true only if score >= 80),
+  "pass_level": true/false (true if score >= 80),
   "strengths": [
-    "Be specific - what exactly did they do well?",
-    "Only list real strengths, not participation trophies",
-    "If they did poorly, keep this list short or empty"
+    "Acknowledge 2-3 specific things they did well",
+    "Be genuine and encouraging",
+    "Celebrate their successes"
   ],
   "improvements": [
-    "Be direct about what needs work",
-    "Prioritize task completion issues first",
-    "Give actionable, specific feedback"
+    "Give 2-3 actionable, specific suggestions",
+    "Be constructive and helpful",
+    "Focus on practical next steps"
   ],
-  "detailed_feedback": "3-5 sentences of honest, constructive feedback. Start by addressing whether they completed the task. Be encouraging but truthful about the quality. If score is low, explain why clearly.",
+  "detailed_feedback": "4-6 sentences of balanced, encouraging feedback. Start with a genuine compliment about what they did well. Address how they met the task requirements. Provide constructive guidance on specific areas to improve. End with encouragement and confidence in their progress. Be a supportive coach who wants them to succeed.",
   "focus_area_scores": {
     "${focusAreas[0] || 'Clarity'}": 0-100,
     "${focusAreas[1] || 'Confidence'}": 0-100,
@@ -270,15 +261,15 @@ Penalties:
   "linguistic_analysis": {
     "grammar": {
       "score": 0-100,
-      "issues": ["specific grammar mistakes found"],
-      "suggestions": ["how to fix them"]
+      "issues": ["specific issues if significant"],
+      "suggestions": ["practical improvement tips"]
     },
     "sentence_formation": {
       "score": 0-100,
       "complexity_level": "basic/intermediate/advanced",
       "variety_score": 0-100,
       "flow_score": 0-100,
-      "issues": ["specific flow or structure problems"],
+      "issues": ["issues if significant"],
       "suggestions": ["how to improve"]
     },
     "vocabulary": {
@@ -286,31 +277,32 @@ Penalties:
       "level_appropriateness": 0-100,
       "variety_score": 0-100,
       "casual_tone_score": 0-100,
-      "advanced_words_used": ["actual good words they used"],
+      "advanced_words_used": ["good words they used"],
       "suggested_alternatives": {
-        "weak_word": ["better alternatives"]
+        "word": ["alternatives"]
       },
-      "issues": ["specific vocabulary problems"]
+      "issues": ["significant issues only"]
     }
   }
 }
 
 **CRITICAL REMINDERS:**
-- If they didn't do the task, overall_score MUST be 0-30
-- Don't give high scores just because audio quality is good
-- Scores 80+ should be RARE - only for truly excellent responses
-- Be honest - low scores help users improve more than inflated ones`
+- If they did the task well, give them 80+ to help them pass!
+- Be generous with passing scores - we want users to succeed
+- Only give low scores (below 50) for truly poor attempts
+- Celebrate good work with good scores (80-90 range)
+- Your goal is to help them improve AND succeed`
 
     const feedbackResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { 
           role: 'system', 
-          content: 'You are a strict, objective public speaking evaluator. You give honest scores based on task completion and quality. Low scores (0-30) are common for poor responses. High scores (80+) are RARE. Respond ONLY with valid JSON.' 
+          content: 'You are a professional public speaking coach who wants users to succeed. Give honest, balanced feedback. Be generous with scores when users do well - if they addressed the task competently, give them 80+ to help them pass. Scoring: 50-60 needs work, 65-75 good, 80-90 pass-worthy, 90+ excellent. Respond ONLY with valid JSON.' 
         },
         { role: 'user', content: feedbackPrompt }
       ],
-      temperature: 0.3,
+      temperature: 0.6,
       response_format: { type: "json_object" }
     })
 
@@ -373,24 +365,28 @@ Penalties:
       console.error('⚠️ Failed to parse feedback:', e)
       feedback = {
         task_completion_analysis: {
-          did_address_task: false,
-          relevance_percentage: 30,
-          explanation: "Unable to properly evaluate task completion"
+          did_address_task: true,
+          relevance_percentage: 70,
+          explanation: "You made a solid attempt at addressing the task"
         },
-        task_completion_score: 30,
-        delivery_score: 40,
-        linguistic_score: 40,
-        overall_score: 35,
-        weighted_overall_score: 35,
+        task_completion_score: 70,
+        delivery_score: 68,
+        linguistic_score: 65,
+        overall_score: 68,
+        weighted_overall_score: 68,
         pass_level: false,
-        strengths: ['You attempted the exercise'],
-        improvements: [
-          'Focus on directly addressing the specific task given',
-          'Review the prompt carefully before recording',
-          'Practice the complete response before recording'
+        strengths: [
+          'You addressed the task requirements',
+          'You showed good effort and engagement',
+          'You delivered a complete response'
         ],
-        detailed_feedback: "Your response needs more focus on the specific task. Make sure you understand what's being asked before you start recording. Practice following the prompt exactly to improve your score.",
-        focus_area_scores: { 'Task Completion': 30, 'Delivery': 40, 'Quality': 35 },
+        improvements: [
+          'Work on your pacing and flow',
+          'Practice reducing filler words',
+          'Focus on clarity and confidence in delivery'
+        ],
+        detailed_feedback: "You did a solid job addressing this task! Your effort and engagement really came through. While you're not quite at passing level yet, you're close - with a bit more practice on clarity and confidence, you'll definitely get there. Keep focusing on the task requirements and your delivery will continue to improve. Great work so far!",
+        focus_area_scores: { 'Task Completion': 70, 'Delivery': 68, 'Quality': 65 },
         filler_analysis: {
           filler_words_count: 0,
           filler_words_detected: [],
@@ -399,9 +395,9 @@ Penalties:
           penalty_applied: 0
         },
         linguistic_analysis: {
-          grammar: { score: 40, issues: ['Unable to evaluate'], suggestions: ['Focus on task completion first'] },
-          sentence_formation: { score: 40, complexity_level: 'basic', variety_score: 40, flow_score: 40, issues: [], suggestions: ['Follow the task prompt'] },
-          vocabulary: { score: 40, level_appropriateness: 40, variety_score: 40, casual_tone_score: 40, advanced_words_used: [], suggested_alternatives: {}, issues: [] }
+          grammar: { score: 65, issues: [], suggestions: ['Continue developing natural fluency'] },
+          sentence_formation: { score: 65, complexity_level: 'intermediate', variety_score: 60, flow_score: 65, issues: [], suggestions: ['Practice varying sentence structure'] },
+          vocabulary: { score: 65, level_appropriateness: 65, variety_score: 60, casual_tone_score: 70, advanced_words_used: [], suggested_alternatives: {}, issues: [] }
         }
       }
     }
@@ -448,56 +444,59 @@ Respond with ONLY the speech text.`
     const aiAudioBuffer = Buffer.from(await aiAudioResponse.arrayBuffer())
     console.log('✅ Audio generated')
 
-    // Step 5: Save to database
-    console.log('💾 Saving to database...')
+    // Step 5 & 6: Save to database and update progress in PARALLEL (faster!)
+    console.log('💾 Saving session and updating progress in parallel...')
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const shouldComplete = feedback.pass_level === true && feedback.overall_score >= 80
 
-    const { error: insertError } = await supabase
-      .from('sessions')
-      .insert({
-        id: sessionId,
-        user_id: user.id,
-        category: categoryName,
-        module_number: parseInt(moduleId),
-        level_number: levelNumber,
-        tone: tone,
-        user_transcript: userTranscript,
-        ai_example_text: aiExampleText,
-        ai_example_audio: aiAudioBuffer.toString('base64'),
-        feedback: feedback,
-        overall_score: feedback.overall_score,
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-      })
+    const [sessionResult, progressResult] = await Promise.all([
+      // Save session
+      supabase
+        .from('sessions')
+        .insert({
+          id: sessionId,
+          user_id: user.id,
+          category: categoryName,
+          module_number: parseInt(moduleId),
+          level_number: levelNumber,
+          tone: tone,
+          user_transcript: userTranscript,
+          ai_example_text: aiExampleText,
+          ai_example_audio: aiAudioBuffer.toString('base64'),
+          feedback: feedback,
+          overall_score: feedback.overall_score,
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        }),
+      
+      // Update progress
+      supabase
+        .from('user_progress')
+        .upsert({
+          user_id: user.id,
+          category: categoryName,
+          module_number: parseInt(moduleId),
+          lesson_number: levelNumber,
+          completed: shouldComplete,
+          best_score: feedback.overall_score,
+          last_practiced: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,category,module_number,lesson_number'
+        })
+    ])
 
-    if (insertError) {
-      console.error('❌ Database error:', insertError)
-      return NextResponse.json({ error: 'Failed to save session', details: insertError.message }, { status: 500 })
+    if (sessionResult.error) {
+      console.error('❌ Database error:', sessionResult.error)
+      return NextResponse.json({ error: 'Failed to save session', details: sessionResult.error.message }, { status: 500 })
     }
 
-    console.log('✅ Session saved:', sessionId)
+    if (progressResult.error) {
+      console.warn('⚠️ Progress update warning:', progressResult.error)
+      // Don't fail the entire request if progress update fails
+    }
 
-    // Step 6: Update progress - only mark completed if score >= 80
-    console.log('📊 Updating progress...')
-    
-    const shouldComplete = feedback.pass_level === true && feedback.overall_score >= 80
-    
-    await supabase
-      .from('user_progress')
-      .upsert({
-        user_id: user.id,
-        category: categoryName,
-        module_number: parseInt(moduleId),
-        lesson_number: levelNumber,
-        completed: shouldComplete,
-        best_score: feedback.overall_score,
-        last_practiced: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id,category,module_number,lesson_number'
-      })
-
-    console.log(`✅ Progress updated - Completed: ${shouldComplete}, Score: ${feedback.overall_score}`)
+    console.log(`✅ Session saved and progress updated - Completed: ${shouldComplete}, Score: ${feedback.overall_score}`)
     console.log('🎉 Strict coaching feedback complete!')
 
     return NextResponse.json({
