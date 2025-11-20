@@ -113,43 +113,37 @@ export default async function DashboardPage() {
       id: 'public-speaking',
       name: 'Public Speaking',
       description: 'Master presentations, speeches, and public events',
-      icon: '🎤',
-      gradient: 'from-purple-500 to-indigo-600'
+      icon: '🎤'
     },
     {
       id: 'storytelling',
       name: 'Storytelling',
       description: 'Craft compelling narratives that captivate audiences',
-      icon: '📖',
-      gradient: 'from-pink-500 to-rose-600'
+      icon: '📖'
     },
     {
       id: 'creator-speaking',
       name: 'Creator Speaking',
       description: 'Engage with your audience through video content',
-      icon: '🎥',
-      gradient: 'from-orange-500 to-red-600'
+      icon: '🎥'
     },
     {
       id: 'casual-conversation',
       name: 'Casual Conversation',
       description: 'Build confidence in everyday social interactions',
-      icon: '💬',
-      gradient: 'from-blue-500 to-cyan-600'
+      icon: '💬'
     },
     {
       id: 'workplace-communication',
       name: 'Workplace Communication',
       description: 'Excel in meetings, presentations, and team discussions',
-      icon: '💼',
-      gradient: 'from-green-500 to-emerald-600'
+      icon: '💼'
     },
     {
       id: 'pitch-anything',
       name: 'Pitch Anything',
       description: 'Master the art of persuasive pitching in any context',
-      icon: '💰',
-      gradient: 'from-yellow-500 to-amber-600'
+      icon: '💰'
     }
   ]
 
@@ -351,7 +345,7 @@ export default async function DashboardPage() {
 
       {/* Main Content - glassmorphism container */}
       <div className="flex-1 min-h-screen flex flex-col">
-        {/* Header bar for mobile/small screens - Updated to match theme */}
+        {/* Header bar for mobile/small screens */}
         <header className="md:hidden flex items-center justify-between bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border-b border-slate-200/70 px-4 py-4 shadow-lg z-10 sticky top-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-md">
@@ -428,7 +422,7 @@ export default async function DashboardPage() {
 
             {/* Analytics Cards - Row 2: New analytics (4 cards) */}
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
-              {/* Current Streak - Formula: Count consecutive days with sessions from today backwards */}
+              {/* Current Streak */}
               <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-100 to-red-100 flex items-center justify-center">
                   <span className="text-2xl">🔥</span>
@@ -438,7 +432,7 @@ export default async function DashboardPage() {
                   <div className="text-slate-500">{currentStreak} day{currentStreak !== 1 ? 's' : ''}</div>
                 </div>
               </div>
-              {/* This Week's Activity - Formula: Count sessions from start of week / goal of 7 lessons */}
+              {/* This Week's Activity */}
               <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl hover:scale-[1.01] transition-transform duration-200">
                 <div className="flex items-center gap-4 mb-3">
                   <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
@@ -456,7 +450,7 @@ export default async function DashboardPage() {
                   />
                 </div>
               </div>
-              {/* Score Trend - Formula: Compare average of first half vs second half of recent sessions */}
+              {/* Score Trend */}
               <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
                   {scoreTrend.trend === 1 ? (
@@ -480,7 +474,7 @@ export default async function DashboardPage() {
                   </div>
                 </div>
               </div>
-              {/* Study Time - Formula: Weekly/Monthly sessions × 2.5 minutes average per session */}
+              {/* Study Time */}
               <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center">
                   <span className="text-2xl">⏱️</span>
@@ -493,7 +487,7 @@ export default async function DashboardPage() {
               </div>
             </section>
 
-            {/* Categories Grid */}
+            {/* Categories Grid - Professional Glassmorphism */}
             <section>
               <h3 className="text-2xl font-bold text-slate-900 mb-6">
                 Choose Your Practice Category
@@ -505,58 +499,80 @@ export default async function DashboardPage() {
                     href={`/category/${category.id}/tone`}
                     className="group focus:outline-none"
                   >
-                    {/* Glassmorphic Card */}
-                    <div className="relative bg-white/70 dark:bg-slate-900/60 border border-white/30 shadow-xl rounded-xl md:rounded-2xl hover:shadow-2xl group-hover:scale-[1.02] active:scale-[1.01] transition-all duration-200 overflow-hidden glass-card backdrop-blur-xl"
-                      style={{
-                        boxShadow:
-                          `0 4px 24px -3px ${category.gradient.includes('purple') ? 'rgba(139,92,246,0.13)' : 'rgba(0,0,0,0.07)'}`
-                      }}
-                    >
-                      {/* HEADER */}
-                      <div className={`bg-gradient-to-br ${category.gradient} p-5 md:p-6 text-white`}>
-                        <div className="flex items-start justify-between mb-2 md:mb-4">
-                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white/20 animate-pulse" />
+                    {/* Professional Glassmorphic Card */}
+                    <div className="relative bg-white/80 backdrop-blur-xl border-2 border-purple-200/40 hover:border-indigo-300/60 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group-hover:scale-[1.02] category-card">
+                      {/* Subtle gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-purple-50/30 via-transparent to-indigo-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      
+                      {/* Content */}
+                      <div className="relative p-6">
+                        {/* Header with Icon */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100/80 to-indigo-100/80 backdrop-blur-sm flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300 icon-container">
+                            <span className="text-3xl category-icon">{category.icon}</span>
+                          </div>
                           {category.completionPercentage > 0 && (
-                            <div className="bg-white/20/80 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-bold">
+                            <div className="px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-sm border border-purple-200/50 text-sm font-bold text-purple-700 shadow-sm">
                               {category.completionPercentage}%
                             </div>
                           )}
                         </div>
-                        <h3 className="text-xl md:text-2xl font-bold mb-1 md:mb-2 drop-shadow-md">{category.name}</h3>
-                        <p className="text-white/90 text-xs md:text-sm">{category.description}</p>
-                      </div>
-                      {/* Body */}
-                      <div className="p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="flex flex-col items-center">
-                            <span className="text-2xl font-bold text-slate-900">
-                              {category.completedLessons}/{category.totalLessons}
-                            </span>
-                            <span className="text-xs text-slate-600">Lessons</span>
+
+                        {/* Title & Description */}
+                        <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-purple-700 transition-colors">
+                          {category.name}
+                        </h3>
+                        <p className="text-slate-600 text-sm mb-4 leading-relaxed">
+                          {category.description}
+                        </p>
+
+                        {/* Stats Row */}
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-purple-100/60 flex items-center justify-center">
+                              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                              </svg>
+                            </div>
+                            <div>
+                              <div className="text-xs text-slate-500">Lessons</div>
+                              <div className="text-sm font-bold text-slate-900">{category.completedLessons}/{category.totalLessons}</div>
+                            </div>
                           </div>
+                          
                           {category.bestScore > 0 && (
-                            <div className="flex flex-col items-center">
-                              <span className="text-2xl font-bold text-purple-600">
-                                {category.bestScore}
-                              </span>
-                              <span className="text-xs text-slate-600">Best Score</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-lg bg-indigo-100/60 flex items-center justify-center">
+                                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                                </svg>
+                              </div>
+                              <div>
+                                <div className="text-xs text-slate-500">Best</div>
+                                <div className="text-sm font-bold text-slate-900">{category.bestScore}</div>
+                              </div>
                             </div>
                           )}
                         </div>
+
                         {/* Progress Bar */}
-                        <div className="flex items-center">
-                          <div className="flex-1 h-2 bg-slate-200/70 rounded-full overflow-hidden">
+                        <div className="mb-4">
+                          <div className="w-full h-2 bg-slate-200/70 rounded-full overflow-hidden">
                             <div
-                              className={`h-full bg-gradient-to-r ${category.gradient} transition-all duration-700 rounded-full`}
+                              className="h-full bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full transition-all duration-700"
                               style={{ width: `${category.completionPercentage}%` }}
                             />
                           </div>
                         </div>
+
                         {/* Action Button */}
-                        <div className="mt-6">
-                          <div className={`w-full bg-gradient-to-r ${category.gradient} text-white px-6 py-3 rounded-lg font-semibold text-center group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all`}>
-                            {category.hasStarted ? 'Continue Learning →' : 'Start Learning →'}
-                          </div>
+                        <div className="flex items-center justify-between text-sm font-semibold">
+                          <span className="text-purple-700 group-hover:text-indigo-700 transition-colors">
+                            {category.hasStarted ? 'Continue Learning' : 'Start Learning'}
+                          </span>
+                          <svg className="w-5 h-5 text-purple-600 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
                         </div>
                       </div>
                     </div>
@@ -567,12 +583,17 @@ export default async function DashboardPage() {
 
             {/* Empty State for New Users */}
             {totalCompleted === 0 && (
-              <div className="mt-12 text-center bg-gradient-to-br from-purple-50/80 to-indigo-50/75 rounded-2xl p-12 glass-card shadow-lg border border-white/60 backdrop-blur">
-                <div className="text-6xl mb-4">🚀</div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">
+              <div className="mt-12 text-center bg-white/70 backdrop-blur-xl border-2 border-purple-200/40 rounded-2xl p-12 glass-card shadow-lg">
+                {/* Animated Sparkle Icon */}
+                <div className="inline-block mb-4 sparkle-icon">
+                  <svg className="w-16 h-16 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-3">
                   Ready to Start Your Journey?
                 </h3>
-                <p className="text-slate-600 text-lg max-w-2xl mx-auto">
+                <p className="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
                   Choose any category above to begin practicing. Each lesson takes just 1-2 minutes, 
                   and you'll get instant AI feedback to help you improve!
                 </p>
@@ -586,40 +607,53 @@ export default async function DashboardPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-3">
-                <span className="text-lg font-bold text-slate-900 hover:scale-110 transition-transform duration-300 cursor-default">
+                <span className="text-lg font-bold text-slate-900">
                   Locuta.ai
                 </span>
               </div>
-              <p className="text-slate-600 text-sm footer-text">
+              <p className="text-slate-600 text-sm">
                 © 2025 Locuta.ai. Elevate your voice.
               </p>
             </div>
           </div>
         </footer>
       </div>
-      <style>
-        {`
+      
+      <style jsx>{`
         .glass-card {
-          /* fallback for Safari (no backdrop-blur on background-clip:padding-box) */
           background-clip: padding-box !important;
-          box-shadow:0 4px 28px 0 rgba(51,57,83,0.09), 0 1.5px 5px 0 rgba(80,70,232,0.05);
+          box-shadow: 0 4px 28px 0 rgba(51,57,83,0.09), 0 1.5px 5px 0 rgba(80,70,232,0.05);
         }
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+        
+        .category-card {
+          position: relative;
         }
-        .footer-text {
-          animation: fadeInUp 1s ease-in-out 0.3s forwards;
-          opacity: 0;
+        
+        .category-icon {
+          transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        `}
-      </style>
+        
+        .category-card:hover .category-icon {
+          transform: scale(1.15) rotate(5deg);
+        }
+        
+        .icon-container {
+          transition: all 0.3s ease;
+        }
+        
+        .category-card:hover .icon-container {
+          transform: translateY(-2px);
+        }
+        
+        @keyframes sparkle {
+          0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+          50% { transform: scale(1.1) rotate(180deg); opacity: 0.8; }
+        }
+        
+        .sparkle-icon svg {
+          animation: sparkle 3s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   )
 }
