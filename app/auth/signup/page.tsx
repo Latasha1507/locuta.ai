@@ -6,17 +6,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Mixpanel from '@/lib/mixpanel';
 
-// After successful signup
-Mixpanel.identify(user.id);
-Mixpanel.people.set({
-  $email: user.email,
-  $name: user.user_metadata?.full_name,
-  'Sign up date': new Date().toISOString(),
-});
-Mixpanel.track('User Signed Up', {
-  method: 'google',
-});
-
 export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
