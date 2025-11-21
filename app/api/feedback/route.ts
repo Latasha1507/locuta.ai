@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import Mixpanel from '@/lib/mixpanel';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -137,16 +136,6 @@ export async function POST(request: NextRequest) {
 
     const userTranscript = transcription.text
     console.log('✅ Transcription:', userTranscript.substring(0, 100) + '...')
-    // Track audio recording event
-    Mixpanel.track('Audio Recorded', {
-      lesson_id: lesson.id,
-      lesson_title: lesson.level_title,
-      category: categoryName,
-      module_number: moduleId,
-      lesson_number: lessonId,
-      transcript_length: userTranscript.length,
-      coaching_style: tone
-    });
 
     // Step 2: Generate STRICT feedback with task completion validation
     console.log('💬 Generating strict coaching feedback...')
@@ -509,18 +498,6 @@ Respond with ONLY the speech text.`
 
     console.log(`✅ Session saved and progress updated - Completed: ${shouldComplete}, Score: ${feedback.overall_score}`)
     console.log('🎉 Strict coaching feedback complete!')
-    // Track lesson completion event
-    Mixpanel.track('Lesson Completed', {
-      lesson_id: lesson.id,
-      lesson_title: lesson.level_title,
-      category: categoryName,
-      module_number: moduleId,
-      lesson_number: lessonId,
-      score: feedback.overall_score,
-      passed: feedback.pass_level,
-      coaching_style: tone,
-      session_id: sessionId
-    });
     return NextResponse.json({
       success: true,
       sessionId: sessionId,
