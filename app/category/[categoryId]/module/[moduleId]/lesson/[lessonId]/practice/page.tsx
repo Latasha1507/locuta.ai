@@ -4,11 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mic, Square } from 'lucide-react'
-import { Mic, Square } from 'lucide-react'
-
 import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion } from '@/lib/analytics/helpers';
-import { EVENTS } from '@/lib/analytics/events';
-import Mixpanel from '@/lib/mixpanel';
 
 // Loader messages for LESSON INTRO
 const INTRO_LOADER_MESSAGES = [
@@ -136,22 +132,24 @@ export default function PracticePage() {
       setLessonTitle(data.lessonTitle || 'Lesson')
       setIsLoadingIntro(false)
       setStep('intro')
-      / 🎯 ADD THIS TRACKING:
-    trackLessonStart({
-      lessonId: lessonId,
-      lessonTitle: data.lessonTitle || 'Lesson',
-      category: categoryId,
-      moduleNumber: parseInt(moduleId),
-      lessonNumber: parseInt(lessonId),
-      coachingStyle: tone,
-      isFirstLesson: false
-    });
+      
+      trackLessonStart({
+        lessonId: lessonId,
+        lessonTitle: data.lessonTitle || 'Lesson',
+        category: categoryId,
+        moduleNumber: parseInt(moduleId),
+        lessonNumber: parseInt(lessonId),
+        coachingStyle: tone,
+        isFirstLesson: false
+      });
+      
     } catch (error) {
       console.error('Error loading intro:', error)
       setError('Failed to load lesson intro')
       setIsLoadingIntro(false)
     }
   }
+
   // Audio controls
   const playAudio = () => {
     if (audioRef.current && introAudio) {
@@ -223,12 +221,12 @@ export default function PracticePage() {
       mediaRecorder.start(100)
       setIsRecording(true)
       setRecordingTime(0)
-      // 🎯 ADD THIS TRACKING:
-    trackRecordingStart({
-      lessonId: lessonId,
-      attemptNumber: 1,
-      coachingStyle: tone
-    });
+      
+      trackRecordingStart({
+        lessonId: lessonId,
+        attemptNumber: 1,
+        coachingStyle: tone
+      });
 
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1)
@@ -244,13 +242,13 @@ export default function PracticePage() {
       mediaRecorderRef.current.stop()
       setIsRecording(false)
       if (timerRef.current) clearInterval(timerRef.current)
-    // 🎯 ADD THIS TRACKING:
-    trackRecordingStop({
-      lessonId: lessonId,
-      duration: recordingTime,
-      tooShort: recordingTime < 30,
-      tooLong: recordingTime > 120
-    });
+      
+      trackRecordingStop({
+        lessonId: lessonId,
+        duration: recordingTime,
+        tooShort: recordingTime < 30,
+        tooLong: recordingTime > 120
+      });
     }
   }
 
@@ -259,20 +257,17 @@ export default function PracticePage() {
     setRecordingTime(0)
   }
 
-  // IMPROVED: Submit with multiple-click prevention
   const submitRecording = async () => {
     if (!audioBlob) {
       setError('No recording to submit')
       return
     }
 
-    // CRITICAL: Prevent multiple simultaneous submissions
     if (submissionInProgressRef.current) {
       console.log('⚠️ Submission already in progress, ignoring click')
       return
     }
 
-    // Mark submission as in progress
     submissionInProgressRef.current = true
     setIsSubmitting(true)
     setError(null)
@@ -284,14 +279,14 @@ export default function PracticePage() {
       formData.append('categoryId', categoryId)
       formData.append('moduleId', moduleId)
       formData.append('lessonId', lessonId)
-      // 🎯 FIRST TRACKING: Audio submission
-    trackAudioSubmission({
-      lessonId: lessonId,
-      coachingStyle: tone,
-      duration: recordingTime,
-      attemptNumber: 1,
-      fileSize: audioBlob.size
-    });
+
+      trackAudioSubmission({
+        lessonId: lessonId,
+        coachingStyle: tone,
+        duration: recordingTime,
+        attemptNumber: 1,
+        fileSize: audioBlob.size
+      });
 
       console.log('Submitting recording with params:', {
         tone,
@@ -315,29 +310,27 @@ export default function PracticePage() {
 
       const data = await response.json()
       console.log('Feedback response:', data)
-      // 🎯 SECOND TRACKING: Lesson completion
-    trackLessonCompletion({
-      lessonId: lessonId,
-      lessonTitle: lessonTitle,
-      category: categoryId,
-      moduleNumber: parseInt(moduleId),
-      lessonNumber: parseInt(lessonId),
-      coachingStyle: tone,
-      overallScore: 0, // Will be updated on feedback page
-      passed: false, // Will be updated on feedback page
-      attempts: 1,
-      totalTime: recordingTime,
-      transcriptWordCount: 0, // Unknown at this point
-      fillerWordsCount: 0 // Unknown at this point
-    });
+      
+      trackLessonCompletion({
+        lessonId: lessonId,
+        lessonTitle: lessonTitle,
+        category: categoryId,
+        moduleNumber: parseInt(moduleId),
+        lessonNumber: parseInt(lessonId),
+        coachingStyle: tone,
+        overallScore: 0,
+        passed: false,
+        attempts: 1,
+        totalTime: recordingTime,
+        transcriptWordCount: 0,
+        fillerWordsCount: 0
+      });
 
-      // Navigate to feedback page
       router.push(`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/feedback?session=${data.sessionId}`)
     } catch (error) {
       console.error('Error submitting:', error)
       setError(error instanceof Error ? error.message : 'Failed to submit recording')
       
-      // Reset submission state on error so user can retry
       setIsSubmitting(false)
       submissionInProgressRef.current = false
     }
@@ -393,12 +386,10 @@ export default function PracticePage() {
           <div className="bg-white rounded-3xl shadow-2xl p-12 text-center">
             <div className="py-8">
               <div className="relative">
-                {/* Animated wave icon */}
                 <div className="text-6xl mb-6 inline-block animate-pulse">
                   🎵
                 </div>
                 
-                {/* Pulsing gradient orb */}
                 <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-24 h-24 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-20 animate-ping"></div>
               </div>
               
@@ -406,21 +397,18 @@ export default function PracticePage() {
                 Preparing Your Lesson
               </h2>
               
-              {/* Rotating intro loader messages */}
               <div className="h-8 overflow-hidden">
                 <p className="text-slate-600 text-lg animate-pulse transition-all duration-500">
                   {INTRO_LOADER_MESSAGES[currentLoaderMessage]}
                 </p>
               </div>
               
-              {/* Progress bar */}
               <div className="mt-8 max-w-md mx-auto">
                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                   <div className="h-full bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500 rounded-full animate-shimmer"></div>
                 </div>
               </div>
               
-              {/* Helper text */}
               <p className="text-slate-500 text-sm mt-6">
                 This usually takes 3-5 seconds
               </p>
@@ -435,9 +423,7 @@ export default function PracticePage() {
               <h2 className="text-3xl font-bold text-slate-900 mb-6">{lessonTitle}</h2>
 
               <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 mb-6">
-                {/* Audio Player Controls */}
                 <div className="mb-4">
-                  {/* Timeline */}
                   <div className="mb-4">
                     <input
                       type="range"
@@ -453,7 +439,6 @@ export default function PracticePage() {
                     </div>
                   </div>
 
-                  {/* Control Buttons */}
                   <div className="flex items-center justify-center gap-3">
                     <button 
                       onClick={skipBackward}
@@ -509,7 +494,6 @@ export default function PracticePage() {
         {/* RECORDING SCREEN */}
         {step === 'recording' && (
           <div className="space-y-6">
-            {/* Your Task Card */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg p-6 border-2 border-blue-200">
               <div className="flex items-start justify-between mb-4">
                 <h3 className="text-xl font-bold text-blue-900 flex items-center gap-2">
@@ -530,12 +514,10 @@ export default function PracticePage() {
               )}
             </div>
 
-            {/* Recording Card */}
             <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
               {!isRecording && !audioBlob && !isSubmitting && (
                 <>
                   <h2 className="text-3xl font-bold text-slate-900 mb-8">Ready to Record</h2>
-                  {/* Animated button with pulsing background */}
                   <div className="relative inline-block">
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full animate-pulse opacity-30 scale-110"></div>
                     <button onClick={startRecording}
@@ -550,7 +532,6 @@ export default function PracticePage() {
                 <>
                   <h2 className="text-3xl font-bold text-red-600 mb-4">Recording...</h2>
                   <div className="text-4xl font-bold text-slate-900 mb-8">{formatTime(recordingTime)}</div>
-                  {/* Animated stop button with ping effect */}
                   <div className="relative inline-block">
                     <div className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-40"></div>
                     <button onClick={stopRecording}
@@ -583,16 +564,13 @@ export default function PracticePage() {
                 </>
               )}
 
-              {/* FEEDBACK ANALYSIS LOADER */}
               {isSubmitting && (
                 <div className="py-8">
                   <div className="relative">
-                    {/* Animated thinking icon */}
                     <div className="text-6xl mb-6 inline-block animate-bounce">
                       🤔
                     </div>
                     
-                    {/* Pulsing gradient orb */}
                     <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-24 h-24 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-20 animate-ping"></div>
                   </div>
                   
@@ -600,21 +578,18 @@ export default function PracticePage() {
                     Analyzing Your Response
                   </h2>
                   
-                  {/* Rotating feedback loader messages */}
                   <div className="h-8 overflow-hidden">
                     <p className="text-slate-600 text-lg animate-pulse transition-all duration-500">
                       {FEEDBACK_LOADER_MESSAGES[currentLoaderMessage]}
                     </p>
                   </div>
                   
-                  {/* Progress bar */}
                   <div className="mt-8 max-w-md mx-auto">
                     <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500 rounded-full animate-shimmer"></div>
                     </div>
                   </div>
                   
-                  {/* Helper text */}
                   <p className="text-slate-500 text-sm mt-6">
                     This usually takes 5-10 seconds
                   </p>
