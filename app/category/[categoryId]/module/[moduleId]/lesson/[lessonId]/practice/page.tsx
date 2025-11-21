@@ -4,6 +4,11 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mic, Square } from 'lucide-react'
+import { Mic, Square } from 'lucide-react'
+
+import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion } from '@/lib/analytics/helpers';
+import { EVENTS } from '@/lib/analytics/events';
+import Mixpanel from '@/lib/mixpanel';
 
 // Loader messages for LESSON INTRO
 const INTRO_LOADER_MESSAGES = [
@@ -131,13 +136,22 @@ export default function PracticePage() {
       setLessonTitle(data.lessonTitle || 'Lesson')
       setIsLoadingIntro(false)
       setStep('intro')
+      / 🎯 ADD THIS TRACKING:
+    trackLessonStart({
+      lessonId: lessonId,
+      lessonTitle: data.lessonTitle || 'Lesson',
+      category: categoryId,
+      moduleNumber: parseInt(moduleId),
+      lessonNumber: parseInt(lessonId),
+      coachingStyle: tone,
+      isFirstLesson: false
+    });
     } catch (error) {
       console.error('Error loading intro:', error)
       setError('Failed to load lesson intro')
       setIsLoadingIntro(false)
     }
   }
-
   // Audio controls
   const playAudio = () => {
     if (audioRef.current && introAudio) {
@@ -209,6 +223,12 @@ export default function PracticePage() {
       mediaRecorder.start(100)
       setIsRecording(true)
       setRecordingTime(0)
+      // 🎯 ADD THIS TRACKING:
+    trackRecordingStart({
+      lessonId: lessonId,
+      attemptNumber: 1,
+      coachingStyle: tone
+    });
 
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1)
@@ -224,6 +244,13 @@ export default function PracticePage() {
       mediaRecorderRef.current.stop()
       setIsRecording(false)
       if (timerRef.current) clearInterval(timerRef.current)
+    // 🎯 ADD THIS TRACKING:
+    trackRecordingStop({
+      lessonId: lessonId,
+      duration: recordingTime,
+      tooShort: recordingTime < 30,
+      tooLong: recordingTime > 120
+    });
     }
   }
 
@@ -257,6 +284,14 @@ export default function PracticePage() {
       formData.append('categoryId', categoryId)
       formData.append('moduleId', moduleId)
       formData.append('lessonId', lessonId)
+      // 🎯 FIRST TRACKING: Audio submission
+    trackAudioSubmission({
+      lessonId: lessonId,
+      coachingStyle: tone,
+      duration: recordingTime,
+      attemptNumber: 1,
+      fileSize: audioBlob.size
+    });
 
       console.log('Submitting recording with params:', {
         tone,
@@ -280,6 +315,21 @@ export default function PracticePage() {
 
       const data = await response.json()
       console.log('Feedback response:', data)
+      // 🎯 SECOND TRACKING: Lesson completion
+    trackLessonCompletion({
+      lessonId: lessonId,
+      lessonTitle: lessonTitle,
+      category: categoryId,
+      moduleNumber: parseInt(moduleId),
+      lessonNumber: parseInt(lessonId),
+      coachingStyle: tone,
+      overallScore: 0, // Will be updated on feedback page
+      passed: false, // Will be updated on feedback page
+      attempts: 1,
+      totalTime: recordingTime,
+      transcriptWordCount: 0, // Unknown at this point
+      fillerWordsCount: 0 // Unknown at this point
+    });
 
       // Navigate to feedback page
       router.push(`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/feedback?session=${data.sessionId}`)
