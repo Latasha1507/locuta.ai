@@ -1,10 +1,8 @@
-'use client';
-
-import Mixpanel from '@/lib/mixpanel';
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import ToneSelector from '@/components/ToneSelector';
 
 const categoryMap: { [key: string]: string } = {
   'public-speaking': 'Public Speaking',
@@ -14,7 +12,6 @@ const categoryMap: { [key: string]: string } = {
   'workplace-communication': 'Workplace Communication',
   'pitch-anything': 'Pitch Anything',
 }
-
 // Updated tone configuration with new voices
 const tones = [
   {
@@ -182,50 +179,14 @@ export default async function LessonToneSelectionPage({
             Select how you'd like your AI coach to communicate with you during this lesson
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tones.map((tone) => (
-  <Link
-    key={tone.id}
-    href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${tone.id}`}
-    onClick={() => {
-      Mixpanel.track('Lesson Started', {
-        lesson_id: lesson.id,
-        lesson_title: lesson.level_title,
-        category: categoryName,
-        module_number: moduleId,
-        lesson_number: lessonId,
-        coaching_style: tone.id
-      });
-    }}
-    className={`bg-gradient-to-br ${tone.bgGradient} border-2 border-${tone.borderGradient.split(' ')[0].replace('from-', '')} rounded-2xl p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl block`}
-  >
-                <div className="text-4xl mb-3">{tone.icon}</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  {tone.name}
-                </h3>
-                <p className="text-sm text-gray-700 leading-relaxed mb-4">
-                  {tone.description}
-                </p>
-                <div className="flex items-center text-purple-600 font-semibold text-sm">
-                  <span>Start with {tone.name}</span>
-                  <svg
-                    className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
+          <ToneSelector
+            tones={tones}
+            categoryId={categoryId}
+            moduleId={moduleId}
+            lessonId={lessonId}
+            lesson={lesson}
+            categoryName={categoryName}
+          />
 
         {/* Tips Section */}
         <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">

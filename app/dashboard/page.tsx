@@ -1,15 +1,23 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
+'use client';
+
+import { createClient } from '@/lib/supabase/client';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import Mixpanel from '@/lib/mixpanel';
+import { useEffect, useState } from 'react';
 
 export default function DashboardPage() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const identifyUser = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
+        setUser(user);
+        
         // Identify user in Mixpanel
         Mixpanel.identify(user.id);
         
@@ -25,14 +33,19 @@ export default function DashboardPage() {
         Mixpanel.track('User Logged In', {
           method: 'google',
         });
+      } else {
+        redirect('/auth/login');
       }
+      
+      setLoading(false);
     };
 
     identifyUser();
   }, []);
 
-  // ... rest of your dashboard code
-}
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 /**
  * Minimal inline animated radial chart for % progress (compatible with SSR – doesn't use browser-only APIs)
  */
