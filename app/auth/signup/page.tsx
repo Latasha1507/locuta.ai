@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Mixpanel from '@/lib/mixpanel';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
