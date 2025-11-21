@@ -1,7 +1,38 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import Mixpanel from '@/lib/mixpanel';
 
+export default function DashboardPage() {
+  useEffect(() => {
+    const identifyUser = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Identify user in Mixpanel
+        Mixpanel.identify(user.id);
+        
+        // Set user properties
+        Mixpanel.people.set({
+          $email: user.email,
+          $name: user.user_metadata?.full_name || user.email,
+          'Sign up date': user.created_at,
+          'Last login': new Date().toISOString(),
+        });
+
+        // Track login event
+        Mixpanel.track('User Logged In', {
+          method: 'google',
+        });
+      }
+    };
+
+    identifyUser();
+  }, []);
+
+  // ... rest of your dashboard code
+}
 /**
  * Minimal inline animated radial chart for % progress (compatible with SSR – doesn't use browser-only APIs)
  */

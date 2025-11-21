@@ -1,3 +1,6 @@
+'use client';
+
+import Mixpanel from '@/lib/mixpanel';
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -180,12 +183,22 @@ export default async function LessonToneSelectionPage({
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tones.map((tone) => (
-              <Link
-                key={tone.id}
-                href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${tone.id}`}
-                className={`bg-gradient-to-br ${tone.bgGradient} border-2 border-${tone.borderGradient.split(' ')[0].replace('from-', '')} rounded-2xl p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl block`}
-              >
+          {tones.map((tone) => (
+  <Link
+    key={tone.id}
+    href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${tone.id}`}
+    onClick={() => {
+      Mixpanel.track('Lesson Started', {
+        lesson_id: lesson.id,
+        lesson_title: lesson.level_title,
+        category: categoryName,
+        module_number: moduleId,
+        lesson_number: lessonId,
+        coaching_style: tone.id
+      });
+    }}
+    className={`bg-gradient-to-br ${tone.bgGradient} border-2 border-${tone.borderGradient.split(' ')[0].replace('from-', '')} rounded-2xl p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl block`}
+  >
                 <div className="text-4xl mb-3">{tone.icon}</div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
                   {tone.name}
