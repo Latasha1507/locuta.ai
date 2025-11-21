@@ -187,7 +187,7 @@ export default async function LessonToneSelectionPage({
             lesson={lesson}
             categoryName={categoryName}
           />
-
+        </div> 
         {/* Tips Section */}
         <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
           <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
