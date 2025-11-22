@@ -4,9 +4,9 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mic, Square } from 'lucide-react'
-import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion } from '@/lib/analytics/helpers';
+import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion, trackError } from '@/lib/analytics/helpers';
 import Mixpanel from '@/lib/mixpanel';
-import { trackError } from '@/lib/analytics/helpers';
+
 // Loader messages for LESSON INTRO
 const INTRO_LOADER_MESSAGES = [
   'Personalizing your lesson...',
@@ -51,10 +51,9 @@ export default function PracticePage() {
   const [showInstructions, setShowInstructions] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentLoaderMessage, setCurrentLoaderMessage] = useState(0)
-  const [introStartTime, setIntroStartTime] = useState<number>(0);
-  const [hasStartedRecording, setHasStartedRecording] = useState(false);
-  const [recordingStartTime, setRecordingStartTime] = useState<number>(0);
-
+  const [introStartTime, setIntroStartTime] = useState<number>(0)
+  const [hasStartedRecording, setHasStartedRecording] = useState(false)
+  const [recordingStartTime, setRecordingStartTime] = useState<number>(0)
   
   // Audio player states
   const [currentTime, setCurrentTime] = useState(0)
@@ -65,11 +64,9 @@ export default function PracticePage() {
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const loaderTimerRef = useRef<NodeJS.Timeout | null>(null)
-  
-  // CRITICAL: Prevent multiple simultaneous submissions
   const submissionInProgressRef = useRef(false)
-}
-  // Animated loader effect - different messages for intro vs feedback
+
+  // Animated loader effect
   useEffect(() => {
     if (isLoadingIntro) {
       setCurrentLoaderMessage(0)
@@ -114,6 +111,39 @@ export default function PracticePage() {
     }
   }, [introAudio])
 
+  // Track page abandonment
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (step === 'intro' && !hasStartedRecording && introStartTime > 0) {
+        const timeSpent = Math.round((Date.now() - introStartTime) / 1000);
+        Mixpanel.track('Lesson Abandoned', {
+          lesson_id: lessonId,
+          category: categoryId,
+          stage: 'intro_viewed',
+          time_spent_seconds: timeSpent,
+          coaching_style: tone
+        });
+      }
+      
+      if (step === 'recording' && isRecording && recordingStartTime > 0) {
+        const timeSpent = Math.round((Date.now() - recordingStartTime) / 1000);
+        Mixpanel.track('Recording Abandoned', {
+          lesson_id: lessonId,
+          category: categoryId,
+          duration_seconds: recordingTime,
+          time_spent_seconds: timeSpent,
+          coaching_style: tone
+        });
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [step, hasStartedRecording, introStartTime, isRecording, recordingTime, recordingStartTime, lessonId, categoryId, tone]);
+
   const loadIntro = async () => {
     setError(null)
     setIsLoadingIntro(true)
@@ -137,7 +167,7 @@ export default function PracticePage() {
       setLessonTitle(data.lessonTitle || 'Lesson')
       setIsLoadingIntro(false)
       setStep('intro')
-      setIntroStartTime(Date.now()); // TRACK INTRO START
+      setIntroStartTime(Date.now());
       
       trackLessonStart({
         lessonId: lessonId,
@@ -155,75 +185,13 @@ export default function PracticePage() {
       setIsLoadingIntro(false)
     }
   }
-    // In startRecording - mark that recording started:
-    const startRecording = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        const mediaRecorder = new MediaRecorder(stream)
-        mediaRecorderRef.current = mediaRecorder
-        chunksRef.current = []
-    
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) chunksRef.current.push(e.data)
-        }
-    
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-          setAudioBlob(blob)
-          stream.getTracks().forEach(track => track.stop())
-        }
-    
-        mediaRecorder.start(100)
-        setIsRecording(true)
-        setRecordingTime(0)
-        setHasStartedRecording(true);
-        setRecordingStartTime(Date.now());
-        
-        trackRecordingStart({
-          lessonId: lessonId,
-          attemptNumber: 1,
-          coachingStyle: tone
-        });
-    
-        timerRef.current = setInterval(() => {
-          setRecordingTime(prev => prev + 1)
-        }, 1000)
-      } catch (error) {
-        console.error('Error starting recording:', error)
-        
-        let errorType = 'recording_failed';
-        let errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        
-        if (errorMessage.includes('Permission denied') || errorMessage.includes('NotAllowedError')) {
-          errorType = 'microphone_permission_denied';
-        } else if (errorMessage.includes('NotFoundError')) {
-          errorType = 'microphone_not_found';
-        } else if (errorMessage.includes('NotReadableError')) {
-          errorType = 'microphone_already_in_use';
-        }
-        
-        trackError({
-          errorType: errorType,
-          errorMessage: errorMessage,
-          context: {
-            lesson_id: lessonId,
-            category: categoryId,
-            browser: navigator.userAgent,
-            has_microphone: navigator.mediaDevices ? 'yes' : 'no'
-          }
-        });
-        
-        setError('Failed to access microphone. Please check your permissions.')
-      }
+
+  const playAudio = () => {
+    if (audioRef.current && introAudio) {
+      audioRef.current.play()
+      setIsPlaying(true)
     }
-    
-    // Audio controls
-    const playAudio = () => {
-      if (audioRef.current && introAudio) {
-        audioRef.current.play()
-        setIsPlaying(true)
-      }
-    }
+  }
 
   const pauseAudio = () => {
     if (audioRef.current) {
@@ -265,6 +233,19 @@ export default function PracticePage() {
       audioRef.current.pause()
     }
     setIsPlaying(false)
+    
+    const timeSpent = Math.round((Date.now() - introStartTime) / 1000);
+    const listenedFully = audioRef.current ? audioRef.current.currentTime >= duration * 0.9 : false;
+    
+    Mixpanel.track('Intro Skipped', {
+      lesson_id: lessonId,
+      category: categoryId,
+      time_spent_seconds: timeSpent,
+      listened_fully: listenedFully,
+      listen_percentage: audioRef.current ? Math.round((audioRef.current.currentTime / duration) * 100) : 0,
+      coaching_style: tone
+    });
+    
     setStep('recording')
   }
 
@@ -288,9 +269,9 @@ export default function PracticePage() {
       mediaRecorder.start(100)
       setIsRecording(true)
       setRecordingTime(0)
-      setHasStartedRecording(true); // MARK AS STARTED
-      setRecordingStartTime(Date.now()); // TRACK START TIME
-
+      setHasStartedRecording(true);
+      setRecordingStartTime(Date.now());
+      
       trackRecordingStart({
         lessonId: lessonId,
         attemptNumber: 1,
@@ -302,89 +283,33 @@ export default function PracticePage() {
       }, 1000)
     } catch (error) {
       console.error('Error starting recording:', error)
-      // ENHANCED ERROR TRACKING
-    let errorType = 'recording_failed';
-    let errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
-    if (errorMessage.includes('Permission denied') || errorMessage.includes('NotAllowedError')) {
-      errorType = 'microphone_permission_denied';
-    } else if (errorMessage.includes('NotFoundError')) {
-      errorType = 'microphone_not_found';
-    } else if (errorMessage.includes('NotReadableError')) {
-      errorType = 'microphone_already_in_use';
-    }
-    
-    trackError({
-      errorType: errorType,
-      errorMessage: errorMessage,
-      context: {
-        lesson_id: lessonId,
-        category: categoryId,
-        browser: navigator.userAgent,
-        has_microphone: navigator.mediaDevices ? 'yes' : 'no'
+      
+      let errorType = 'recording_failed';
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      if (errorMessage.includes('Permission denied') || errorMessage.includes('NotAllowedError')) {
+        errorType = 'microphone_permission_denied';
+      } else if (errorMessage.includes('NotFoundError')) {
+        errorType = 'microphone_not_found';
+      } else if (errorMessage.includes('NotReadableError')) {
+        errorType = 'microphone_already_in_use';
       }
-    });
-    
-    setError('Failed to access microphone. Please check your permissions.')
+      
+      trackError({
+        errorType: errorType,
+        errorMessage: errorMessage,
+        context: {
+          lesson_id: lessonId,
+          category: categoryId,
+          browser: navigator.userAgent,
+          has_microphone: navigator.mediaDevices ? 'yes' : 'no'
+        }
+      });
+      
+      setError('Failed to access microphone. Please check your permissions.')
+    }
   }
-}
-// ADD THIS NEW USEEFFECT - Track page abandonment
-useEffect(() => {
-  const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-    // Track abandonment at intro stage
-    if (step === 'intro' && !hasStartedRecording && introStartTime > 0) {
-      const timeSpent = Math.round((Date.now() - introStartTime) / 1000);
-      Mixpanel.track('Lesson Abandoned', {
-        lesson_id: lessonId,
-        category: categoryId,
-        stage: 'intro_viewed',
-        time_spent_seconds: timeSpent,
-        coaching_style: tone
-      });
-    }
-    
-    // Track abandonment during recording
-    if (step === 'recording' && isRecording && recordingStartTime > 0) {
-      const timeSpent = Math.round((Date.now() - recordingStartTime) / 1000);
-      Mixpanel.track('Recording Abandoned', {
-        lesson_id: lessonId,
-        category: categoryId,
-        duration_seconds: recordingTime,
-        time_spent_seconds: timeSpent,
-        coaching_style: tone
-      });
-    }
-  };
-  
-  window.addEventListener('beforeunload', handleBeforeUnload);
-  
-  return () => {
-    window.removeEventListener('beforeunload', handleBeforeUnload);
-  };
-}, [step, hasStartedRecording, introStartTime, isRecording, recordingTime, recordingStartTime, lessonId, categoryId, tone]);
 
-// Track when user skips intro without listening fully
-const skipToRecording = () => {
-  if (audioRef.current) {
-    audioRef.current.pause()
-  }
-  setIsPlaying(false)
-  
-  // TRACK INTRO SKIP
-  const timeSpent = Math.round((Date.now() - introStartTime) / 1000);
-  const listenedFully = audioRef.current ? audioRef.current.currentTime >= duration * 0.9 : false;
-  
-  Mixpanel.track('Intro Skipped', {
-    lesson_id: lessonId,
-    category: categoryId,
-    time_spent_seconds: timeSpent,
-    listened_fully: listenedFully,
-    listen_percentage: audioRef.current ? Math.round((audioRef.current.currentTime / duration) * 100) : 0,
-    coaching_style: tone
-  });
-  
-  setStep('recording')
-}
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop()
@@ -419,7 +344,9 @@ const skipToRecording = () => {
     submissionInProgressRef.current = true
     setIsSubmitting(true)
     setError(null)
-    const apiStartTime = Date.now(); // TRACK API TIME
+    
+    const apiStartTime = Date.now();
+
     try {
       const formData = new FormData()
       formData.append('audio', audioBlob, 'recording.webm')
@@ -436,47 +363,40 @@ const skipToRecording = () => {
         fileSize: audioBlob.size
       });
 
-      console.log('Submitting recording with params:', {
-        tone,
-        categoryId,
-        moduleId,
-        lessonId,
-        audioSize: audioBlob.size
-      })
-
       const response = await fetch('/api/feedback', {
         method: 'POST',
         body: formData,
       })
-      const apiDuration = Date.now() - apiStartTime; // CALCULATE DURATION
-      console.log('Feedback API response status:', response.status)
+
+      const apiDuration = Date.now() - apiStartTime;
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        // TRACK API ERROR
-      trackError({
-        errorType: 'feedback_api_error',
-        errorMessage: errorData.error || `Status ${response.status}`,
-        context: {
-          lesson_id: lessonId,
-          status_code: response.status,
-          duration_ms: apiDuration
-        }
-      });
+        
+        trackError({
+          errorType: 'feedback_api_error',
+          errorMessage: errorData.error || `Status ${response.status}`,
+          context: {
+            lesson_id: lessonId,
+            status_code: response.status,
+            duration_ms: apiDuration
+          }
+        });
+        
         throw new Error(errorData.error || `Failed to submit (${response.status})`)
       }
 
       const data = await response.json()
-      console.log('Feedback response:', data)
-      // TRACK SLOW API
-    if (apiDuration > 15000) {
-      Mixpanel.track('Slow API Response', {
-        endpoint: 'feedback',
-        duration_ms: apiDuration,
-        lesson_id: lessonId,
-        file_size: audioBlob.size
-      });
-    }
+      
+      if (apiDuration > 15000) {
+        Mixpanel.track('Slow API Response', {
+          endpoint: 'feedback',
+          duration_ms: apiDuration,
+          lesson_id: lessonId,
+          file_size: audioBlob.size
+        });
+      }
+      
       trackLessonCompletion({
         lessonId: lessonId,
         lessonTitle: lessonTitle,
@@ -495,18 +415,18 @@ const skipToRecording = () => {
       router.push(`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/feedback?session=${data.sessionId}`)
     } catch (error) {
       console.error('Error submitting:', error)
-      // TRACK SUBMISSION ERROR
-    trackError({
-      errorType: 'audio_submission_failed',
-      errorMessage: error instanceof Error ? error.message : 'Failed to submit recording',
-      context: {
-        lesson_id: lessonId,
-        file_size: audioBlob.size,
-        recording_duration: recordingTime
-      }
-    });
-      setError(error instanceof Error ? error.message : 'Failed to submit recording')
       
+      trackError({
+        errorType: 'audio_submission_failed',
+        errorMessage: error instanceof Error ? error.message : 'Failed to submit recording',
+        context: {
+          lesson_id: lessonId,
+          file_size: audioBlob.size,
+          recording_duration: recordingTime
+        }
+      });
+      
+      setError(error instanceof Error ? error.message : 'Failed to submit recording')
       setIsSubmitting(false)
       submissionInProgressRef.current = false
     }
