@@ -5,7 +5,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mic, Square } from 'lucide-react'
 import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion } from '@/lib/analytics/helpers';
-
+import { trackError } from '@/lib/analytics/helpers';
 // Loader messages for LESSON INTRO
 const INTRO_LOADER_MESSAGES = [
   'Personalizing your lesson...',
@@ -233,9 +233,32 @@ export default function PracticePage() {
       }, 1000)
     } catch (error) {
       console.error('Error starting recording:', error)
-      setError('Failed to access microphone')
+      // ENHANCED ERROR TRACKING
+    let errorType = 'recording_failed';
+    let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    if (errorMessage.includes('Permission denied') || errorMessage.includes('NotAllowedError')) {
+      errorType = 'microphone_permission_denied';
+    } else if (errorMessage.includes('NotFoundError')) {
+      errorType = 'microphone_not_found';
+    } else if (errorMessage.includes('NotReadableError')) {
+      errorType = 'microphone_already_in_use';
     }
+    
+    trackError({
+      errorType: errorType,
+      errorMessage: errorMessage,
+      context: {
+        lesson_id: lessonId,
+        category: categoryId,
+        browser: navigator.userAgent,
+        has_microphone: navigator.mediaDevices ? 'yes' : 'no'
+      }
+    });
+    
+    setError('Failed to access microphone. Please check your permissions.')
   }
+}
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
@@ -271,7 +294,7 @@ export default function PracticePage() {
     submissionInProgressRef.current = true
     setIsSubmitting(true)
     setError(null)
-
+    const apiStartTime = Date.now(); // TRACK API TIME
     try {
       const formData = new FormData()
       formData.append('audio', audioBlob, 'recording.webm')
@@ -300,17 +323,35 @@ export default function PracticePage() {
         method: 'POST',
         body: formData,
       })
-
+      const apiDuration = Date.now() - apiStartTime; // CALCULATE DURATION
       console.log('Feedback API response status:', response.status)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        // TRACK API ERROR
+      trackError({
+        errorType: 'feedback_api_error',
+        errorMessage: errorData.error || `Status ${response.status}`,
+        context: {
+          lesson_id: lessonId,
+          status_code: response.status,
+          duration_ms: apiDuration
+        }
+      });
         throw new Error(errorData.error || `Failed to submit (${response.status})`)
       }
 
       const data = await response.json()
       console.log('Feedback response:', data)
-      
+      // TRACK SLOW API
+    if (apiDuration > 15000) {
+      Mixpanel.track('Slow API Response', {
+        endpoint: 'feedback',
+        duration_ms: apiDuration,
+        lesson_id: lessonId,
+        file_size: audioBlob.size
+      });
+    }
       trackLessonCompletion({
         lessonId: lessonId,
         lessonTitle: lessonTitle,
@@ -329,6 +370,16 @@ export default function PracticePage() {
       router.push(`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/feedback?session=${data.sessionId}`)
     } catch (error) {
       console.error('Error submitting:', error)
+      // TRACK SUBMISSION ERROR
+    trackError({
+      errorType: 'audio_submission_failed',
+      errorMessage: error instanceof Error ? error.message : 'Failed to submit recording',
+      context: {
+        lesson_id: lessonId,
+        file_size: audioBlob.size,
+        recording_duration: recordingTime
+      }
+    });
       setError(error instanceof Error ? error.message : 'Failed to submit recording')
       
       setIsSubmitting(false)
