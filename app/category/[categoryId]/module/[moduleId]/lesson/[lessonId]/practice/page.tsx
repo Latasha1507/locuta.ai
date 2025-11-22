@@ -51,6 +51,10 @@ export default function PracticePage() {
   const [showInstructions, setShowInstructions] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentLoaderMessage, setCurrentLoaderMessage] = useState(0)
+  const [introStartTime, setIntroStartTime] = useState<number>(0);
+  const [hasStartedRecording, setHasStartedRecording] = useState(false);
+  const [recordingStartTime, setRecordingStartTime] = useState<number>(0);
+
   
   // Audio player states
   const [currentTime, setCurrentTime] = useState(0)
@@ -64,7 +68,7 @@ export default function PracticePage() {
   
   // CRITICAL: Prevent multiple simultaneous submissions
   const submissionInProgressRef = useRef(false)
-
+}
   // Animated loader effect - different messages for intro vs feedback
   useEffect(() => {
     if (isLoadingIntro) {
@@ -133,6 +137,7 @@ export default function PracticePage() {
       setLessonTitle(data.lessonTitle || 'Lesson')
       setIsLoadingIntro(false)
       setStep('intro')
+      setIntroStartTime(Date.now()); // TRACK INTRO START
       
       trackLessonStart({
         lessonId: lessonId,
@@ -150,7 +155,9 @@ export default function PracticePage() {
       setIsLoadingIntro(false)
     }
   }
-
+    // In startRecording - mark that recording started:
+  const startRecording = async () => {
+    try {
   // Audio controls
   const playAudio = () => {
     if (audioRef.current && introAudio) {
@@ -158,6 +165,7 @@ export default function PracticePage() {
       setIsPlaying(true)
     }
   }
+} 
 
   const pauseAudio = () => {
     if (audioRef.current) {
@@ -222,7 +230,9 @@ export default function PracticePage() {
       mediaRecorder.start(100)
       setIsRecording(true)
       setRecordingTime(0)
-      
+      setHasStartedRecording(true); // MARK AS STARTED
+      setRecordingStartTime(Date.now()); // TRACK START TIME
+
       trackRecordingStart({
         lessonId: lessonId,
         attemptNumber: 1,
@@ -260,7 +270,63 @@ export default function PracticePage() {
     setError('Failed to access microphone. Please check your permissions.')
   }
 }
+// ADD THIS NEW USEEFFECT - Track page abandonment
+useEffect(() => {
+  const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    // Track abandonment at intro stage
+    if (step === 'intro' && !hasStartedRecording && introStartTime > 0) {
+      const timeSpent = Math.round((Date.now() - introStartTime) / 1000);
+      Mixpanel.track('Lesson Abandoned', {
+        lesson_id: lessonId,
+        category: categoryId,
+        stage: 'intro_viewed',
+        time_spent_seconds: timeSpent,
+        coaching_style: tone
+      });
+    }
+    
+    // Track abandonment during recording
+    if (step === 'recording' && isRecording && recordingStartTime > 0) {
+      const timeSpent = Math.round((Date.now() - recordingStartTime) / 1000);
+      Mixpanel.track('Recording Abandoned', {
+        lesson_id: lessonId,
+        category: categoryId,
+        duration_seconds: recordingTime,
+        time_spent_seconds: timeSpent,
+        coaching_style: tone
+      });
+    }
+  };
+  
+  window.addEventListener('beforeunload', handleBeforeUnload);
+  
+  return () => {
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+  };
+}, [step, hasStartedRecording, introStartTime, isRecording, recordingTime, recordingStartTime, lessonId, categoryId, tone]);
 
+// Track when user skips intro without listening fully
+const skipToRecording = () => {
+  if (audioRef.current) {
+    audioRef.current.pause()
+  }
+  setIsPlaying(false)
+  
+  // TRACK INTRO SKIP
+  const timeSpent = Math.round((Date.now() - introStartTime) / 1000);
+  const listenedFully = audioRef.current ? audioRef.current.currentTime >= duration * 0.9 : false;
+  
+  Mixpanel.track('Intro Skipped', {
+    lesson_id: lessonId,
+    category: categoryId,
+    time_spent_seconds: timeSpent,
+    listened_fully: listenedFully,
+    listen_percentage: audioRef.current ? Math.round((audioRef.current.currentTime / duration) * 100) : 0,
+    coaching_style: tone
+  });
+  
+  setStep('recording')
+}
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop()
