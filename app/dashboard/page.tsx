@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Mixpanel from '@/lib/mixpanel';
 import { useEffect, useState } from 'react';
+import CategoryCardTracking from '@/components/CategoryCardTracking';
+
 
 function AnimatedRadialProgress({ percentage, size = 72, color = "#8b5cf6", bg = "#e9e9f3" }: { percentage: number, size?: number, color?: string, bg?: string }) {
   const radius = (size - 8) / 2
@@ -118,6 +120,33 @@ export default function DashboardPage() {
         .select('*')
         .eq('user_id', user.id);
       setProgress(progressData || []);
+
+      // FIRST-TIME USER TRACKING
+      const completedCount = progressData?.filter((p: any) => p.completed).length || 0;
+      const isFirstTime = completedCount === 0;
+    
+      if (isFirstTime) {
+      // Mark as first-time user
+      Mixpanel.people.setOnce({
+        'First Time User': true,
+        'First Login Date': new Date().toISOString()
+      });
+      
+      // Calculate time from signup
+      const signupTime = new Date(user.created_at).getTime();
+      const timeFromSignup = Date.now() - signupTime;
+      
+      Mixpanel.track('First Time Dashboard Visit', {
+        time_from_signup_minutes: Math.round(timeFromSignup / 1000 / 60),
+        time_from_signup_hours: Math.round(timeFromSignup / 1000 / 60 / 60)
+      });
+    } else {
+      // Returning user
+      Mixpanel.people.set({
+        'First Time User': false,
+        'Total Lessons Completed': completedCount
+      });
+    }
 
       // Fetch total lesson counts per category
       const { data: lessonsData } = await supabase
@@ -325,6 +354,10 @@ export default function DashboardPage() {
       monthly: Math.round(monthlySessions * avgMinutesPerSession)
     }
   }
+  
+  {categoryStats.map((category: any) => (
+    <CategoryCardTracking key={category.id} category={category} />
+  ))}
 
   const currentStreak = calculateStreak()
   const weeklyActivity = calculateWeeklyActivity()
