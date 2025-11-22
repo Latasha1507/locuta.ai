@@ -5,6 +5,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mic, Square } from 'lucide-react'
 import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion } from '@/lib/analytics/helpers';
+import Mixpanel from '@/lib/mixpanel';
 import { trackError } from '@/lib/analytics/helpers';
 // Loader messages for LESSON INTRO
 const INTRO_LOADER_MESSAGES = [
