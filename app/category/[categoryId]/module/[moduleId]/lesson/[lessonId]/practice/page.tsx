@@ -156,16 +156,74 @@ export default function PracticePage() {
     }
   }
     // In startRecording - mark that recording started:
-  const startRecording = async () => {
-    try {
-  // Audio controls
-  const playAudio = () => {
-    if (audioRef.current && introAudio) {
-      audioRef.current.play()
-      setIsPlaying(true)
+    const startRecording = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        const mediaRecorder = new MediaRecorder(stream)
+        mediaRecorderRef.current = mediaRecorder
+        chunksRef.current = []
+    
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunksRef.current.push(e.data)
+        }
+    
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+          setAudioBlob(blob)
+          stream.getTracks().forEach(track => track.stop())
+        }
+    
+        mediaRecorder.start(100)
+        setIsRecording(true)
+        setRecordingTime(0)
+        setHasStartedRecording(true);
+        setRecordingStartTime(Date.now());
+        
+        trackRecordingStart({
+          lessonId: lessonId,
+          attemptNumber: 1,
+          coachingStyle: tone
+        });
+    
+        timerRef.current = setInterval(() => {
+          setRecordingTime(prev => prev + 1)
+        }, 1000)
+      } catch (error) {
+        console.error('Error starting recording:', error)
+        
+        let errorType = 'recording_failed';
+        let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        
+        if (errorMessage.includes('Permission denied') || errorMessage.includes('NotAllowedError')) {
+          errorType = 'microphone_permission_denied';
+        } else if (errorMessage.includes('NotFoundError')) {
+          errorType = 'microphone_not_found';
+        } else if (errorMessage.includes('NotReadableError')) {
+          errorType = 'microphone_already_in_use';
+        }
+        
+        trackError({
+          errorType: errorType,
+          errorMessage: errorMessage,
+          context: {
+            lesson_id: lessonId,
+            category: categoryId,
+            browser: navigator.userAgent,
+            has_microphone: navigator.mediaDevices ? 'yes' : 'no'
+          }
+        });
+        
+        setError('Failed to access microphone. Please check your permissions.')
+      }
     }
-  }
-} 
+    
+    // Audio controls
+    const playAudio = () => {
+      if (audioRef.current && introAudio) {
+        audioRef.current.play()
+        setIsPlaying(true)
+      }
+    }
 
   const pauseAudio = () => {
     if (audioRef.current) {
