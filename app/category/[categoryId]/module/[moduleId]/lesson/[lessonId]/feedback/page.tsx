@@ -77,6 +77,7 @@ export default async function FeedbackPage({
         session={session}
         feedback={feedback}
         score={score}
+        userId={user.id}
       />
     </div>
   )

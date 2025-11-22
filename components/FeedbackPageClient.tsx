@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { trackFeedbackViewed } from '@/lib/analytics/helpers';
 import Mixpanel from '@/lib/mixpanel';
 import { EVENTS } from '@/lib/analytics/events';
+import { createClient } from '@/lib/supabase/client';
 
 interface FeedbackPageClientProps {
   categoryId: string;
@@ -14,6 +15,7 @@ interface FeedbackPageClientProps {
   session: any;
   feedback: any;
   score: number;
+  userId: string;
 }
 
 export default function FeedbackPageClient({
@@ -23,9 +25,31 @@ export default function FeedbackPageClient({
   sessionId,
   session,
   feedback,
-  score
+  score,
+  userId 
 }: FeedbackPageClientProps) {
   const [hasTrackedView, setHasTrackedView] = useState(false);
+  const [attemptCount, setAttemptCount] = useState(1);
+
+  // Count previous attempts for this lesson - ADD THIS ENTIRE USEEFFECT
+  useEffect(() => {
+    const countAttempts = async () => {
+      const supabase = createClient();
+      const { data: sessions } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('category', session.category)
+        .eq('module_number', session.module_number)
+        .eq('level_number', session.level_number);
+      
+      if (sessions) {
+        setAttemptCount(sessions.length);
+      }
+    };
+    
+    countAttempts();
+  }, [userId, session]);
 
   // Track feedback viewed on mount
   useEffect(() => {
@@ -49,13 +73,22 @@ export default function FeedbackPageClient({
     });
   };
 
-  // Track retry clicked
+  // ENHANCED: Track retry with attempt count
   const handleRetryClick = () => {
     Mixpanel.track(EVENTS.RETRY_LESSON_CLICKED, {
       lesson_id: lessonId,
+      lesson_title: session.category, // Add more context
+      category: categoryId,
+      module_number: parseInt(moduleId),
+      lesson_number: parseInt(lessonId),
       previous_score: score,
-      reason: score >= 80 ? 'want_better_score' : 'failed'
+      attempt_number: attemptCount, // THIS IS KEY - shows which attempt they're on
+      reason: score >= 80 ? 'want_better_score' : 'failed',
+      score_difference_from_passing: 80 - score // How far from passing
     });
+    
+    // ALSO increment a user property for total retries
+    Mixpanel.people.increment('Total Lesson Retries', 1);
   };
 
   // Track back to lessons
@@ -63,7 +96,9 @@ export default function FeedbackPageClient({
     Mixpanel.track('Back to Lessons Clicked', {
       from_page: 'feedback',
       lesson_id: lessonId,
-      final_score: score
+      final_score: score,
+      attempt_number: attemptCount,
+      passed: feedback.pass_level || false
     });
   };
 
