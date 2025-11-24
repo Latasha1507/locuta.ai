@@ -17,10 +17,18 @@ export async function GET(request: Request) {
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
 
-    const { data: sessions } = await supabase
+    console.log('📊 Fetching analytics for range:', range)
+
+    // REAL DATA: Fetch all sessions with tracking data
+    const { data: sessions, error: sessionsError } = await supabase
       .from('sessions')
-      .select('*')
+      .select('id, user_id, browser_type, device_type, user_country, user_city, overall_score, created_at, feedback')
       .gte('created_at', startDate.toISOString())
+      .order('created_at', { ascending: false })
+
+    if (sessionsError) {
+      console.error('Sessions error:', sessionsError)
+    }
 
     const { data: progress } = await supabase
       .from('user_progress')
@@ -28,8 +36,15 @@ export async function GET(request: Request) {
 
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, email, created_at, updated_at')
 
+    console.log('✅ Data fetched:', {
+      sessions: sessions?.length || 0,
+      progress: progress?.length || 0,
+      profiles: profiles?.length || 0
+    })
+
+    // Calculate basic metrics
     const totalUsers = profiles?.length || 0
     const activeUsers = profiles?.filter(p => {
       const lastActive = new Date(p.updated_at || p.created_at)
@@ -39,61 +54,127 @@ export async function GET(request: Request) {
 
     const totalSessions = sessions?.length || 0
     const totalCompleted = progress?.filter(p => p.completed).length || 0
-    const avgScore = sessions?.length 
-      ? Math.round(sessions.reduce((acc, s) => acc + (s.feedback?.overall_score || 0), 0) / sessions.length)
+    
+    // Calculate average score from REAL sessions
+    const avgScore = sessions && sessions.length > 0
+      ? Math.round(sessions.reduce((acc, s) => acc + (s.overall_score || 0), 0) / sessions.length)
       : 0
 
-    const avgSessionTime = 2.5
-    const avgTimeOnPlatform = totalUsers > 0 ? Math.round((totalSessions * avgSessionTime) / totalUsers) : 0
-    const payingUsers = 0
-    const totalRevenue = 0
-    const monthlyRevenue = 0
+    const avgSessionTime = 2.5 // Average minutes per session
+    const avgTimeOnPlatform = totalUsers > 0 
+      ? Math.round((totalSessions * avgSessionTime) / totalUsers)
+      : 0
 
-    const totalBrowserCount = totalSessions || 1
-    const browserStats = [
-      { name: 'Chrome', value: Math.floor(totalSessions * 0.65), percentage: 65, color: '#4285F4' },
-      { name: 'Safari', value: Math.floor(totalSessions * 0.20), percentage: 20, color: '#00C2FF' },
-      { name: 'Firefox', value: Math.floor(totalSessions * 0.10), percentage: 10, color: '#FF7139' },
-      { name: 'Edge', value: Math.floor(totalSessions * 0.03), percentage: 3, color: '#0078D7' },
-      { name: 'Other', value: Math.floor(totalSessions * 0.02), percentage: 2, color: '#9CA3AF' },
-    ]
+    // REAL BROWSER STATS from actual sessions
+    const browserCounts: { [key: string]: number } = {}
+    const deviceCounts: { [key: string]: number } = {}
+    const countryCounts: { [key: string]: number } = {}
 
-    const locationStats = [
-      { country: 'United States', count: Math.floor(totalUsers * 0.35), percentage: 35 },
-      { country: 'India', count: Math.floor(totalUsers * 0.25), percentage: 25 },
-      { country: 'United Kingdom', count: Math.floor(totalUsers * 0.15), percentage: 15 },
-      { country: 'Canada', count: Math.floor(totalUsers * 0.10), percentage: 10 },
-      { country: 'Australia', count: Math.floor(totalUsers * 0.08), percentage: 8 },
-      { country: 'Germany', count: Math.floor(totalUsers * 0.07), percentage: 7 },
-    ]
+    sessions?.forEach(session => {
+      // Count browsers
+      const browser = session.browser_type || 'Unknown'
+      browserCounts[browser] = (browserCounts[browser] || 0) + 1
+      
+      // Count devices
+      const device = session.device_type || 'Unknown'
+      deviceCounts[device] = (deviceCounts[device] || 0) + 1
+      
+      // Count countries
+      const country = session.user_country || 'Unknown'
+      countryCounts[country] = (countryCounts[country] || 0) + 1
+    })
+
+    console.log('📊 Browser counts:', browserCounts)
+    console.log('📱 Device counts:', deviceCounts)
+    console.log('🌍 Country counts:', countryCounts)
+
+    // Browser colors
+    const browserColors: { [key: string]: string } = {
+      'Chrome': '#4285F4',
+      'Safari': '#00C2FF',
+      'Firefox': '#FF7139',
+      'Edge': '#0078D7',
+      'Opera': '#FF1B2D',
+      'Other': '#9CA3AF',
+      'Unknown': '#6B7280'
+    }
+
+    // Format browser stats
+    const browserStats = Object.entries(browserCounts)
+      .map(([name, value]) => ({
+        name,
+        value,
+        percentage: totalSessions > 0 ? Math.round((value / totalSessions) * 100) : 0,
+        color: browserColors[name] || '#9CA3AF'
+      }))
+      .sort((a, b) => b.value - a.value)
+
+    // Format device stats (Mobile vs Desktop vs Tablet)
+    const deviceStats = Object.entries(deviceCounts)
+      .map(([name, value]) => ({
+        name,
+        value,
+        percentage: totalSessions > 0 ? Math.round((value / totalSessions) * 100) : 0
+      }))
+      .sort((a, b) => b.value - a.value)
+
+    // Format location stats
+    const locationStats = Object.entries(countryCounts)
+      .filter(([country]) => country !== 'Unknown')
+      .map(([country, count]) => ({
+        country,
+        count,
+        percentage: totalUsers > 0 ? Math.round((count / totalSessions) * 100) : 0
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+
+    // REAL USER GROWTH (daily new users)
+    const userGrowthMap: { [date: string]: number } = {}
+    profiles?.forEach(profile => {
+      const date = new Date(profile.created_at).toISOString().split('T')[0]
+      userGrowthMap[date] = (userGrowthMap[date] || 0) + 1
+    })
 
     const userGrowth = Array.from({ length: days }, (_, i) => {
       const date = new Date(startDate)
       date.setDate(date.getDate() + i)
-      const users = Math.floor(totalUsers * (0.5 + (i / days) * 0.5))
+      const dateStr = date.toISOString().split('T')[0]
+      const users = userGrowthMap[dateStr] || 0
+      
       return {
         date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         users,
-        growth: i > 0 ? Math.floor(Math.random() * 20) - 5 : 0
+        growth: 0
       }
     })
 
-    const sessionTrends = Array.from({ length: days }, (_, i) => {
+    // REAL SESSION TRENDS (daily sessions)
+    const sessionTrendsMap: { [date: string]: number } = {}
+    sessions?.forEach(session => {
+      const date = new Date(session.created_at).toISOString().split('T')[0]
+      sessionTrendsMap[date] = (sessionTrendsMap[date] || 0) + 1
+    })
+
+    const sessionTrends = Array.from({ length: Math.min(days, 14) }, (_, i) => {
       const date = new Date(startDate)
       date.setDate(date.getDate() + i)
+      const dateStr = date.toISOString().split('T')[0]
+      
       return {
         date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        sessions: Math.floor(totalSessions / days) + Math.floor(Math.random() * 10)
+        sessions: sessionTrendsMap[dateStr] || 0
       }
     })
 
+    // Engagement metrics
     const dailyActiveUsers = Math.floor(activeUsers * 0.4)
     const weeklyActiveUsers = Math.floor(activeUsers * 0.7)
     const monthlyActiveUsers = activeUsers
     const avgSessionsPerUser = totalUsers > 0 ? Number((totalSessions / totalUsers).toFixed(1)) : 0
     const returnRate = totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0
 
-    return NextResponse.json({
+    const response = {
       totalUsers,
       activeUsers,
       totalSessions,
@@ -101,10 +182,11 @@ export async function GET(request: Request) {
       avgScore,
       avgSessionTime,
       avgTimeOnPlatform,
-      payingUsers,
-      totalRevenue,
-      monthlyRevenue,
+      payingUsers: 0,
+      totalRevenue: 0,
+      monthlyRevenue: 0,
       browserStats,
+      deviceStats,
       locationStats,
       userGrowth,
       sessionTrends,
@@ -115,9 +197,21 @@ export async function GET(request: Request) {
         avgSessionsPerUser,
         returnRate
       }
+    }
+
+    console.log('✅ Analytics response prepared:', {
+      totalSessions,
+      browsers: browserStats.length,
+      devices: deviceStats.length,
+      countries: locationStats.length
     })
+
+    return NextResponse.json(response)
   } catch (error) {
-    console.error('Admin analytics error:', error)
-    return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: 500 })
+    console.error('❌ Admin analytics error:', error)
+    return NextResponse.json({ 
+      error: 'Failed to fetch analytics',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
