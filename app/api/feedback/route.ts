@@ -25,13 +25,10 @@ const toneVoiceMap: { [key: string]: string } = {
   'Bossy': 'echo',
 }
 
-// Strict scoring weights - Task completion is now priority
 const SCORING_WEIGHTS = {
-  TASK_COMPLETION_WEIGHT: 0.4,  // Must address the prompt
-  DELIVERY_WEIGHT: 0.3,          // How well they delivered
-  LINGUISTIC_WEIGHT: 0.3,        // Grammar, vocabulary, sentence formation
-  
-  // Linguistic sub-weights (within the 30%)
+  TASK_COMPLETION_WEIGHT: 0.4,
+  DELIVERY_WEIGHT: 0.3,
+  LINGUISTIC_WEIGHT: 0.3,
   GRAMMAR_WEIGHT: 0.35,
   SENTENCE_FORMATION_WEIGHT: 0.35,
   VOCABULARY_WEIGHT: 0.30,
@@ -68,9 +65,40 @@ function getLevelExpectations(levelNumber: number): LevelExpectation {
   return expectations[category]
 }
 
+// NEW: Function to detect browser and device from User-Agent
+function parseUserAgent(userAgent: string): { browser: string; deviceType: string } {
+  const ua = userAgent.toLowerCase()
+  
+  // Detect browser
+  let browser = 'Other'
+  if (ua.includes('edg/')) browser = 'Edge'
+  else if (ua.includes('chrome') && !ua.includes('edg')) browser = 'Chrome'
+  else if (ua.includes('safari') && !ua.includes('chrome')) browser = 'Safari'
+  else if (ua.includes('firefox')) browser = 'Firefox'
+  else if (ua.includes('opera') || ua.includes('opr/')) browser = 'Opera'
+  
+  // Detect device type
+  let deviceType = 'Desktop'
+  if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
+    deviceType = 'Mobile'
+  } else if (ua.includes('tablet') || ua.includes('ipad')) {
+    deviceType = 'Tablet'
+  }
+  
+  return { browser, deviceType }
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('📥 Feedback API called')
+    
+    // NEW: Get user agent and location from headers
+    const userAgent = request.headers.get('user-agent') || ''
+    const country = request.headers.get('x-vercel-ip-country') || 'Unknown'
+    const city = request.headers.get('x-vercel-ip-city') || 'Unknown'
+    const { browser, deviceType } = parseUserAgent(userAgent)
+    
+    console.log('🌍 User info:', { browser, deviceType, country, city })
     
     const formData = await request.formData()
     const audioFile = formData.get('audio') as File
@@ -100,13 +128,11 @@ export async function POST(request: NextRequest) {
     const levelNumber = parseInt(lessonId)
     const levelExpectations = getLevelExpectations(levelNumber)
 
-    // Use SERVICE ROLE client to bypass RLS
     const supabaseAdmin = createServiceClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Get lesson details
     const { data: lessons, error: lessonError } = await supabaseAdmin
       .from('lessons')
       .select('*')
@@ -127,7 +153,6 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Lesson found:', lesson.level_title)
 
-    // Step 1: Transcribe audio
     console.log('🎤 Transcribing audio...')
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
@@ -137,7 +162,6 @@ export async function POST(request: NextRequest) {
     const userTranscript = transcription.text
     console.log('✅ Transcription:', userTranscript.substring(0, 100) + '...')
 
-    // Step 2: Generate STRICT feedback with task completion validation
     console.log('💬 Generating strict coaching feedback...')
     
     const focusAreas = Array.isArray(lesson.feedback_focus_areas) 
@@ -312,14 +336,12 @@ Be reasonable - some filler words are natural:
       feedback = JSON.parse(feedbackText)
       console.log('✅ Strict feedback generated:', feedback.overall_score)
       
-      // Ensure task_completion_score exists
       if (!feedback.task_completion_score && feedback.task_completion_analysis) {
         feedback.task_completion_score = feedback.task_completion_analysis.relevance_percentage || 50
       } else if (!feedback.task_completion_score) {
         feedback.task_completion_score = 50
       }
       
-      // Calculate delivery_score if missing
       if (!feedback.delivery_score && feedback.focus_area_scores) {
         const scores = Object.values(feedback.focus_area_scores) as number[]
         feedback.delivery_score = scores.reduce((a: number, b: number) => a + b, 0) / scores.length
@@ -327,7 +349,6 @@ Be reasonable - some filler words are natural:
         feedback.delivery_score = 50
       }
       
-      // Calculate linguistic_score if missing
       if (!feedback.linguistic_score && feedback.linguistic_analysis) {
         const g = feedback.linguistic_analysis.grammar.score || 50
         const s = feedback.linguistic_analysis.sentence_formation.score || 50
@@ -342,23 +363,18 @@ Be reasonable - some filler words are natural:
         feedback.linguistic_score = 50
       }
       
-      // Calculate weighted overall score with strict weights
       feedback.weighted_overall_score = (
         feedback.task_completion_score * SCORING_WEIGHTS.TASK_COMPLETION_WEIGHT +
         feedback.delivery_score * SCORING_WEIGHTS.DELIVERY_WEIGHT +
         feedback.linguistic_score * SCORING_WEIGHTS.LINGUISTIC_WEIGHT
       )
       
-      // Apply filler word penalties
       if (feedback.filler_analysis?.penalty_applied) {
         feedback.weighted_overall_score -= feedback.filler_analysis.penalty_applied
       }
       
-      // Ensure score is in valid range
       feedback.weighted_overall_score = Math.max(0, Math.min(100, feedback.weighted_overall_score))
       feedback.overall_score = Math.round(feedback.weighted_overall_score)
-      
-      // Determine if level is passed (75+ required)
       feedback.pass_level = feedback.overall_score >= 75
       
     } catch (e) {
@@ -402,7 +418,6 @@ Be reasonable - some filler words are natural:
       }
     }
 
-    // Step 3 & 4: Generate AI example AND audio in PARALLEL (faster!)
     console.log('🚀 Generating example and audio in parallel...')
     
     const aiExamplePrompt = `You are demonstrating this speaking task naturally and authentically.
@@ -417,7 +432,6 @@ Respond with ONLY the speech text.`
 
     const voice = toneVoiceMap[tone] || 'shimmer'
 
-    // Run AI text generation and prepare audio generation in parallel
     const [aiExampleResponse] = await Promise.all([
       openai.chat.completions.create({
         model: 'gpt-4o',
@@ -432,7 +446,6 @@ Respond with ONLY the speech text.`
     const aiExampleText = aiExampleResponse.choices[0].message.content || 'Example not available.'
     console.log('✅ AI example generated')
 
-    // Generate audio from the text
     console.log('🔊 Generating audio...')
     const aiAudioResponse = await openai.audio.speech.create({
       model: 'tts-1-hd',
@@ -444,13 +457,12 @@ Respond with ONLY the speech text.`
     const aiAudioBuffer = Buffer.from(await aiAudioResponse.arrayBuffer())
     console.log('✅ Audio generated')
 
-    // Step 5 & 6: Save to database and update progress in PARALLEL (faster!)
     console.log('💾 Saving session and updating progress in parallel...')
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const shouldComplete = feedback.pass_level === true && feedback.overall_score >= 80
 
     const [sessionResult, progressResult] = await Promise.all([
-      // Save session
+      // NEW: Save session with browser, device, and location data
       supabase
         .from('sessions')
         .insert({
@@ -466,11 +478,14 @@ Respond with ONLY the speech text.`
           feedback: feedback,
           overall_score: feedback.overall_score,
           status: 'completed',
+          browser_type: browser,
+          device_type: deviceType,
+          user_country: country,
+          user_city: city,
           completed_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
         }),
       
-      // Update progress
       supabase
         .from('user_progress')
         .upsert({
@@ -493,11 +508,12 @@ Respond with ONLY the speech text.`
 
     if (progressResult.error) {
       console.warn('⚠️ Progress update warning:', progressResult.error)
-      // Don't fail the entire request if progress update fails
     }
 
-    console.log(`✅ Session saved and progress updated - Completed: ${shouldComplete}, Score: ${feedback.overall_score}`)
+    console.log(`✅ Session saved with tracking - Browser: ${browser}, Device: ${deviceType}, Country: ${country}`)
+    console.log(`✅ Progress updated - Completed: ${shouldComplete}, Score: ${feedback.overall_score}`)
     console.log('🎉 Strict coaching feedback complete!')
+    
     return NextResponse.json({
       success: true,
       sessionId: sessionId,
