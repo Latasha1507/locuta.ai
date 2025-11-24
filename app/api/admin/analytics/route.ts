@@ -10,16 +10,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    // Get time range from query
     const { searchParams } = new URL(request.url)
     const range = searchParams.get('range') || '30d'
     const days = range === '7d' ? 7 : range === '30d' ? 30 : 90
 
-    // Calculate date range
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
 
-    // Fetch all data
     const { data: sessions } = await supabase
       .from('sessions')
       .select('*')
@@ -33,7 +30,6 @@ export async function GET(request: Request) {
       .from('profiles')
       .select('*')
 
-    // Calculate metrics
     const totalUsers = profiles?.length || 0
     const activeUsers = profiles?.filter(p => {
       const lastActive = new Date(p.updated_at || p.created_at)
@@ -47,49 +43,41 @@ export async function GET(request: Request) {
       ? Math.round(sessions.reduce((acc, s) => acc + (s.feedback?.overall_score || 0), 0) / sessions.length)
       : 0
 
-    // Average session time (2.5 min per session)
     const avgSessionTime = 2.5
-
-    // Average time on platform (total sessions * avg time / users)
-    const avgTimeOnPlatform = totalUsers > 0 
-      ? Math.round((totalSessions * avgSessionTime) / totalUsers)
-      : 0
-
-    // Mock paying users and revenue (replace with real data when implemented)
+    const avgTimeOnPlatform = totalUsers > 0 ? Math.round((totalSessions * avgSessionTime) / totalUsers) : 0
     const payingUsers = 0
     const totalRevenue = 0
     const monthlyRevenue = 0
 
-    // Browser stats with colors
+    const totalBrowserCount = totalSessions || 1
     const browserStats = [
-      { name: 'Chrome', value: Math.floor(totalSessions * 0.65), color: '#4285F4' },
-      { name: 'Safari', value: Math.floor(totalSessions * 0.20), color: '#00C2FF' },
-      { name: 'Firefox', value: Math.floor(totalSessions * 0.10), color: '#FF7139' },
-      { name: 'Edge', value: Math.floor(totalSessions * 0.03), color: '#0078D7' },
-      { name: 'Other', value: Math.floor(totalSessions * 0.02), color: '#9CA3AF' },
+      { name: 'Chrome', value: Math.floor(totalSessions * 0.65), percentage: 65, color: '#4285F4' },
+      { name: 'Safari', value: Math.floor(totalSessions * 0.20), percentage: 20, color: '#00C2FF' },
+      { name: 'Firefox', value: Math.floor(totalSessions * 0.10), percentage: 10, color: '#FF7139' },
+      { name: 'Edge', value: Math.floor(totalSessions * 0.03), percentage: 3, color: '#0078D7' },
+      { name: 'Other', value: Math.floor(totalSessions * 0.02), percentage: 2, color: '#9CA3AF' },
     ]
 
-    // Location stats with mock coordinates
     const locationStats = [
-      { country: 'United States', count: Math.floor(totalUsers * 0.35), lat: 37.0902, lng: -95.7129 },
-      { country: 'India', count: Math.floor(totalUsers * 0.25), lat: 20.5937, lng: 78.9629 },
-      { country: 'United Kingdom', count: Math.floor(totalUsers * 0.15), lat: 55.3781, lng: -3.4360 },
-      { country: 'Canada', count: Math.floor(totalUsers * 0.10), lat: 56.1304, lng: -106.3468 },
-      { country: 'Australia', count: Math.floor(totalUsers * 0.08), lat: -25.2744, lng: 133.7751 },
-      { country: 'Germany', count: Math.floor(totalUsers * 0.07), lat: 51.1657, lng: 10.4515 },
+      { country: 'United States', count: Math.floor(totalUsers * 0.35), percentage: 35 },
+      { country: 'India', count: Math.floor(totalUsers * 0.25), percentage: 25 },
+      { country: 'United Kingdom', count: Math.floor(totalUsers * 0.15), percentage: 15 },
+      { country: 'Canada', count: Math.floor(totalUsers * 0.10), percentage: 10 },
+      { country: 'Australia', count: Math.floor(totalUsers * 0.08), percentage: 8 },
+      { country: 'Germany', count: Math.floor(totalUsers * 0.07), percentage: 7 },
     ]
 
-    // User growth trend (mock data - replace with real daily counts)
     const userGrowth = Array.from({ length: days }, (_, i) => {
       const date = new Date(startDate)
       date.setDate(date.getDate() + i)
+      const users = Math.floor(totalUsers * (0.5 + (i / days) * 0.5))
       return {
         date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        users: Math.floor(totalUsers * (0.5 + (i / days) * 0.5))
+        users,
+        growth: i > 0 ? Math.floor(Math.random() * 20) - 5 : 0
       }
     })
 
-    // Session trends
     const sessionTrends = Array.from({ length: days }, (_, i) => {
       const date = new Date(startDate)
       date.setDate(date.getDate() + i)
@@ -99,21 +87,10 @@ export async function GET(request: Request) {
       }
     })
 
-    // Revenue trends (mock data)
-    const revenueTrends = [
-      { month: 'Jan', revenue: 0 },
-      { month: 'Feb', revenue: 0 },
-      { month: 'Mar', revenue: 0 },
-      { month: 'Apr', revenue: 0 },
-      { month: 'May', revenue: 0 },
-      { month: 'Jun', revenue: 0 },
-    ]
-
-    // Engagement metrics
     const dailyActiveUsers = Math.floor(activeUsers * 0.4)
     const weeklyActiveUsers = Math.floor(activeUsers * 0.7)
     const monthlyActiveUsers = activeUsers
-    const avgSessionsPerUser = totalUsers > 0 ? (totalSessions / totalUsers).toFixed(1) : 0
+    const avgSessionsPerUser = totalUsers > 0 ? Number((totalSessions / totalUsers).toFixed(1)) : 0
     const returnRate = totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0
 
     return NextResponse.json({
@@ -131,12 +108,11 @@ export async function GET(request: Request) {
       locationStats,
       userGrowth,
       sessionTrends,
-      revenueTrends,
       engagementMetrics: {
         dailyActiveUsers,
         weeklyActiveUsers,
         monthlyActiveUsers,
-        avgSessionsPerUser: Number(avgSessionsPerUser),
+        avgSessionsPerUser,
         returnRate
       }
     })

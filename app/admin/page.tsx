@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { isAdminClient } from '@/lib/admin-client'
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface AdminStats {
   totalUsers: number
@@ -16,11 +15,10 @@ interface AdminStats {
   payingUsers: number
   totalRevenue: number
   monthlyRevenue: number
-  browserStats: { name: string; value: number; color: string }[]
-  locationStats: { country: string; count: number; lat: number; lng: number }[]
-  userGrowth: { date: string; users: number }[]
+  browserStats: { name: string; value: number; percentage: number; color: string }[]
+  locationStats: { country: string; count: number; percentage: number }[]
+  userGrowth: { date: string; users: number; growth: number }[]
   sessionTrends: { date: string; sessions: number }[]
-  revenueTrends: { month: string; revenue: number }[]
   engagementMetrics: {
     dailyActiveUsers: number
     weeklyActiveUsers: number
@@ -28,14 +26,6 @@ interface AdminStats {
     avgSessionsPerUser: number
     returnRate: number
   }
-}
-
-const COLORS = {
-  chrome: '#4285F4',
-  firefox: '#FF7139',
-  safari: '#00C2FF',
-  edge: '#0078D7',
-  other: '#9CA3AF'
 }
 
 export default function AdminPage() {
@@ -57,7 +47,6 @@ export default function AdminPage() {
     locationStats: [],
     userGrowth: [],
     sessionTrends: [],
-    revenueTrends: [],
     engagementMetrics: {
       dailyActiveUsers: 0,
       weeklyActiveUsers: 0,
@@ -106,6 +95,7 @@ export default function AdminPage() {
 
   const activeRate = stats.totalUsers > 0 ? Math.round((stats.activeUsers / stats.totalUsers) * 100) : 0
   const conversionRate = stats.totalUsers > 0 ? Math.round((stats.payingUsers / stats.totalUsers) * 100) : 0
+  const maxGrowth = Math.max(...stats.userGrowth.map(d => d.users), 1)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -130,43 +120,26 @@ export default function AdminPage() {
             
             {/* Time Range Selector */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setTimeRange('7d')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  timeRange === '7d'
-                    ? 'bg-purple-600 text-white shadow-lg'
-                    : 'bg-white text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                7 Days
-              </button>
-              <button
-                onClick={() => setTimeRange('30d')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  timeRange === '30d'
-                    ? 'bg-purple-600 text-white shadow-lg'
-                    : 'bg-white text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                30 Days
-              </button>
-              <button
-                onClick={() => setTimeRange('90d')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  timeRange === '90d'
-                    ? 'bg-purple-600 text-white shadow-lg'
-                    : 'bg-white text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                90 Days
-              </button>
+              {(['7d', '30d', '90d'] as const).map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setTimeRange(range)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    timeRange === range
+                      ? 'bg-purple-600 text-white shadow-lg'
+                      : 'bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : '90 Days'}
+                </button>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Key Metrics Row 1 */}
+        {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
             <div className="flex items-center justify-between mb-2">
@@ -182,7 +155,7 @@ export default function AdminPage() {
               <span className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-1 rounded">
                 ↑ {activeRate}% active
               </span>
-              <span className="text-xs text-slate-500">{stats.activeUsers} active users</span>
+              <span className="text-xs text-slate-500">{stats.activeUsers} active</span>
             </div>
           </div>
 
@@ -259,143 +232,98 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Charts Row 1: User Growth & Session Trends */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">User Growth Trend</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={stats.userGrowth}>
-                <defs>
-                  <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Area type="monotone" dataKey="users" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorUsers)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Session Activity</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={stats.sessionTrends}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="sessions" stroke="#3b82f6" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Charts Row 2: Revenue & Browser Usage */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Revenue Trends</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={stats.revenueTrends}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="revenue" fill="#10b981" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Browser Usage Distribution</h3>
-            <div className="flex items-center justify-center">
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={stats.browserStats}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {stats.browserStats.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Geographic Distribution with Map */}
+        {/* User Growth Chart (CSS Bar Chart) */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">Geographic Distribution</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Map Placeholder */}
-            <div className="relative bg-slate-50 rounded-lg p-4 h-80 flex items-center justify-center border-2 border-dashed border-slate-300">
-              <div className="text-center">
-                <div className="text-6xl mb-4">🗺️</div>
-                <p className="text-slate-600 font-medium">Interactive Map</p>
-                <p className="text-sm text-slate-500 mt-2">World map visualization coming soon</p>
-                <p className="text-xs text-slate-400 mt-1">Requires react-simple-maps integration</p>
-              </div>
-            </div>
-
-            {/* Location Stats */}
-            <div className="space-y-3">
-              {stats.locationStats.map((location, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                      <span className="text-lg">🌍</span>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-slate-900">{location.country}</p>
-                      <p className="text-xs text-slate-500">{location.count} users</p>
-                    </div>
+          <h3 className="text-lg font-bold text-slate-900 mb-4">User Growth Trend</h3>
+          <div className="h-64 flex items-end gap-2">
+            {stats.userGrowth.slice(-14).map((data, index) => (
+              <div key={index} className="flex-1 flex flex-col items-center gap-2">
+                <div className="w-full bg-gradient-to-t from-purple-600 to-purple-400 rounded-t-lg transition-all hover:from-purple-700 hover:to-purple-500 relative group"
+                     style={{ height: `${(data.users / maxGrowth) * 100}%`, minHeight: '4px' }}>
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    {data.users} users
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-purple-600">{location.count}</p>
-                    <p className="text-xs text-slate-500">
-                      {stats.totalUsers > 0 ? Math.round((location.count / stats.totalUsers) * 100) : 0}%
-                    </p>
+                </div>
+                <span className="text-xs text-slate-500 transform -rotate-45 origin-top-left">{data.date}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Browser Stats & Performance */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Browser Usage */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">Browser Usage</h3>
+            <div className="space-y-4">
+              {stats.browserStats.map((browser, index) => (
+                <div key={index}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: browser.color }}></div>
+                      {browser.name}
+                    </span>
+                    <span className="text-sm font-bold text-slate-900">{browser.percentage}%</span>
+                  </div>
+                  <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ 
+                        width: `${browser.percentage}%`,
+                        backgroundColor: browser.color
+                      }}
+                    />
                   </div>
                 </div>
               ))}
             </div>
           </div>
+
+          {/* Performance Metrics */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">Performance Metrics</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg">
+                <div>
+                  <p className="text-sm text-slate-600">Lessons Completed</p>
+                  <p className="text-2xl font-bold text-slate-900">{stats.totalCompleted}</p>
+                </div>
+                <div className="text-3xl">✅</div>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                <div>
+                  <p className="text-sm text-slate-600">Average Score</p>
+                  <p className="text-2xl font-bold text-slate-900">{Math.round(stats.avgScore)}</p>
+                </div>
+                <div className="text-3xl">⭐</div>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
+                <div>
+                  <p className="text-sm text-slate-600">Completion Rate</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {stats.totalSessions > 0 ? Math.round((stats.totalCompleted / stats.totalSessions) * 100) : 0}%
+                  </p>
+                </div>
+                <div className="text-3xl">📈</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Performance Metrics */}
+        {/* Geographic Distribution */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">Performance Metrics</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
-              <div className="text-4xl mb-2">✅</div>
-              <p className="text-3xl font-bold text-purple-900">{stats.totalCompleted}</p>
-              <p className="text-sm text-purple-700 mt-2">Lessons Completed</p>
-            </div>
-            <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
-              <div className="text-4xl mb-2">⭐</div>
-              <p className="text-3xl font-bold text-blue-900">{Math.round(stats.avgScore)}</p>
-              <p className="text-sm text-blue-700 mt-2">Average Score</p>
-            </div>
-            <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
-              <div className="text-4xl mb-2">📈</div>
-              <p className="text-3xl font-bold text-green-900">
-                {stats.totalSessions > 0 ? Math.round((stats.totalCompleted / stats.totalSessions) * 100) : 0}%
-              </p>
-              <p className="text-sm text-green-700 mt-2">Completion Rate</p>
-            </div>
+          <h3 className="text-lg font-bold text-slate-900 mb-4">Geographic Distribution</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {stats.locationStats.map((location, index) => (
+              <div key={index} className="p-4 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg border border-slate-200 hover:border-purple-300 hover:shadow-lg transition-all">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">🌍</span>
+                  <p className="text-xs font-semibold text-slate-700">{location.country}</p>
+                </div>
+                <p className="text-2xl font-bold text-purple-600">{location.count}</p>
+                <p className="text-xs text-slate-500">{location.percentage}% of users</p>
+              </div>
+            ))}
           </div>
         </div>
 
