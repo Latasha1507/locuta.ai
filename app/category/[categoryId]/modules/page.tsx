@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { isAdmin } from '@/lib/admin'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -45,9 +46,9 @@ export default async function CategoryModulesPage({
   if (!user) {
     redirect('/auth/login')
   }
-
+  
   const categoryName = categoryMap[categoryId]
-
+  const isUserAdmin = await isAdmin()
   if (!categoryName) {
     notFound()
   }
@@ -141,6 +142,13 @@ export default async function CategoryModulesPage({
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {isUserAdmin && (
+    <div className="mb-6 bg-purple-50 border-2 border-purple-200 rounded-xl p-4 shadow-lg">
+      <p className="text-purple-900 font-semibold flex items-center gap-2">
+        🔑 <span>Admin Mode:</span> <span className="text-purple-600">All lessons unlocked for testing</span>
+      </p>
+    </div>
+  )}
         {moduleNumbers.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-200">
             <div className="text-6xl mb-4">📚</div>
@@ -152,7 +160,6 @@ export default async function CategoryModulesPage({
           </div>
         ) : (
           <>
-
 
             {/* Current Module Display */}
             {moduleNumbers.map((moduleNumber) => {
@@ -212,7 +219,11 @@ export default async function CategoryModulesPage({
                         const lessonProgress = progressMap[`${moduleNumber}-${lesson.level_number}`]
                         const isCompleted = lessonProgress?.completed || false
                         const bestScore = lessonProgress?.best_score || null
-
+                        // Admin can access all lessons, or lesson 1, or previous lesson completed
+                        const isUnlocked = isUserAdmin || 
+                         lesson.level_number === 1 || 
+                         (lesson.level_number > 1 && progressMap[`${moduleNumber}-${lesson.level_number - 1}`]?.completed) || 
+                         false
                         const LessonCard = (
                           <div
                             key={lesson.id}
