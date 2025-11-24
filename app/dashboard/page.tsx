@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Mixpanel from '@/lib/mixpanel';
 import { useEffect, useState } from 'react';
 import CategoryCardTracking from '@/components/CategoryCardTracking';
-
+import { isAdminClient } from '@/lib/admin-client';
 
 function AnimatedRadialProgress({ percentage, size = 72, color = "#8b5cf6", bg = "#e9e9f3" }: { percentage: number, size?: number, color?: string, bg?: string }) {
   const radius = (size - 8) / 2
@@ -85,6 +85,7 @@ export default function DashboardPage() {
   const [lessons, setLessons] = useState<any[]>([]);
   const [allSessions, setAllSessions] = useState<any[]>([]);
   const [recentSessions, setRecentSessions] = useState<any[]>([]);
+  const [isUserAdmin, setIsUserAdmin] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -92,11 +93,15 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        redirect('/auth/login');
+        window.location.href = '/auth/login';
         return;
       }
 
       setUser(user);
+      
+      // Check admin status
+      const adminStatus = await isAdminClient();
+      setIsUserAdmin(adminStatus);
       
       // Identify user in Mixpanel
       Mixpanel.identify(user.id);
@@ -126,27 +131,24 @@ export default function DashboardPage() {
       const isFirstTime = completedCount === 0;
     
       if (isFirstTime) {
-      // Mark as first-time user
-      Mixpanel.people.setOnce({
-        'First Time User': true,
-        'First Login Date': new Date().toISOString()
-      });
-      
-      // Calculate time from signup
-      const signupTime = new Date(user.created_at).getTime();
-      const timeFromSignup = Date.now() - signupTime;
-      
-      Mixpanel.track('First Time Dashboard Visit', {
-        time_from_signup_minutes: Math.round(timeFromSignup / 1000 / 60),
-        time_from_signup_hours: Math.round(timeFromSignup / 1000 / 60 / 60)
-      });
-    } else {
-      // Returning user
-      Mixpanel.people.set({
-        'First Time User': false,
-        'Total Lessons Completed': completedCount
-      });
-    }
+        Mixpanel.people.setOnce({
+          'First Time User': true,
+          'First Login Date': new Date().toISOString()
+        });
+        
+        const signupTime = new Date(user.created_at).getTime();
+        const timeFromSignup = Date.now() - signupTime;
+        
+        Mixpanel.track('First Time Dashboard Visit', {
+          time_from_signup_minutes: Math.round(timeFromSignup / 1000 / 60),
+          time_from_signup_hours: Math.round(timeFromSignup / 1000 / 60 / 60)
+        });
+      } else {
+        Mixpanel.people.set({
+          'First Time User': false,
+          'Total Lessons Completed': completedCount
+        });
+      }
 
       // Fetch total lesson counts per category
       const { data: lessonsData } = await supabase
@@ -354,10 +356,6 @@ export default function DashboardPage() {
       monthly: Math.round(monthlySessions * avgMinutesPerSession)
     }
   }
-  
-  {categoryStats.map((category: any) => (
-    <CategoryCardTracking key={category.id} category={category} />
-  ))}
 
   const currentStreak = calculateStreak()
   const weeklyActivity = calculateWeeklyActivity()
@@ -401,7 +399,16 @@ export default function DashboardPage() {
             </ul>
           </nav>
         </div>
-        <div className="mb-2 flex flex-col items-center">
+        <div className="mb-2 flex flex-col items-center gap-2">
+          {isUserAdmin && (
+            <Link 
+              href="/admin"
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:shadow-xl hover:scale-[1.03] transition-all"
+            >
+              <span className="text-lg">🔑</span>
+              <span className="hidden lg:inline">Admin</span>
+            </Link>
+          )}
           <form action="/auth/signout" method="post" className="w-full flex justify-center">
             <button 
               type="submit"
@@ -424,23 +431,45 @@ export default function DashboardPage() {
             <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-md">
               <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-xl font-bold text-slate-900">
+            <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               Locuta.ai
+              {isUserAdmin && (
+                <span className="px-2 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold rounded-full animate-pulse">
+                  ADMIN
+                </span>
+              )}
             </h1>
           </div>
-          <Link
-            href="/history"
-            className="flex items-center gap-1 text-slate-700 hover:text-purple-600 transition-colors font-medium px-3 py-2 rounded-lg hover:bg-white/50"
-          >
-            <svg width={20} height={20} fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5"><circle cx="12" cy="12" r="9" strokeWidth="1.7" /><path d="M12 8v5l3 3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7"/></svg>
-            <span className="hidden sm:inline">History</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            {isUserAdmin && (
+              <Link 
+                href="/admin"
+                className="text-purple-600 hover:text-purple-700 font-semibold text-sm"
+              >
+                Admin
+              </Link>
+            )}
+            <Link
+              href="/history"
+              className="flex items-center gap-1 text-slate-700 hover:text-purple-600 transition-colors font-medium px-3 py-2 rounded-lg hover:bg-white/50"
+            >
+              <svg width={20} height={20} fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5"><circle cx="12" cy="12" r="9" strokeWidth="1.7" /><path d="M12 8v5l3 3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7"/></svg>
+              <span className="hidden sm:inline">History</span>
+            </Link>
+          </div>
         </header>
         
         <main className="w-full flex-1 md:px-0 px-1 py-8 bg-transparent flex flex-col items-center">
           <div className="w-full max-w-7xl mx-auto rounded-3xl bg-white/70 dark:bg-slate-900/60 backdrop-blur-2xl shadow-2xl px-4 sm:px-8 py-10 mt-2 mb-8 border border-slate-100">
             <div className="mb-8">
-              <h2 className="text-4xl md:text-3xl font-bold text-slate-900/90 mb-2">Welcome back! <span className="">👋</span></h2>
+              <h2 className="text-4xl md:text-3xl font-bold text-slate-900/90 mb-2 flex items-center gap-2">
+                Welcome back! <span className="">👋</span>
+                {isUserAdmin && (
+                  <span className="px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold rounded-full animate-pulse">
+                    ADMIN
+                  </span>
+                )}
+              </h2>
               <p className="text-slate-600 text-lg">Ready to improve your speaking skills today?</p>
             </div>
 
