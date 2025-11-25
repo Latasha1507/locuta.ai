@@ -447,31 +447,31 @@ export default function PracticePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
-      <div className="bg-white/70 backdrop-blur-xl border-b border-slate-200 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <Link href={`/category/${categoryId}/modules?tone=${tone}`} className="text-slate-700 hover:text-indigo-600 font-medium">
+      <div className="bg-white/70 backdrop-blur-xl border-b border-slate-200 shadow-sm sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between">
+          <Link href={`/category/${categoryId}/modules?tone=${tone}`} className="text-slate-700 hover:text-indigo-600 font-medium text-sm sm:text-base">
             ← Back to Lessons
           </Link>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0">
             <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="mb-4 sm:mb-6 bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-sm sm:text-base">
             {error}
           </div>
         )}
 
         {/* START SCREEN */}
         {step === 'start' && !isLoadingIntro && (
-          <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-3xl shadow-2xl p-12 text-center text-white">
-            <div className="w-16 h-16 rounded-2xl bg-white/30 mx-auto mb-6 animate-pulse" />
-            <h1 className="text-4xl font-bold mb-4">Ready to Begin?</h1>
-            <p className="text-xl text-purple-100 mb-8">Your AI coach will guide you through this lesson</p>
-            <button onClick={loadIntro} className="bg-white text-purple-600 px-10 py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:scale-105 transition-all">
+          <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 lg:p-12 text-center text-white">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white/30 mx-auto mb-4 sm:mb-6 animate-pulse" />
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">Ready to Begin?</h1>
+            <p className="text-base sm:text-lg lg:text-xl text-purple-100 mb-6 sm:mb-8">Your AI coach will guide you through this lesson</p>
+            <button onClick={loadIntro} className="bg-white text-purple-600 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg hover:shadow-2xl hover:scale-105 transition-all w-full sm:w-auto">
               Start Lesson
             </button>
           </div>
@@ -479,33 +479,33 @@ export default function PracticePage() {
 
         {/* LOADING INTRO */}
         {isLoadingIntro && (
-          <div className="bg-white rounded-3xl shadow-2xl p-12 text-center">
-            <div className="py-8">
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 lg:p-12 text-center">
+            <div className="py-4 sm:py-6 lg:py-8">
               <div className="relative">
-                <div className="text-6xl mb-6 inline-block animate-pulse">
+                <div className="text-4xl sm:text-5xl lg:text-6xl mb-4 sm:mb-6 inline-block animate-pulse">
                   🎵
                 </div>
                 
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-24 h-24 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-20 animate-ping"></div>
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-20 animate-ping"></div>
               </div>
               
-              <h2 className="text-3xl font-bold text-purple-600 mb-2">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600 mb-2">
                 Preparing Your Lesson
               </h2>
               
-              <div className="h-8 overflow-hidden">
-                <p className="text-slate-600 text-lg animate-pulse transition-all duration-500">
+              <div className="h-6 sm:h-8 overflow-hidden">
+                <p className="text-slate-600 text-sm sm:text-base lg:text-lg animate-pulse transition-all duration-500">
                   {INTRO_LOADER_MESSAGES[currentLoaderMessage]}
                 </p>
               </div>
               
-              <div className="mt-8 max-w-md mx-auto">
+              <div className="mt-6 sm:mt-8 max-w-md mx-auto">
                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                   <div className="h-full bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500 rounded-full animate-shimmer"></div>
                 </div>
               </div>
               
-              <p className="text-slate-500 text-sm mt-6">
+              <p className="text-slate-500 text-xs sm:text-sm mt-4 sm:mt-6">
                 This usually takes 3-5 seconds
               </p>
             </div>
@@ -514,58 +514,58 @@ export default function PracticePage() {
 
         {/* INTRO SCREEN */}
         {step === 'intro' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-xl p-8">
-              <h2 className="text-3xl font-bold text-slate-900 mb-6">{lessonTitle}</h2>
+          <div className="space-y-4 sm:space-y-6">
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 mb-4 sm:mb-6">{lessonTitle}</h2>
 
-              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 mb-6">
-                <div className="mb-4">
-                  <div className="mb-4">
+              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg sm:rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                <div className="mb-3 sm:mb-4">
+                  <div className="mb-3 sm:mb-4">
                     <input
                       type="range"
                       min="0"
                       max={duration || 0}
                       value={currentTime}
                       onChange={handleSeek}
-                      className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                      className="w-full h-1.5 sm:h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-purple-600"
                     />
-                    <div className="flex justify-between text-sm text-slate-600 mt-1">
+                    <div className="flex justify-between text-xs sm:text-sm text-slate-600 mt-1">
                       <span>{formatTime(currentTime)}</span>
                       <span>{formatTime(duration)}</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-center gap-3">
+                  <div className="flex items-center justify-center gap-2 sm:gap-3">
                     <button 
                       onClick={skipBackward}
                       disabled={!introAudio}
-                      className="w-12 h-12 bg-white text-slate-700 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors shadow disabled:opacity-50"
+                      className="w-10 h-10 sm:w-12 sm:h-12 bg-white text-slate-700 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors shadow disabled:opacity-50"
                     >
-                      <span className="text-xl">⏪</span>
+                      <span className="text-lg sm:text-xl">⏪</span>
                     </button>
 
                     <button 
                       onClick={isPlaying ? pauseAudio : playAudio} 
                       disabled={!introAudio}
-                      className="w-16 h-16 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors shadow-lg disabled:opacity-50"
+                      className="w-14 h-14 sm:w-16 sm:h-16 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors shadow-lg disabled:opacity-50"
                     >
-                      <span className="text-2xl">{isPlaying ? '⏸️' : '▶️'}</span>
+                      <span className="text-xl sm:text-2xl">{isPlaying ? '⏸️' : '▶️'}</span>
                     </button>
 
                     <button 
                       onClick={skipForward}
                       disabled={!introAudio}
-                      className="w-12 h-12 bg-white text-slate-700 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors shadow disabled:opacity-50"
+                      className="w-10 h-10 sm:w-12 sm:h-12 bg-white text-slate-700 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors shadow disabled:opacity-50"
                     >
-                      <span className="text-xl">⏩</span>
+                      <span className="text-lg sm:text-xl">⏩</span>
                     </button>
 
                     <button 
                       onClick={replayAudio}
                       disabled={!introAudio}
-                      className="w-12 h-12 bg-white text-slate-700 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors shadow disabled:opacity-50"
+                      className="w-10 h-10 sm:w-12 sm:h-12 bg-white text-slate-700 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors shadow disabled:opacity-50"
                     >
-                      <span className="text-xl">🔁</span>
+                      <span className="text-lg sm:text-xl">🔁</span>
                     </button>
                   </div>
                 </div>
@@ -574,13 +574,13 @@ export default function PracticePage() {
                   <audio ref={audioRef} src={`data:audio/mpeg;base64,${introAudio}`} className="hidden" />
                 )}
 
-                <div className="mt-4 p-4 bg-white rounded-lg">
-                  <p className="text-slate-700 leading-relaxed">{introTranscript}</p>
+                <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-white rounded-lg">
+                  <p className="text-sm sm:text-base text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{introTranscript}</p>
                 </div>
               </div>
 
               <button onClick={skipToRecording}
-                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all">
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg hover:shadow-xl transition-all">
                 Continue to Recording →
               </button>
             </div>
@@ -589,36 +589,36 @@ export default function PracticePage() {
 
         {/* RECORDING SCREEN */}
         {step === 'recording' && (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg p-6 border-2 border-blue-200">
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="text-xl font-bold text-blue-900 flex items-center gap-2">
+          <div className="space-y-4 sm:space-y-6">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border-2 border-blue-200">
+              <div className="flex items-start justify-between mb-3 sm:mb-4">
+                <h3 className="text-lg sm:text-xl font-bold text-blue-900 flex items-center gap-2">
                   📝 Your Task
                 </h3>
                 <button onClick={() => setShowInstructions(!showInstructions)}
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                  className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex-shrink-0">
                   {showInstructions ? 'Hide' : 'Show'}
                 </button>
               </div>
               
               {showInstructions && (
-                <div className="bg-white rounded-lg p-4">
-                  <p className="text-slate-800 text-lg leading-relaxed">
+                <div className="bg-white rounded-lg p-3 sm:p-4">
+                  <p className="text-slate-800 text-sm sm:text-base lg:text-lg leading-relaxed whitespace-pre-wrap break-words">
                     {practice_prompt || 'Loading task...'}
                   </p>
                 </div>
               )}
             </div>
 
-            <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8 text-center">
               {!isRecording && !audioBlob && !isSubmitting && (
                 <>
-                  <h2 className="text-3xl font-bold text-slate-900 mb-8">Ready to Record</h2>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-6 sm:mb-8">Ready to Record</h2>
                   <div className="relative inline-block">
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full animate-pulse opacity-30 scale-110"></div>
                     <button onClick={startRecording}
-                      className="relative w-32 h-32 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-full flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all">
-                      <Mic className="w-16 h-16" strokeWidth={2} />
+                      className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-full flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all">
+                      <Mic className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16" strokeWidth={2} />
                     </button>
                   </div>
                 </>
@@ -626,13 +626,13 @@ export default function PracticePage() {
 
               {isRecording && (
                 <>
-                  <h2 className="text-3xl font-bold text-red-600 mb-4">Recording...</h2>
-                  <div className="text-4xl font-bold text-slate-900 mb-8">{formatTime(recordingTime)}</div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-red-600 mb-3 sm:mb-4">Recording...</h2>
+                  <div className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6 sm:mb-8">{formatTime(recordingTime)}</div>
                   <div className="relative inline-block">
                     <div className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-40"></div>
                     <button onClick={stopRecording}
-                      className="relative w-32 h-32 bg-gradient-to-br from-red-500 to-pink-600 text-white rounded-full flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all">
-                      <Square className="w-12 h-12" strokeWidth={2} fill="white" />
+                      className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-gradient-to-br from-red-500 to-pink-600 text-white rounded-full flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all">
+                      <Square className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12" strokeWidth={2} fill="white" />
                     </button>
                   </div>
                 </>
@@ -640,20 +640,20 @@ export default function PracticePage() {
 
               {audioBlob && !isSubmitting && (
                 <>
-                  <div className="text-6xl mb-6">✅</div>
-                  <h2 className="text-3xl font-bold text-green-600 mb-4">Recording Complete!</h2>
-                  <p className="text-slate-600 mb-8 text-lg">Duration: {formatTime(recordingTime)}</p>
-                  <div className="flex gap-4 justify-center">
+                  <div className="text-5xl sm:text-6xl mb-4 sm:mb-6">✅</div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-green-600 mb-3 sm:mb-4">Recording Complete!</h2>
+                  <p className="text-slate-600 mb-6 sm:mb-8 text-base sm:text-lg">Duration: {formatTime(recordingTime)}</p>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
                     <button 
                       onClick={reRecord} 
                       disabled={isSubmitting}
-                      className="px-8 py-3 bg-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      className="px-6 sm:px-8 py-2.5 sm:py-3 bg-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base">
                       Re-record
                     </button>
                     <button 
                       onClick={submitRecording}
                       disabled={isSubmitting}
-                      className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-semibold hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                      className="px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-semibold hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base">
                       Submit for Feedback →
                     </button>
                   </div>
@@ -661,32 +661,32 @@ export default function PracticePage() {
               )}
 
               {isSubmitting && (
-                <div className="py-8">
+                <div className="py-6 sm:py-8">
                   <div className="relative">
-                    <div className="text-6xl mb-6 inline-block animate-bounce">
+                    <div className="text-5xl sm:text-6xl mb-4 sm:mb-6 inline-block animate-bounce">
                       🤔
                     </div>
                     
-                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-24 h-24 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-20 animate-ping"></div>
+                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-20 animate-ping"></div>
                   </div>
                   
-                  <h2 className="text-3xl font-bold text-purple-600 mb-2">
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600 mb-2">
                     Analyzing Your Response
                   </h2>
                   
-                  <div className="h-8 overflow-hidden">
-                    <p className="text-slate-600 text-lg animate-pulse transition-all duration-500">
+                  <div className="h-6 sm:h-8 overflow-hidden">
+                    <p className="text-slate-600 text-sm sm:text-base lg:text-lg animate-pulse transition-all duration-500">
                       {FEEDBACK_LOADER_MESSAGES[currentLoaderMessage]}
                     </p>
                   </div>
                   
-                  <div className="mt-8 max-w-md mx-auto">
+                  <div className="mt-6 sm:mt-8 max-w-md mx-auto">
                     <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500 rounded-full animate-shimmer"></div>
                     </div>
                   </div>
                   
-                  <p className="text-slate-500 text-sm mt-6">
+                  <p className="text-slate-500 text-xs sm:text-sm mt-4 sm:mt-6">
                     This usually takes 5-10 seconds
                   </p>
                 </div>

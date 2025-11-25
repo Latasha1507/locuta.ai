@@ -114,26 +114,26 @@ export default async function CategoryModulesPage({
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-4">
+      <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <Link
               href={`/category/${categoryId}/tone`}
-              className="text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-gray-600 hover:text-gray-900 transition-colors flex-shrink-0"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900">{categoryName}</h1>
-              <p className="text-sm text-gray-600 mt-1">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">{categoryName}</h1>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">
                 {moduleNumbers.length} modules • {totalLessons} lessons • {tone} Tone
               </p>
             </div>
-            <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-6 py-3 rounded-xl shadow-lg">
-              <div className="text-sm font-medium opacity-90">Overall Progress</div>
-              <div className="text-3xl font-bold">{overallProgress}%</div>
+            <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-xl shadow-lg w-full sm:w-auto">
+              <div className="text-xs sm:text-sm font-medium opacity-90">Overall Progress</div>
+              <div className="text-2xl sm:text-3xl font-bold">{overallProgress}%</div>
               <div className="text-xs opacity-75">{completedLessons}/{totalLessons} lessons</div>
             </div>
           </div>
@@ -141,20 +141,20 @@ export default async function CategoryModulesPage({
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
       {isUserAdmin && (
-    <div className="mb-6 bg-purple-50 border-2 border-purple-200 rounded-xl p-4 shadow-lg">
-      <p className="text-purple-900 font-semibold flex items-center gap-2">
+    <div className="mb-4 sm:mb-6 bg-purple-50 border-2 border-purple-200 rounded-xl p-3 sm:p-4 shadow-lg">
+      <p className="text-purple-900 font-semibold flex flex-wrap items-center gap-2 text-sm sm:text-base">
         🔑 <span>Admin Mode:</span> <span className="text-purple-600">All lessons unlocked for testing</span>
       </p>
     </div>
   )}
         {moduleNumbers.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-200">
-            <div className="text-6xl mb-4">📚</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">No lessons yet</h2>
-            <p className="text-gray-600 mb-6">Lessons for this category are coming soon!</p>
-            <Link href="/dashboard" className="inline-block px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition shadow-lg">
+          <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 lg:p-12 text-center border border-gray-200">
+            <div className="text-4xl sm:text-6xl mb-4">📚</div>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">No lessons yet</h2>
+            <p className="text-sm sm:text-base text-gray-600 mb-6">Lessons for this category are coming soon!</p>
+            <Link href="/dashboard" className="inline-block px-4 sm:px-6 py-2 sm:py-3 bg-purple-600 hover:bg-purple-700 text-white text-sm sm:text-base font-medium rounded-lg transition shadow-lg">
               Back to Dashboard
             </Link>
           </div>
@@ -174,47 +174,77 @@ export default async function CategoryModulesPage({
               const isUnlocked = isModuleUnlocked(moduleNumber)
 
               return (
-                <div key={moduleNumber} className="relative flex items-start gap-4">
-                  {/* Previous Button - Outside Left */}
-                  <div className="flex-shrink-0 pt-8">
+                <div key={moduleNumber} className="relative">
+                  {/* Module Navigation - Mobile: Above, Desktop: Sides */}
+                  <div className="flex items-center justify-between mb-4 sm:hidden">
                     <Link
                       href={hasPrevModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex - 1]}` : '#'}
-                      className={`flex items-center justify-center w-12 h-12 rounded-full transition-all shadow-lg ${
+                      className={`flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-lg ${
                         hasPrevModule
                           ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-110 border-2 border-purple-200'
                           : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
                       }`}
                     >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </Link>
+                    <span className="text-sm text-gray-600 font-medium">Module {currentModule} of {moduleNumbers.length}</span>
+                    <Link
+                      href={hasNextModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex + 1]}` : '#'}
+                      className={`flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-lg ${
+                        hasNextModule
+                          ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-110 border-2 border-purple-200'
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </Link>
                   </div>
 
-                  {/* Module Card */}
-                  <div className="flex-1 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
-                    <div className={`bg-gradient-to-r ${gradientColor} px-6 py-6 text-white relative`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h2 className="text-3xl font-bold mb-1">{moduleTitle}</h2>
-                        <p className="text-white/80 text-sm">Module {moduleNumber}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-4xl font-bold">{moduleProgress}%</div>
-                        <p className="text-sm text-white/90">Complete</p>
-                      </div>
+                  <div className="relative flex items-start gap-2 sm:gap-4">
+                    {/* Previous Button - Desktop Only */}
+                    <div className="hidden sm:flex flex-shrink-0 pt-8">
+                      <Link
+                        href={hasPrevModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex - 1]}` : '#'}
+                        className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-all shadow-lg ${
+                          hasPrevModule
+                            ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-110 border-2 border-purple-200'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
+                        }`}
+                      >
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </Link>
                     </div>
-                    <div className="bg-white/20 h-3 rounded-full overflow-hidden backdrop-blur-sm">
-                      <div 
-                        className="h-full bg-white rounded-full transition-all duration-500 shadow-lg" 
-                        style={{ width: `${moduleProgress}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-sm text-white/90 mt-2">{completedCount} of {moduleLessons.length} lessons completed</p>
-                  </div>
 
-                  <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                    {/* Module Card */}
+                    <div className="flex-1 bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
+                      <div className={`bg-gradient-to-r ${gradientColor} px-4 py-4 sm:px-6 sm:py-6 text-white relative`}>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-3 sm:mb-4">
+                        <div className="flex-1 min-w-0">
+                          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-1 truncate">{moduleTitle}</h2>
+                          <p className="text-white/80 text-xs sm:text-sm">Module {moduleNumber}</p>
+                        </div>
+                        <div className="text-left sm:text-right">
+                          <div className="text-2xl sm:text-3xl lg:text-4xl font-bold">{moduleProgress}%</div>
+                          <p className="text-xs sm:text-sm text-white/90">Complete</p>
+                        </div>
+                      </div>
+                      <div className="bg-white/20 h-2 sm:h-3 rounded-full overflow-hidden backdrop-blur-sm">
+                        <div 
+                          className="h-full bg-white rounded-full transition-all duration-500 shadow-lg" 
+                          style={{ width: `${moduleProgress}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs sm:text-sm text-white/90 mt-2">{completedCount} of {moduleLessons.length} lessons completed</p>
+                    </div>
+
+                    <div className="p-4 sm:p-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                       {moduleLessons.map((lesson) => {
                         const lessonProgress = progressMap[`${moduleNumber}-${lesson.level_number}`]
                         const isCompleted = lessonProgress?.completed || false
@@ -227,7 +257,7 @@ export default async function CategoryModulesPage({
                         const LessonCard = (
                           <div
                             key={lesson.id}
-                            className={`group relative bg-gradient-to-br from-white to-gray-50 border-2 rounded-2xl p-6 transition-all duration-300 ${
+                            className={`group relative bg-gradient-to-br from-white to-gray-50 border-2 rounded-xl sm:rounded-2xl p-4 sm:p-6 transition-all duration-300 ${
                               isUnlocked 
                                 ? 'border-gray-200 hover:border-purple-400 hover:shadow-2xl hover:-translate-y-1 cursor-pointer' 
                                 : 'border-gray-300 cursor-not-allowed opacity-60'
@@ -235,7 +265,7 @@ export default async function CategoryModulesPage({
                           >
                             {/* Lock indicator for locked lessons */}
                             {!isUnlocked && (
-                              <div className="absolute top-4 right-4">
+                              <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
                                 <div className="bg-gray-200 text-gray-600 px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                                   <span>🔒</span>
                                 </div>
@@ -243,18 +273,18 @@ export default async function CategoryModulesPage({
                             )}
 
                             {isCompleted && isUnlocked && (
-                              <div className="absolute top-4 right-4 flex items-center gap-2">
-                                <div className="bg-gradient-to-r from-green-400 to-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1 animate-pulse">
-                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex items-center gap-2">
+                                <div className="bg-gradient-to-r from-green-400 to-emerald-500 text-white px-2 sm:px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1 animate-pulse">
+                                  <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                   </svg>
-                                  <span>Completed</span>
+                                  <span className="hidden sm:inline">Completed</span>
                                 </div>
                               </div>
                             )}
 
-                            <div className="flex items-start gap-4">
-                              <div className={`relative w-16 h-16 rounded-xl flex items-center justify-center font-bold text-2xl flex-shrink-0 transition-all duration-300 shadow-lg ${
+                            <div className="flex items-start gap-3 sm:gap-4">
+                              <div className={`relative w-12 h-12 sm:w-16 sm:h-16 rounded-lg sm:rounded-xl flex items-center justify-center font-bold text-lg sm:text-2xl flex-shrink-0 transition-all duration-300 shadow-lg ${
                                 isCompleted && isUnlocked
                                   ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white' 
                                   : isUnlocked
@@ -262,46 +292,46 @@ export default async function CategoryModulesPage({
                                   : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-500'
                               }`}>
                                 {isCompleted && isUnlocked ? (
-                                  <span className="text-3xl">✓</span>
+                                  <span className="text-xl sm:text-3xl">✓</span>
                                 ) : (
                                   lesson.level_number
                                 )}
                                 {isCompleted && isUnlocked && (
-                                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center animate-bounce">
-                                    <span className="text-lg">🌟</span>
+                                  <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 bg-yellow-400 rounded-full flex items-center justify-center animate-bounce">
+                                    <span className="text-xs sm:text-lg">🌟</span>
                                   </div>
                                 )}
                               </div>
 
                               <div className="flex-1 min-w-0">
-                                <h3 className={`font-bold text-lg mb-2 transition-colors leading-tight ${
+                                <h3 className={`font-bold text-base sm:text-lg mb-2 transition-colors leading-tight ${
                                   isUnlocked ? 'text-gray-900 group-hover:text-purple-600' : 'text-gray-600'
                                 }`}>
                                   {lesson.level_title}
                                 </h3>
-                                <p className={`text-sm line-clamp-2 leading-relaxed mb-4 ${
+                                <p className={`text-xs sm:text-sm line-clamp-2 sm:line-clamp-2 leading-relaxed mb-3 sm:mb-4 ${
                                   isUnlocked ? 'text-gray-600' : 'text-gray-500'
                                 }`}>
                                   {lesson.lesson_explanation}
                                 </p>
                                 
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                                    <div className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold ${
                                       isCompleted && isUnlocked
                                         ? 'bg-green-100 text-green-700' 
                                         : isUnlocked
                                         ? 'bg-gray-100 text-gray-600'
                                         : 'bg-gray-100 text-gray-500'
                                     }`}>
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                       </svg>
                                       <span className="font-bold">{lesson.expected_duration_sec}s</span>
                                     </div>
 
                                     {bestScore && isUnlocked && (
-                                      <div className="inline-flex items-center gap-1 bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 px-3 py-1.5 rounded-lg text-xs font-bold">
+                                      <div className="inline-flex items-center gap-1 bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-bold">
                                         <span>🏆</span>
                                         <span>{bestScore}/100</span>
                                       </div>
@@ -309,7 +339,7 @@ export default async function CategoryModulesPage({
                                   </div>
 
                                   {isUnlocked && (
-                                    <svg className="w-6 h-6 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                     </svg>
                                   )}
@@ -330,24 +360,25 @@ export default async function CategoryModulesPage({
                           LessonCard
                         )
                       })}
+                      </div>
                     </div>
-                  </div>
-                  </div>
+                    </div>
 
-                  {/* Next Button - Outside Right */}
-                  <div className="flex-shrink-0 pt-8">
-                    <Link
-                      href={hasNextModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex + 1]}` : '#'}
-                      className={`flex items-center justify-center w-12 h-12 rounded-full transition-all shadow-lg ${
-                        hasNextModule
-                          ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-110 border-2 border-purple-200'
-                          : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
-                      }`}
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </Link>
+                    {/* Next Button - Desktop Only */}
+                    <div className="hidden sm:flex flex-shrink-0 pt-8">
+                      <Link
+                        href={hasNextModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex + 1]}` : '#'}
+                        className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-all shadow-lg ${
+                          hasNextModule
+                            ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-110 border-2 border-purple-200'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
+                        }`}
+                      >
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               )
