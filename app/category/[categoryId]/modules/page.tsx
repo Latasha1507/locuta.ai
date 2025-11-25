@@ -77,6 +77,12 @@ export default async function CategoryModulesPage({
     .eq('user_id', user.id)
     .eq('category', categoryName)
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle()
+
   const progressMap: { [key: string]: any } = {}
   progress?.forEach((p) => {
     progressMap[`${p.module_number}-${p.lesson_number}`] = p
@@ -88,17 +94,58 @@ export default async function CategoryModulesPage({
 
   const gradientColor = categoryColors[categoryId] || 'from-purple-500 to-indigo-600'
 
+  const normalizeString = (value?: string | null) =>
+    typeof value === 'string' ? value.toLowerCase() : ''
+
+  const normalizedPlanType = normalizeString(
+    (profile as any)?.plan_type || (profile as any)?.plan || (profile as any)?.tier
+  )
+  const normalizedSubscriptionStatus = normalizeString(
+    (profile as any)?.subscription_status ||
+      (profile as any)?.plan_status ||
+      (profile as any)?.membership_status
+  )
+  const trialEndsAt =
+    (profile as any)?.trial_ends_at ||
+    (profile as any)?.trial_end ||
+    (profile as any)?.trialEndsAt ||
+    (profile as any)?.trialEnds ||
+    null
+  const isTrialActive = trialEndsAt ? new Date(trialEndsAt).getTime() > Date.now() : false
+  const hasLifetimeAccess = Boolean(
+    (profile as any)?.lifetime_access ||
+      (profile as any)?.founder_access ||
+      (profile as any)?.beta_access ||
+      (profile as any)?.pro_access
+  )
+  const hasActiveSubscriptionFlag = Boolean(
+    (profile as any)?.has_active_subscription ||
+      (profile as any)?.active_subscription ||
+      (profile as any)?.is_subscription_active
+  )
+
+  const hasFullAccess =
+    isUserAdmin ||
+    hasLifetimeAccess ||
+    hasActiveSubscriptionFlag ||
+    isTrialActive ||
+    ['pro', 'paid', 'premium', 'founder', 'lifetime'].includes(normalizedPlanType) ||
+    ['active', 'trialing'].includes(normalizedSubscriptionStatus)
+
   // Check if module is unlocked
   const isModuleUnlocked = (moduleNum: number): boolean => {
+    if (isUserAdmin) return true
     if (moduleNum === 1) return true
-    
+
+    if (!hasFullAccess) return false
+
     const previousModule = modules[moduleNum - 1]
     if (!previousModule) return true
-    
+
     const allPreviousCompleted = previousModule.every(
       (lesson) => progressMap[`${moduleNum - 1}-${lesson.level_number}`]?.completed
     )
-    
+
     return allPreviousCompleted
   }
 
