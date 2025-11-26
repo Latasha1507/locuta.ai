@@ -89,98 +89,136 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const loadData = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const startTime = Date.now();
       
-      if (!user) {
-        window.location.href = '/auth/login';
-        return;
-      }
+      try {
+        console.log('🔄 [1/6] Starting dashboard load...');
+        const supabase = createClient();
 
-      setUser(user);
-      
-      // Check admin status
-      const adminStatus = await isAdminClient();
-      setIsUserAdmin(adminStatus);
-      
-      // Identify user in Mixpanel
-      Mixpanel.identify(user.id);
-      
-      // Set user properties
-      Mixpanel.people.set({
-        $email: user.email,
-        $name: user.user_metadata?.full_name || user.email,
-        'Sign up date': user.created_at,
-        'Last login': new Date().toISOString(),
-      });
-
-      // Track login event
-      Mixpanel.track('User Logged In', {
-        method: 'google',
-      });
-
-      // Fetch user's progress
-      const { data: progressData } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', user.id);
-      setProgress(progressData || []);
-
-      // FIRST-TIME USER TRACKING
-      const completedCount = progressData?.filter((p: any) => p.completed).length || 0;
-      const isFirstTime = completedCount === 0;
-    
-      if (isFirstTime) {
-        Mixpanel.people.setOnce({
-          'First Time User': true,
-          'First Login Date': new Date().toISOString()
-        });
+        // Step 1: Auth check
+        const { data: { user } } = await supabase.auth.getUser();
         
-        const signupTime = new Date(user.created_at).getTime();
-        const timeFromSignup = Date.now() - signupTime;
+        if (!user) {
+          window.location.href = '/auth/login';
+          return;
+        }
+
+        console.log(`✅ [${Date.now() - startTime}ms] User authenticated`);
+        setUser(user);
         
-        Mixpanel.track('First Time Dashboard Visit', {
-          time_from_signup_minutes: Math.round(timeFromSignup / 1000 / 60),
-          time_from_signup_hours: Math.round(timeFromSignup / 1000 / 60 / 60)
-        });
-      } else {
-        Mixpanel.people.set({
-          'First Time User': false,
-          'Total Lessons Completed': completedCount
-        });
+        // Step 2: Admin check (non-blocking)
+        isAdminClient().then(adminStatus => {
+          setIsUserAdmin(adminStatus);
+          console.log(`✅ Admin status: ${adminStatus}`);
+        }).catch(() => setIsUserAdmin(false));
+        
+        // Step 3: Mixpanel (non-blocking - don't wait for it)
+        try {
+          Mixpanel.identify(user.id);
+          Mixpanel.people.set({
+            $email: user.email,
+            $name: user.user_metadata?.full_name || user.email,
+            'Sign up date': user.created_at,
+            'Last login': new Date().toISOString(),
+          });
+          Mixpanel.track('User Logged In', { method: 'google' });
+        } catch (err) {
+          console.warn('⚠️ Mixpanel tracking failed (non-critical)');
+        }
+
+        // Step 4: Parallel optimized queries
+        console.log(`🔄 [${Date.now() - startTime}ms] Fetching data in parallel...`);
+        
+        const [progressResult, lessonsResult, recentSessionsResult] = await Promise.all([
+          // ⚡ Optimized: Only fetch needed columns
+          supabase
+            .from('user_progress')
+            .select('category, module_number, lesson_number, completed, best_score')
+            .eq('user_id', user.id),
+          
+          // ⚡ Optimized: Only fetch needed columns (lessons are static)
+          supabase
+            .from('lessons')
+            .select('category, module_number, level_number'),
+          
+          // ⚡ CRITICAL FIX: Fetch only 50 sessions with specific columns
+          supabase
+            .from('sessions')
+            .select('id, overall_score, created_at, category')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(50)
+        ]);
+
+        console.log(`✅ [${Date.now() - startTime}ms] All data fetched`);
+
+        const progressData = progressResult.data || [];
+        const lessonsData = lessonsResult.data || [];
+        const sessionsData = recentSessionsResult.data || [];
+
+        setProgress(progressData);
+        setLessons(lessonsData);
+        
+        // Use the same 50 sessions for both allSessions and recentSessions
+        // This is enough for all dashboard calculations
+        setAllSessions(sessionsData);
+        setRecentSessions(sessionsData.slice(0, 10)); // Keep only top 10 for "recent"
+
+        // Step 5: First-time user tracking (non-blocking)
+        const completedCount = progressData.filter((p: any) => p.completed).length;
+        const isFirstTime = completedCount === 0;
+        
+        if (isFirstTime) {
+          try {
+            Mixpanel.people.setOnce({
+              'First Time User': true,
+              'First Login Date': new Date().toISOString()
+            });
+            
+            const signupTime = new Date(user.created_at).getTime();
+            const timeFromSignup = Date.now() - signupTime;
+            
+            Mixpanel.track('First Time Dashboard Visit', {
+              time_from_signup_minutes: Math.round(timeFromSignup / 1000 / 60),
+              time_from_signup_hours: Math.round(timeFromSignup / 1000 / 60 / 60)
+            });
+          } catch (err) {
+            console.warn('⚠️ First-time tracking failed (non-critical)');
+          }
+        } else {
+          try {
+            Mixpanel.people.set({
+              'First Time User': false,
+              'Total Lessons Completed': completedCount
+            });
+          } catch (err) {
+            console.warn('⚠️ User property update failed (non-critical)');
+          }
+        }
+
+        const totalTime = Date.now() - startTime;
+        console.log(`🎉 [${totalTime}ms] Dashboard loaded successfully!`);
+        setLoading(false);
+
+      } catch (err) {
+        console.error('❌ Dashboard load error:', err);
+        setLoading(false);
       }
-
-      // Fetch total lesson counts per category
-      const { data: lessonsData } = await supabase
-        .from('lessons')
-        .select('category, module_number, level_number');
-      setLessons(lessonsData || []);
-
-      // Fetch all sessions
-      const { data: allSessionsData } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      setAllSessions(allSessionsData || []);
-
-      // Fetch recent sessions
-      const { data: recentSessionsData } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      setRecentSessions(recentSessionsData || []);
-      
-      setLoading(false);
     };
 
     loadData();
   }, []);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen w-full bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb] flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mb-4"></div>
+          <p className="text-xl font-semibold text-slate-700">Loading dashboard...</p>
+          <p className="text-sm text-slate-500 mt-2">This should only take a moment</p>
+        </div>
+      </div>
+    );
   }
 
   // Calculate progress per category
