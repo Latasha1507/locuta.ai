@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Mic, Square, Play, Pause, SkipBack, SkipForward, RotateCcw } from 'lucide-react'
+import { Mic, Square, Play, Pause, SkipBack, SkipForward, RotateCcw, X, ThumbsUp } from 'lucide-react'
 import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion, trackError } from '@/lib/analytics/helpers';
 import Mixpanel from '@/lib/mixpanel';
 
@@ -54,6 +54,7 @@ export default function PracticePage() {
   const [introStartTime, setIntroStartTime] = useState<number>(0)
   const [hasStartedRecording, setHasStartedRecording] = useState(false)
   const [recordingStartTime, setRecordingStartTime] = useState<number>(0)
+  const [isIntroLiked, setIsIntroLiked] = useState(false)
   
   // Audio player states
   const [currentTime, setCurrentTime] = useState(0)
@@ -247,6 +248,10 @@ export default function PracticePage() {
     });
     
     setStep('recording')
+  }
+
+  const toggleIntroLike = () => {
+    setIsIntroLiked((prev) => !prev)
   }
 
   const startRecording = async () => {
@@ -536,6 +541,28 @@ export default function PracticePage() {
                   </div>
 
                   <div className="flex items-center justify-center gap-2 sm:gap-3">
+                    <button
+                      onClick={skipToRecording}
+                      disabled={isSubmitting || isLoadingIntro}
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-slate-700 flex items-center justify-center shadow-md hover:bg-white/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="Skip intro"
+                    >
+                      <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+
+                    <button
+                      onClick={toggleIntroLike}
+                      disabled={!introAudio}
+                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-md transition ${
+                        isIntroLiked
+                          ? 'bg-purple-600 text-white hover:bg-purple-500'
+                          : 'bg-white text-slate-700 hover:bg-white/80'
+                      } disabled:opacity-40 disabled:cursor-not-allowed`}
+                      aria-label={isIntroLiked ? 'Unlike intro' : 'Like intro'}
+                    >
+                      <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+
                     <button
                       onClick={skipBackward}
                       disabled={!introAudio}
