@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Mic, Square } from 'lucide-react'
+import { Mic, Square, Play, Pause, SkipBack, SkipForward, RotateCcw } from 'lucide-react'
 import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion, trackError } from '@/lib/analytics/helpers';
 import Mixpanel from '@/lib/mixpanel';
 
@@ -519,53 +519,61 @@ export default function PracticePage() {
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 mb-4 sm:mb-6">{lessonTitle}</h2>
 
               <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg sm:rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-                <div className="mb-3 sm:mb-4">
-                  <div className="mb-3 sm:mb-4">
+                <div className="mb-3 sm:mb-4 space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 mb-1 font-semibold">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
                     <input
                       type="range"
                       min="0"
                       max={duration || 0}
                       value={currentTime}
                       onChange={handleSeek}
-                      className="w-full h-1.5 sm:h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                      className="w-full h-1.5 sm:h-2 rounded-full appearance-none cursor-pointer bg-white/60 accent-purple-600 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-600 [&::-webkit-slider-thumb]:shadow-lg [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-purple-600"
                     />
-                    <div className="flex justify-between text-xs sm:text-sm text-slate-600 mt-1">
-                      <span>{formatTime(currentTime)}</span>
-                      <span>{formatTime(duration)}</span>
-                    </div>
                   </div>
 
                   <div className="flex items-center justify-center gap-2 sm:gap-3">
-                    <button 
+                    <button
                       onClick={skipBackward}
                       disabled={!introAudio}
-                      className="w-10 h-10 sm:w-12 sm:h-12 bg-white text-slate-700 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors shadow disabled:opacity-50"
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-slate-700 flex items-center justify-center shadow-md hover:bg-white/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="Skip backward 10 seconds"
                     >
-                      <span className="text-lg sm:text-xl">⏪</span>
+                      <SkipBack className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
 
-                    <button 
-                      onClick={isPlaying ? pauseAudio : playAudio} 
+                    <button
+                      onClick={isPlaying ? pauseAudio : playAudio}
                       disabled={!introAudio}
-                      className="w-14 h-14 sm:w-16 sm:h-16 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors shadow-lg disabled:opacity-50"
+                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center shadow-lg hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label={isPlaying ? 'Pause audio' : 'Play audio'}
                     >
-                      <span className="text-xl sm:text-2xl">{isPlaying ? '⏸️' : '▶️'}</span>
+                      {isPlaying ? (
+                        <Pause className="w-5 h-5 sm:w-6 sm:h-6" />
+                      ) : (
+                        <Play className="w-5 h-5 sm:w-6 sm:h-6 ml-1" />
+                      )}
                     </button>
 
-                    <button 
+                    <button
                       onClick={skipForward}
                       disabled={!introAudio}
-                      className="w-10 h-10 sm:w-12 sm:h-12 bg-white text-slate-700 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors shadow disabled:opacity-50"
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-slate-700 flex items-center justify-center shadow-md hover:bg-white/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="Skip forward 10 seconds"
                     >
-                      <span className="text-lg sm:text-xl">⏩</span>
+                      <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
 
-                    <button 
+                    <button
                       onClick={replayAudio}
                       disabled={!introAudio}
-                      className="w-10 h-10 sm:w-12 sm:h-12 bg-white text-slate-700 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors shadow disabled:opacity-50"
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-slate-700 flex items-center justify-center shadow-md hover:bg-white/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="Replay"
                     >
-                      <span className="text-lg sm:text-xl">🔁</span>
+                      <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                   </div>
                 </div>
