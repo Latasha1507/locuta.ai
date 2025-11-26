@@ -75,43 +75,89 @@ export default function FeedbackDiagnostic() {
     const supabase = createClient();
     
     try {
+      // First check if already generated
       const { data: session, error } = await supabase
         .from('sessions')
-        .select('ai_example_text, ai_example_audio')
+        .select('ai_example_text, ai_example_audio, feedback')
         .eq('id', sessionId)
         .single();
       
       if (!error && session) {
-        setQualityChecks(prev => prev.map(check => {
-          if (check.feature === 'AI Example Text') {
-            return {
-              ...check,
-              present: !!session.ai_example_text,
-              details: session.ai_example_text 
-                ? `✅ ${session.ai_example_text.length} characters` 
-                : '⏳ Still generating...',
-              isPending: !session.ai_example_text
-            };
+        // If not generated, trigger generation
+        if (!session.ai_example_text || !session.ai_example_audio) {
+          console.log('Triggering AI example generation...');
+          
+          try {
+            const genResponse = await fetch('/api/generate-example', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sessionId,
+                prompt: session.feedback?.task_completion_analysis?.explanation || 'Practice speaking',
+                tone: 'Normal'
+              })
+            });
+            
+            if (genResponse.ok) {
+              const genData = await genResponse.json();
+              console.log('AI Example generated:', genData);
+              
+              // Update quality checks
+              setQualityChecks(prev => prev.map(check => {
+                if (check.feature === 'AI Example Text') {
+                  return {
+                    ...check,
+                    present: true,
+                    details: `✅ ${genData.text?.length || 0} characters (generated in ${genData.processingTime}ms)`,
+                    isPending: false
+                  };
+                }
+                if (check.feature === 'AI Audio (HD Quality)') {
+                  return {
+                    ...check,
+                    present: !!genData.audio,
+                    details: genData.audio 
+                      ? `✅ Audio present (${Math.round(genData.audio.length / 1024)}KB)` 
+                      : '❌ Audio generation failed',
+                    isPending: false
+                  };
+                }
+                return check;
+              }));
+              
+              setAutoCheckEnabled(false);
+              setIsCheckingAI(false);
+              return;
+            }
+          } catch (genErr) {
+            console.error('Generation failed:', genErr);
           }
-          if (check.feature === 'AI Audio (HD Quality)') {
-            return {
-              ...check,
-              present: !!session.ai_example_audio,
-              details: session.ai_example_audio 
-                ? `✅ Audio present (${Math.round(session.ai_example_audio.length / 1024)}KB)` 
-                : '⏳ Still generating...',
-              isPending: !session.ai_example_audio
-            };
-          }
-          return check;
-        }));
-        
-        // Stop auto-check if AI example is ready
-        if (session.ai_example_text && session.ai_example_audio) {
-          setAutoCheckEnabled(false);
         } else {
-          setAiCheckCount(prev => prev + 1);
+          // Already generated
+          setQualityChecks(prev => prev.map(check => {
+            if (check.feature === 'AI Example Text') {
+              return {
+                ...check,
+                present: true,
+                details: `✅ ${session.ai_example_text.length} characters`,
+                isPending: false
+              };
+            }
+            if (check.feature === 'AI Audio (HD Quality)') {
+              return {
+                ...check,
+                present: true,
+                details: `✅ Audio present (${Math.round(session.ai_example_audio.length / 1024)}KB)`,
+                isPending: false
+              };
+            }
+            return check;
+          }));
+          
+          setAutoCheckEnabled(false);
         }
+        
+        setAiCheckCount(prev => prev + 1);
       }
     } catch (err) {
       console.error('Error checking AI example:', err);
@@ -204,6 +250,25 @@ export default function FeedbackDiagnostic() {
         // Step 4: Check response data
         const responseData = await response.json();
         
+        // Show API version
+        if (responseData.apiVersion) {
+          results.push({
+            test: 'API Version Check',
+            time: 0,
+            status: 'SUCCESS',
+            details: `Running: ${responseData.apiVersion}`,
+            recommendation: responseData.apiVersion.includes('ultra-optimized') ? '✅ Latest optimized version' : '⚠️ May not be latest version'
+          });
+        } else {
+          results.push({
+            test: 'API Version Check',
+            time: 0,
+            status: 'WARNING',
+            details: 'No version identifier found',
+            recommendation: '⚠️ Please deploy the latest optimized API code'
+          });
+        }
+        
         // Show quick feedback from response
         if (responseData.quickFeedback) {
           results.push({
@@ -212,6 +277,20 @@ export default function FeedbackDiagnostic() {
             status: 'SUCCESS',
             details: `Score: ${responseData.quickFeedback.score}, Pass: ${responseData.quickFeedback.passed ? 'Yes' : 'No'}`,
             recommendation: '✅ Instant feedback delivered with response'
+          });
+        }
+        
+        // Show timing breakdown if available
+        if (responseData.timing) {
+          const t = responseData.timing;
+          results.push({
+            test: '⏱️ Timing Breakdown',
+            time: 0,
+            status: 'INFO',
+            details: `FormData: ${t['FormData parsed'] || 'N/A'}ms | Phase1: ${t['PHASE 1 complete (parallel)'] || 'N/A'}ms | Phase2: ${t['PHASE 2 complete (GPT)'] || 'N/A'}ms | Phase3: ${t['PHASE 3 complete (DB)'] || 'N/A'}ms`,
+            recommendation: t['PHASE 1 complete (parallel)'] > 3000 ? '🚨 Whisper is slow' : 
+                           t['PHASE 2 complete (GPT)'] - t['PHASE 1 complete (parallel)'] > 2000 ? '🚨 GPT is slow - check model' :
+                           '✅ Good timing distribution'
           });
         }
         

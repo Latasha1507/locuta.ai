@@ -1,6 +1,10 @@
+// app/api/feedback/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
+
+// For Vercel background tasks
+export const maxDuration = 60 // Allow up to 60 seconds for background tasks
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -24,89 +28,61 @@ const toneVoiceMap: { [key: string]: string } = {
   'Bossy': 'echo',
 }
 
-// Filler patterns
-const FILLER_PATTERNS = /\b(um|uh|uhh|umm|erm|like|you know|basically|actually|literally|so yeah|i mean|kind of|sort of|right|okay so|well|anyway)\b/gi
-
-// Quick transcript analysis
-function analyzeTranscript(transcript: string, durationSeconds: number) {
-  const words = transcript.split(/\s+/).filter(w => w.length > 0)
-  const wordCount = words.length
-  const wordsPerMinute = durationSeconds > 0 ? Math.round((wordCount / durationSeconds) * 60) : 120
-  
-  const fillerMatches = transcript.match(FILLER_PATTERNS) || []
-  const fillerCount = fillerMatches.length
-  const fillerWords = [...new Set(fillerMatches.map(f => f.toLowerCase()))]
-  
-  const uniqueWords = new Set(words.map(w => w.toLowerCase().replace(/[^a-z]/g, '')))
-  const vocabularyDiversity = wordCount > 0 ? Math.round((uniqueWords.size / wordCount) * 100) : 50
-  
-  // Filler penalty
-  let fillerPenalty = 0
-  if (fillerCount <= 3) fillerPenalty = 0
-  else if (fillerCount <= 6) fillerPenalty = 2
-  else if (fillerCount <= 10) fillerPenalty = 5
-  else if (fillerCount <= 15) fillerPenalty = 8
-  else fillerPenalty = 12
-  
-  return { wordCount, wordsPerMinute, fillerCount, fillerWords, fillerPenalty, vocabularyDiversity }
-}
-
-// Parse user agent
-function parseUserAgent(userAgent: string) {
-  const ua = userAgent.toLowerCase()
-  let browser = 'Other'
-  if (ua.includes('edg/')) browser = 'Edge'
-  else if (ua.includes('chrome') && !ua.includes('edg')) browser = 'Chrome'
-  else if (ua.includes('safari') && !ua.includes('chrome')) browser = 'Safari'
-  else if (ua.includes('firefox')) browser = 'Firefox'
-  
-  let deviceType = 'Desktop'
-  if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) deviceType = 'Mobile'
-  else if (ua.includes('tablet') || ua.includes('ipad')) deviceType = 'Tablet'
-  
-  return { browser, deviceType }
-}
+// Filler detection
+const FILLER_REGEX = /\b(um|uh|uhh|umm|like|you know|basically|actually|literally|i mean|kind of|sort of)\b/gi
 
 export async function POST(request: NextRequest) {
-  const startTime = Date.now()
-  const log = (msg: string) => console.log(`[${Date.now() - startTime}ms] ${msg}`)
+  const START = Date.now()
+  const timing: Record<string, number> = {}
+  const log = (step: string) => {
+    const now = Date.now()
+    timing[step] = now - START
+    console.log(`⏱️ [${timing[step]}ms] ${step}`)
+  }
   
   try {
-    log('📥 API Start')
+    log('START')
     
-    const userAgent = request.headers.get('user-agent') || ''
-    const country = request.headers.get('x-vercel-ip-country') || 'Unknown'
-    const city = request.headers.get('x-vercel-ip-city') || 'Unknown'
-    const { browser, deviceType } = parseUserAgent(userAgent)
-    
+    // Parse form data
     const formData = await request.formData()
+    log('FormData parsed')
+    
     const audioFile = formData.get('audio') as File
     const tone = formData.get('tone') as string || 'Normal'
-    const categoryId = formData.get('categoryId') as string
-    const moduleId = formData.get('moduleId') as string
-    const lessonId = formData.get('lessonId') as string
+    const categoryId = formData.get('categoryId') as string || 'public-speaking'
+    const moduleId = formData.get('moduleId') as string || '1'
+    const lessonId = formData.get('lessonId') as string || '1'
     const durationStr = formData.get('duration') as string
     const voiceMetricsStr = formData.get('voiceMetrics') as string
     
     const duration = parseFloat(durationStr) || 60
 
     if (!audioFile) {
-      return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
+      return NextResponse.json({ error: 'No audio file' }, { status: 400 })
     }
 
     const supabase = await createClient()
+    log('Supabase client created')
+    
     const categoryName = categoryMap[categoryId] || 'Public Speaking'
     const levelNumber = parseInt(lessonId) || 1
 
-    // ⚡ PHASE 1: PARALLEL - Auth + Transcription + Lesson (saves ~2s)
-    log('⚡ Phase 1: Starting parallel calls')
+    // ============================================
+    // ⚡ PHASE 1: PARALLEL CALLS
+    // ============================================
+    const phase1Start = Date.now()
     
-    const [authResult, transcription, lessonResult] = await Promise.all([
+    const [authResult, transcriptionResult, lessonResult] = await Promise.all([
+      // Auth
       supabase.auth.getUser(),
+      
+      // Whisper - this is the slowest part (~2-3s)
       openai.audio.transcriptions.create({
         file: audioFile,
         model: 'whisper-1',
       }),
+      
+      // Lesson fetch
       supabase
         .from('lessons')
         .select('level_title, practice_prompt, feedback_focus_areas')
@@ -116,112 +92,111 @@ export async function POST(request: NextRequest) {
         .single()
     ])
     
-    log('✅ Phase 1 complete')
+    log(`PHASE 1 complete (parallel) - took ${Date.now() - phase1Start}ms`)
 
     const user = authResult.data.user
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    log('Auth verified')
 
     const lesson = lessonResult.data
     if (!lesson) {
-      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
+      // Fallback if lesson not found
+      console.warn('Lesson not found, using defaults')
     }
+    
+    const userTranscript = transcriptionResult.text
+    const practicePrompt = lesson?.practice_prompt || 'Practice speaking clearly'
+    log(`Transcript: "${userTranscript.substring(0, 50)}..."`)
 
-    const userTranscript = transcription.text
-    log(`📝 Transcript: ${userTranscript.substring(0, 50)}...`)
+    // ============================================
+    // ⚡ QUICK ANALYSIS (NO API CALL)
+    // ============================================
+    const words = userTranscript.split(/\s+/).filter(w => w.length > 0)
+    const wordCount = words.length
+    const wordsPerMinute = duration > 0 ? Math.round((wordCount / duration) * 60) : 120
+    const fillerMatches = userTranscript.match(FILLER_REGEX) || []
+    const fillerCount = fillerMatches.length
+    const fillerWords = [...new Set(fillerMatches.map(f => f.toLowerCase()))]
+    const uniqueWords = new Set(words.map(w => w.toLowerCase().replace(/[^a-z]/g, '')))
+    const vocabDiversity = wordCount > 0 ? Math.round((uniqueWords.size / wordCount) * 100) : 50
     
-    // Analyze transcript (instant)
-    const transcriptMetrics = analyzeTranscript(userTranscript, duration)
+    // Filler penalty
+    let fillerPenalty = 0
+    if (fillerCount > 3) fillerPenalty = Math.min(12, Math.floor((fillerCount - 3) / 2) * 2)
     
+    log('Quick analysis done')
+
     // Parse voice metrics if provided
     let voiceMetrics: any = null
     if (voiceMetricsStr) {
-      try { voiceMetrics = JSON.parse(voiceMetricsStr) } catch (e) {}
+      try { voiceMetrics = JSON.parse(voiceMetricsStr) } catch {}
     }
 
-    const focusAreas = Array.isArray(lesson.feedback_focus_areas) 
+    const focusAreas = Array.isArray(lesson?.feedback_focus_areas) 
       ? lesson.feedback_focus_areas 
       : ['Clarity', 'Delivery', 'Confidence']
 
-    // ⚡ PHASE 2: GPT FEEDBACK - Use gpt-4o-mini (saves ~5s)
-    log('⚡ Phase 2: GPT feedback')
+    // ============================================
+    // ⚡ PHASE 2: GPT-4O-MINI (Fast!)
+    // ============================================
+    const phase2Start = Date.now()
     
-    const levelDesc = levelNumber <= 10 ? 'Beginner' : levelNumber <= 30 ? 'Intermediate' : 'Advanced'
-    
-    // ULTRA SHORT PROMPT - ~300 tokens
-    const feedbackPrompt = `Speaking coach. Evaluate and score fairly.
+    // MINIMAL PROMPT - ~200 tokens input
+    const prompt = `Rate this speaking response 0-100. Be encouraging.
+Task: "${practicePrompt.substring(0, 100)}"
+Response: "${userTranscript.substring(0, 500)}"
+Level: ${levelNumber <= 10 ? 'Beginner' : levelNumber <= 30 ? 'Intermediate' : 'Advanced'}
 
-Task: "${lesson.practice_prompt}"
-Response: "${userTranscript}"
-Level: ${levelNumber}/50 (${levelDesc})
-Words: ${transcriptMetrics.wordCount}, WPM: ${transcriptMetrics.wordsPerMinute}, Fillers: ${transcriptMetrics.fillerCount}
-
-Score 0-100 for:
-- task_score: Did they address the prompt?
-- grammar_score: Grammar correctness for ${levelDesc}
-- vocabulary_score: Word choice quality
-- delivery_score: Clarity and confidence
-
-Passing is 80+. Be encouraging but honest.
-
-JSON only:
-{"task_score":0,"task_addressed":true,"grammar_score":0,"vocabulary_score":0,"delivery_score":0,"overall_score":0,"pass":false,"strengths":["str1","str2"],"improvements":["imp1","imp2"],"feedback":"3-4 encouraging sentences","focus_scores":{"${focusAreas[0]}":0,"${focusAreas[1]}":0,"${focusAreas[2]}":0}}`
+JSON only: {"task":0-100,"grammar":0-100,"vocabulary":0-100,"delivery":0-100,"strengths":["s1","s2"],"improvements":["i1","i2"],"feedback":"2-3 sentences"}`
 
     const gptResponse = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', // 🚀 10x faster than gpt-4o
+      model: 'gpt-4o-mini', // MUST be gpt-4o-mini for speed
       messages: [
-        { role: 'system', content: 'Speaking coach. Respond with valid JSON only.' },
-        { role: 'user', content: feedbackPrompt }
+        { role: 'system', content: 'Speaking coach. JSON only. Be encouraging.' },
+        { role: 'user', content: prompt }
       ],
       temperature: 0.5,
-      max_tokens: 400,
+      max_tokens: 300, // Limit output
       response_format: { type: "json_object" }
     })
     
-    log('✅ Phase 2 complete')
+    log(`PHASE 2 complete (GPT) - took ${Date.now() - phase2Start}ms`)
 
-    // Parse GPT response
-    let gptEval: any = {}
+    // Parse response
+    let gpt: any = { task: 70, grammar: 70, vocabulary: 70, delivery: 70, strengths: [], improvements: [], feedback: '' }
     try {
-      gptEval = JSON.parse(gptResponse.choices[0].message.content || '{}')
+      gpt = JSON.parse(gptResponse.choices[0].message.content || '{}')
     } catch (e) {
-      log('⚠️ GPT parse error')
-      gptEval = {
-        task_score: 70, grammar_score: 70, vocabulary_score: 70, delivery_score: 70,
-        overall_score: 70, pass: false, task_addressed: true,
-        strengths: ['Good effort', 'Completed the task'],
-        improvements: ['Keep practicing'],
-        feedback: 'Good work! Keep practicing to improve.',
-        focus_scores: { [focusAreas[0]]: 70, [focusAreas[1]]: 70, [focusAreas[2]]: 70 }
-      }
+      console.warn('GPT parse failed, using defaults')
     }
 
     // Calculate final scores
-    const taskScore = gptEval.task_score || 70
-    const grammarScore = gptEval.grammar_score || 70
-    const vocabScore = gptEval.vocabulary_score || 70
-    let deliveryScore = gptEval.delivery_score || 70
+    const taskScore = Math.min(100, Math.max(0, gpt.task || 70))
+    const grammarScore = Math.min(100, Math.max(0, gpt.grammar || 70))
+    const vocabScore = Math.min(100, Math.max(0, gpt.vocabulary || 70))
+    let deliveryScore = Math.min(100, Math.max(0, gpt.delivery || 70))
     
-    // Use voice metrics if available
+    // Apply voice metrics if available
     if (voiceMetrics?.deliveryScore) {
       deliveryScore = Math.round((deliveryScore + voiceMetrics.deliveryScore) / 2)
     }
     
     // Apply filler penalty
-    deliveryScore = Math.max(0, deliveryScore - transcriptMetrics.fillerPenalty)
+    deliveryScore = Math.max(0, deliveryScore - fillerPenalty)
     
-    const linguisticScore = Math.round((grammarScore * 0.5 + vocabScore * 0.5))
+    const linguisticScore = Math.round((grammarScore + vocabScore) / 2)
     
     // 40-30-30 weighted
-    const weightedScore = Math.round(
+    const overallScore = Math.round(
       taskScore * 0.40 +
       linguisticScore * 0.30 +
       deliveryScore * 0.30
     )
-    
-    const overallScore = Math.min(100, Math.max(0, weightedScore))
     const passLevel = overallScore >= 80
+
+    log('Scores calculated')
 
     // Build feedback object
     const feedback = {
@@ -229,46 +204,54 @@ JSON only:
       delivery_score: deliveryScore,
       linguistic_score: linguisticScore,
       overall_score: overallScore,
-      weighted_overall_score: weightedScore,
+      weighted_overall_score: overallScore,
       pass_level: passLevel,
       task_completion_analysis: {
-        did_address_task: gptEval.task_addressed ?? true,
+        did_address_task: taskScore >= 50,
         relevance_percentage: taskScore,
-        explanation: gptEval.feedback?.substring(0, 100) || 'Good attempt'
+        explanation: gpt.feedback?.substring(0, 100) || 'Good attempt at the task.'
       },
       linguistic_analysis: {
         grammar: { score: grammarScore, issues: [], suggestions: [] },
-        vocabulary: { score: vocabScore, diversity_score: transcriptMetrics.vocabularyDiversity, advanced_words_used: [] },
-        sentence_formation: { score: linguisticScore, complexity_level: levelDesc.toLowerCase(), variety_score: 70, flow_score: 70, issues: [], suggestions: [] }
+        vocabulary: { score: vocabScore, diversity_score: vocabDiversity, advanced_words_used: [] },
+        sentence_formation: { score: linguisticScore, complexity_level: levelNumber <= 10 ? 'beginner' : levelNumber <= 30 ? 'intermediate' : 'advanced', variety_score: 70, flow_score: 70, issues: [], suggestions: [] }
       },
       filler_analysis: {
-        filler_words_count: transcriptMetrics.fillerCount,
-        filler_words_detected: transcriptMetrics.fillerWords,
+        filler_words_count: fillerCount,
+        filler_words_detected: fillerWords,
         awkward_pauses_count: voiceMetrics?.longPauseCount || 0,
         repetitive_phrases: [],
-        penalty_applied: transcriptMetrics.fillerPenalty
+        penalty_applied: fillerPenalty
       },
-      voice_metrics: voiceMetrics ? {
-        confidence_score: voiceMetrics.confidenceScore,
-        delivery_score: voiceMetrics.deliveryScore,
-        pace_score: voiceMetrics.paceScore,
-        volume_stability: voiceMetrics.volumeStability,
-        pause_count: voiceMetrics.pauseCount,
-        strategic_pauses: voiceMetrics.strategicPauseCount,
-        long_pauses: voiceMetrics.longPauseCount
-      } : null,
-      strengths: gptEval.strengths || ['Good effort', 'Completed the task'],
-      improvements: gptEval.improvements || ['Keep practicing'],
-      detailed_feedback: gptEval.feedback || 'Good work! Keep practicing.',
-      focus_area_scores: gptEval.focus_scores || { [focusAreas[0]]: 70, [focusAreas[1]]: 70, [focusAreas[2]]: 70 }
+      voice_metrics: voiceMetrics || null,
+      strengths: gpt.strengths?.length > 0 ? gpt.strengths : ['Good effort', 'Completed the task'],
+      improvements: gpt.improvements?.length > 0 ? gpt.improvements : ['Keep practicing'],
+      detailed_feedback: gpt.feedback || 'Good work! Keep practicing to improve your speaking skills.',
+      focus_area_scores: {
+        [focusAreas[0]]: taskScore,
+        [focusAreas[1]]: deliveryScore,
+        [focusAreas[2]]: linguisticScore
+      }
     }
 
-    // ⚡ PHASE 3: Save to DB
-    log('⚡ Phase 3: Saving to DB')
+    // ============================================
+    // ⚡ PHASE 3: SAVE TO DB (Parallel)
+    // ============================================
+    const phase3Start = Date.now()
     
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // Get user agent info
+    const userAgent = request.headers.get('user-agent') || ''
+    const ua = userAgent.toLowerCase()
+    let browser = 'Other'
+    if (ua.includes('chrome')) browser = 'Chrome'
+    else if (ua.includes('safari')) browser = 'Safari'
+    else if (ua.includes('firefox')) browser = 'Firefox'
+    const deviceType = ua.includes('mobile') ? 'Mobile' : 'Desktop'
+    const country = request.headers.get('x-vercel-ip-country') || 'Unknown'
 
-    const [sessionResult, progressResult] = await Promise.all([
+    await Promise.all([
       supabase.from('sessions').insert({
         id: sessionId,
         user_id: user.id,
@@ -285,7 +268,7 @@ JSON only:
         browser_type: browser,
         device_type: deviceType,
         user_country: country,
-        user_city: city,
+        user_city: request.headers.get('x-vercel-ip-city') || 'Unknown',
         completed_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
       }),
@@ -299,24 +282,25 @@ JSON only:
         last_practiced: new Date().toISOString(),
       }, { onConflict: 'user_id,category,module_number,lesson_number' })
     ])
-
-    if (sessionResult.error) {
-      log(`❌ Session save error: ${sessionResult.error.message}`)
-    }
     
-    log('✅ Phase 3 complete')
+    log(`PHASE 3 complete (DB) - took ${Date.now() - phase3Start}ms`)
 
-    // 🔄 BACKGROUND: Generate AI example (non-blocking)
-    generateAIExampleBackground(sessionId, lesson.practice_prompt, levelNumber, toneVoiceMap[tone] || 'shimmer')
+    // Note: AI Example is generated via separate /api/generate-example endpoint
+    // This is called by the client after receiving this response
 
-    const totalTime = Date.now() - startTime
-    log(`🎉 DONE in ${totalTime}ms`)
+    const totalTime = Date.now() - START
+    log(`✅ TOTAL TIME: ${totalTime}ms`)
+    
+    // Log timing breakdown
+    console.log('📊 TIMING BREAKDOWN:', timing)
     
     return NextResponse.json({
       success: true,
       sessionId: sessionId,
-      practice_prompt: lesson.practice_prompt,
+      practice_prompt: practicePrompt,
       processingTime: totalTime,
+      apiVersion: 'v3-ultra-optimized', // Version identifier
+      timing: timing,
       quickFeedback: {
         score: overallScore,
         passed: passLevel,
@@ -330,51 +314,8 @@ JSON only:
   } catch (error) {
     console.error('❌ API Error:', error)
     return NextResponse.json(
-      { error: 'Failed to process', details: error instanceof Error ? error.message : 'Unknown' },
+      { error: 'Failed', details: error instanceof Error ? error.message : 'Unknown' },
       { status: 500 }
     )
-  }
-}
-
-// Background AI example generation (doesn't block response)
-async function generateAIExampleBackground(sessionId: string, prompt: string, level: number, voice: string) {
-  try {
-    const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-    
-    // Generate example text
-    const exampleResponse = await openaiClient.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'Create a natural speaking example. 60-100 words only.' },
-        { role: 'user', content: `Task: ${prompt}` }
-      ],
-      max_tokens: 150,
-    })
-    
-    const exampleText = exampleResponse.choices[0].message.content || ''
-    
-    // Generate audio
-    const audioResponse = await openaiClient.audio.speech.create({
-      model: 'tts-1',
-      voice: voice as any,
-      input: exampleText,
-      speed: 0.95
-    })
-    
-    const audioBuffer = Buffer.from(await audioResponse.arrayBuffer())
-    
-    // Update session
-    const supabase = await createClient()
-    await supabase
-      .from('sessions')
-      .update({
-        ai_example_text: exampleText,
-        ai_example_audio: audioBuffer.toString('base64')
-      })
-      .eq('id', sessionId)
-    
-    console.log(`✅ Background: AI example saved for ${sessionId}`)
-  } catch (err) {
-    console.error('⚠️ Background AI example failed:', err)
   }
 }
