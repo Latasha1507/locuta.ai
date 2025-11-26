@@ -162,7 +162,7 @@ export default async function CategoryModulesPage({
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <Link
               href={`/category/${categoryId}/tone`}
@@ -188,7 +188,7 @@ export default async function CategoryModulesPage({
       </header>
 
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6">
         {isUserAdmin && (
           <div className="mb-4 sm:mb-6 bg-purple-50 border-2 border-purple-200 rounded-xl p-3 sm:p-4 shadow-lg">
             <p className="text-purple-900 font-semibold flex flex-wrap items-center gap-2 text-sm sm:text-base">
@@ -245,14 +245,14 @@ export default async function CategoryModulesPage({
               const isUnlocked = isModuleUnlocked(moduleNumber)
 
               return (
-                <div key={moduleNumber} className="relative">
-                  {/* Module Navigation - Mobile: Above, Desktop: Sides */}
-                  <div className="flex items-center justify-between mb-4 sm:hidden">
+                <div key={moduleNumber} className="space-y-4">
+                  {/* Module Navigation */}
+                  <div className="flex items-center justify-between mb-2 sm:mb-3">
                     <Link
                       href={hasPrevModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex - 1]}` : '#'}
-                      className={`flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-lg ${
+                      className={`flex items-center justify-center w-10 h-10 rounded-full transition-all shadow ${
                         hasPrevModule
-                          ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-110 border-2 border-purple-200'
+                          ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-105 border border-purple-200'
                           : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
                       }`}
                     >
@@ -263,9 +263,9 @@ export default async function CategoryModulesPage({
                     <span className="text-sm text-gray-600 font-medium">Module {currentModule} of {moduleNumbers.length}</span>
                     <Link
                       href={hasNextModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex + 1]}` : '#'}
-                      className={`flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-lg ${
+                      className={`flex items-center justify-center w-10 h-10 rounded-full transition-all shadow ${
                         hasNextModule
-                          ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-110 border-2 border-purple-200'
+                          ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-105 border border-purple-200'
                           : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
                       }`}
                     >
@@ -275,48 +275,31 @@ export default async function CategoryModulesPage({
                     </Link>
                   </div>
 
-                  <div className="relative flex items-start gap-2 sm:gap-4">
-                    {/* Previous Button - Desktop Only */}
-                    <div className="hidden sm:flex flex-shrink-0 pt-8">
-                      <Link
-                        href={hasPrevModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex - 1]}` : '#'}
-                        className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-all shadow-lg ${
-                          hasPrevModule
-                            ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-110 border-2 border-purple-200'
-                            : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
-                        }`}
-                      >
-                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                      </Link>
+                  {/* Module Card */}
+                  <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
+                    <div className={`bg-gradient-to-r ${gradientColor} px-5 py-5 text-white relative`}>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs uppercase tracking-wide text-white/80 mb-1">Module {moduleNumber}</p>
+                          <h2 className="text-xl sm:text-2xl font-bold truncate">{moduleTitle}</h2>
+                        </div>
+                        <div className="text-left sm:text-right">
+                          <div className="text-3xl font-bold">{moduleProgress}%</div>
+                          <p className="text-xs text-white/90">Complete</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 bg-white/20 h-2 rounded-full overflow-hidden backdrop-blur-sm">
+                        <div 
+                          className="h-full bg-white rounded-full transition-all duration-500 shadow-lg" 
+                          style={{ width: `${moduleProgress}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-white/90 mt-2">{completedCount} of {moduleLessons.length} lessons completed</p>
                     </div>
 
-                    {/* Module Card */}
-                    <div className="flex-1 bg-white rounded-lg sm:rounded-xl shadow border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
-                      <div className={`bg-gradient-to-r ${gradientColor} px-4 py-4 text-white relative`}>
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-                          <div className="flex-1 min-w-0">
-                            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-1 truncate">{moduleTitle}</h2>
-                            <p className="text-white/80 text-xs">Module {moduleNumber}</p>
-                          </div>
-                          <div className="text-left sm:text-right">
-                            <div className="text-2xl font-bold">{moduleProgress}%</div>
-                            <p className="text-xs text-white/90">Complete</p>
-                          </div>
-                        </div>
-                        <div className="bg-white/20 h-2 rounded-full overflow-hidden backdrop-blur-sm">
-                          <div 
-                            className="h-full bg-white rounded-full transition-all duration-500 shadow-lg" 
-                            style={{ width: `${moduleProgress}%` }}
-                          ></div>
-                        </div>
-                        <p className="text-xs text-white/90 mt-2">{completedCount} of {moduleLessons.length} lessons completed</p>
-                      </div>
-
-                      <div className="p-4 sm:p-5">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                          {moduleLessons.map((lesson) => {
+                    <div className="p-4 sm:p-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                        {moduleLessons.map((lesson) => {
                             const lessonProgress = progressMap[`${moduleNumber}-${lesson.level_number}`]
                             const isCompleted = lessonProgress?.completed || false
                             const bestScore = lessonProgress?.best_score || null
@@ -457,24 +440,7 @@ export default async function CategoryModulesPage({
                               LessonCard
                             )
                           })}
-                        </div>
                       </div>
-                    </div>
-
-                    {/* Next Button - Desktop Only */}
-                    <div className="hidden sm:flex flex-shrink-0 pt-8">
-                      <Link
-                        href={hasNextModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex + 1]}` : '#'}
-                        className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-all shadow-lg ${
-                          hasNextModule
-                            ? 'bg-white hover:bg-purple-50 text-purple-600 hover:scale-110 border-2 border-purple-200'
-                            : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
-                        }`}
-                      >
-                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </Link>
                     </div>
                   </div>
                 </div>
