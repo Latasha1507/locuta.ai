@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now()
   
   try {
-    const { sessionId, prompt, level, tone } = await request.json()
+    const { sessionId, tone } = await request.json()
     
     if (!sessionId) {
       return NextResponse.json({ error: 'Session ID required' }, { status: 400 })
@@ -36,10 +36,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if session exists and belongs to user
+    // Get session with category info to fetch the lesson
     const { data: session } = await supabase
       .from('sessions')
-      .select('id, ai_example_text, ai_example_audio, user_id')
+      .select('id, ai_example_text, ai_example_audio, user_id, category, module_number, level_number, tone')
       .eq('id', sessionId)
       .single()
     
@@ -53,19 +53,37 @@ export async function POST(request: NextRequest) {
         success: true,
         alreadyGenerated: true,
         text: session.ai_example_text,
-        audioLength: session.ai_example_audio.length,
+        audio: session.ai_example_audio,
         processingTime: Date.now() - startTime
       })
     }
+
+    // Fetch the lesson to get the actual practice prompt
+    const { data: lesson } = await supabase
+      .from('lessons')
+      .select('practice_prompt, level_title')
+      .eq('category', session.category)
+      .eq('module_number', session.module_number)
+      .eq('level_number', session.level_number)
+      .single()
+
+    const practicePrompt = lesson?.practice_prompt || 'Practice speaking clearly and confidently'
+    console.log(`📝 Generating example for: "${practicePrompt.substring(0, 50)}..."`)
 
     // Generate example text
     const exampleResponse = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: 'Create a natural 60-80 word speaking example. Just the speech text, nothing else.' },
-        { role: 'user', content: `Task: ${prompt?.substring(0, 200) || 'Practice speaking clearly'}` }
+        { 
+          role: 'system', 
+          content: 'You are a speaking coach demonstrating how to complete a speaking task. Create a natural, conversational example response. Just provide the speech text, nothing else. Keep it 60-100 words.' 
+        },
+        { 
+          role: 'user', 
+          content: `Create an example response for this speaking task:\n\n"${practicePrompt}"\n\nProvide only the spoken response, no explanations or labels.` 
+        }
       ],
-      max_tokens: 120,
+      max_tokens: 150,
       temperature: 0.8
     })
     
@@ -73,10 +91,10 @@ export async function POST(request: NextRequest) {
     console.log(`✅ AI Example text generated in ${Date.now() - startTime}ms`)
 
     // Generate TTS audio
-    const voice = toneVoiceMap[tone || 'Normal'] || 'shimmer'
+    const voiceToUse = toneVoiceMap[tone || session.tone || 'Normal'] || 'shimmer'
     const audioResponse = await openai.audio.speech.create({
       model: 'tts-1',
-      voice: voice as any,
+      voice: voiceToUse as any,
       input: exampleText,
       speed: 0.95
     })

@@ -3,9 +3,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
 
-// For Vercel background tasks
-export const maxDuration = 60 // Allow up to 60 seconds for background tasks
+// For Vercel - increase timeout
+export const maxDuration = 30
 
+// Reuse OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
