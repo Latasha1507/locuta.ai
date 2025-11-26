@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 interface DiagnosticResult {
   test: string;
   time: number;
-  status: 'SUCCESS' | 'FAILED' | 'WARNING' | 'INFO';
+  status: 'SUCCESS' | 'FAILED' | 'WARNING' | 'INFO' | 'PENDING';
   details: string;
   recommendation?: string;
 }
@@ -15,6 +15,7 @@ interface QualityCheck {
   feature: string;
   present: boolean;
   details: string;
+  isPending?: boolean;
 }
 
 export default function FeedbackDiagnostic() {
@@ -24,6 +25,21 @@ export default function FeedbackDiagnostic() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [lastSessionId, setLastSessionId] = useState<string | null>(null);
+  const [isCheckingAI, setIsCheckingAI] = useState(false);
+  const [aiCheckCount, setAiCheckCount] = useState(0);
+  const [autoCheckEnabled, setAutoCheckEnabled] = useState(false);
+
+  // Auto-check for AI example every 2 seconds
+  useEffect(() => {
+    if (!autoCheckEnabled || !lastSessionId || aiCheckCount >= 5) return;
+    
+    const timer = setTimeout(() => {
+      checkAIExample(lastSessionId);
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, [autoCheckEnabled, lastSessionId, aiCheckCount]);
 
   const startRecording = async () => {
     try {
@@ -54,6 +70,56 @@ export default function FeedbackDiagnostic() {
     }
   };
 
+  const checkAIExample = async (sessionId: string) => {
+    setIsCheckingAI(true);
+    const supabase = createClient();
+    
+    try {
+      const { data: session, error } = await supabase
+        .from('sessions')
+        .select('ai_example_text, ai_example_audio')
+        .eq('id', sessionId)
+        .single();
+      
+      if (!error && session) {
+        setQualityChecks(prev => prev.map(check => {
+          if (check.feature === 'AI Example Text') {
+            return {
+              ...check,
+              present: !!session.ai_example_text,
+              details: session.ai_example_text 
+                ? `✅ ${session.ai_example_text.length} characters` 
+                : '⏳ Still generating...',
+              isPending: !session.ai_example_text
+            };
+          }
+          if (check.feature === 'AI Audio (HD Quality)') {
+            return {
+              ...check,
+              present: !!session.ai_example_audio,
+              details: session.ai_example_audio 
+                ? `✅ Audio present (${Math.round(session.ai_example_audio.length / 1024)}KB)` 
+                : '⏳ Still generating...',
+              isPending: !session.ai_example_audio
+            };
+          }
+          return check;
+        }));
+        
+        // Stop auto-check if AI example is ready
+        if (session.ai_example_text && session.ai_example_audio) {
+          setAutoCheckEnabled(false);
+        } else {
+          setAiCheckCount(prev => prev + 1);
+        }
+      }
+    } catch (err) {
+      console.error('Error checking AI example:', err);
+    }
+    
+    setIsCheckingAI(false);
+  };
+
   const runDiagnostics = async () => {
     if (!audioFile) {
       alert('Please record audio first!');
@@ -63,6 +129,9 @@ export default function FeedbackDiagnostic() {
     setIsRunning(true);
     setDiagnostics([]);
     setQualityChecks([]);
+    setLastSessionId(null);
+    setAiCheckCount(0);
+    setAutoCheckEnabled(false);
     
     const results: DiagnosticResult[] = [];
     const quality: QualityCheck[] = [];
@@ -95,6 +164,7 @@ export default function FeedbackDiagnostic() {
       formData.append('categoryId', 'public-speaking');
       formData.append('moduleId', '1');
       formData.append('lessonId', '1');
+      formData.append('duration', '10'); // Add duration
 
       // Step 3: Call Feedback API
       const apiStart = Date.now();
@@ -134,8 +204,21 @@ export default function FeedbackDiagnostic() {
         // Step 4: Check response data
         const responseData = await response.json();
         
+        // Show quick feedback from response
+        if (responseData.quickFeedback) {
+          results.push({
+            test: 'Quick Feedback (Instant)',
+            time: 0,
+            status: 'SUCCESS',
+            details: `Score: ${responseData.quickFeedback.score}, Pass: ${responseData.quickFeedback.passed ? 'Yes' : 'No'}`,
+            recommendation: '✅ Instant feedback delivered with response'
+          });
+        }
+        
         // Step 5: Fetch session to check feedback quality
         if (responseData.sessionId) {
+          setLastSessionId(responseData.sessionId);
+          
           const sessionStart = Date.now();
           const { data: session, error: sessionError } = await supabase
             .from('sessions')
@@ -150,7 +233,7 @@ export default function FeedbackDiagnostic() {
             time: sessionTime,
             status: sessionError ? 'FAILED' : 'SUCCESS',
             details: sessionError ? sessionError.message : `Session ${responseData.sessionId} retrieved`,
-            recommendation: sessionTime > 1000 ? '⚠️ Slow DB query - Check indexes' : '✅ Good'
+            recommendation: sessionTime > 1000 ? '⚠️ Slow DB query' : '✅ Good'
           });
 
           if (session) {
@@ -169,7 +252,7 @@ export default function FeedbackDiagnostic() {
               feature: 'Linguistic Analysis - Grammar',
               present: !!(feedback?.linguistic_analysis?.grammar),
               details: feedback?.linguistic_analysis?.grammar ? 
-                `✅ Score: ${feedback.linguistic_analysis.grammar.score}, Issues: ${feedback.linguistic_analysis.grammar.issues?.length || 0}` : 
+                `✅ Score: ${feedback.linguistic_analysis.grammar.score}` : 
                 '❌ Missing'
             });
 
@@ -185,7 +268,7 @@ export default function FeedbackDiagnostic() {
               feature: 'Linguistic Analysis - Vocabulary',
               present: !!(feedback?.linguistic_analysis?.vocabulary),
               details: feedback?.linguistic_analysis?.vocabulary ? 
-                `✅ Score: ${feedback.linguistic_analysis.vocabulary.score}, Advanced words: ${feedback.linguistic_analysis.vocabulary.advanced_words_used?.length || 0}` : 
+                `✅ Score: ${feedback.linguistic_analysis.vocabulary.score}, Diversity: ${feedback.linguistic_analysis.vocabulary.diversity_score}%` : 
                 '❌ Missing'
             });
 
@@ -193,7 +276,7 @@ export default function FeedbackDiagnostic() {
               feature: 'Filler Words Analysis',
               present: !!(feedback?.filler_analysis),
               details: feedback?.filler_analysis ? 
-                `✅ Count: ${feedback.filler_analysis.filler_words_count}, Penalty: ${feedback.filler_analysis.penalty_applied}` : 
+                `✅ Count: ${feedback.filler_analysis.filler_words_count}, Penalty: -${feedback.filler_analysis.penalty_applied}` : 
                 '❌ Missing'
             });
 
@@ -221,12 +304,14 @@ export default function FeedbackDiagnostic() {
                 '❌ Missing'
             });
 
+            // AI Example - These are generated in background
             quality.push({
               feature: 'AI Example Text',
               present: !!(session.ai_example_text),
               details: session.ai_example_text ? 
                 `✅ ${session.ai_example_text.length} characters` : 
-                '❌ Missing or not yet generated'
+                '⏳ Generating in background...',
+              isPending: !session.ai_example_text
             });
 
             quality.push({
@@ -234,7 +319,8 @@ export default function FeedbackDiagnostic() {
               present: !!(session.ai_example_audio),
               details: session.ai_example_audio ? 
                 `✅ Audio present (${Math.round(session.ai_example_audio.length / 1024)}KB)` : 
-                '⏳ Generating in background (check again in 3-4 seconds)'
+                '⏳ Generating in background...',
+              isPending: !session.ai_example_audio
             });
 
             // Check scoring components
@@ -253,7 +339,16 @@ export default function FeedbackDiagnostic() {
               details: `Score: ${feedback?.overall_score || 'N/A'}/100, Pass: ${feedback?.pass_level ? 'Yes' : 'No'}`,
             });
 
-            // Check tracking data
+            // Voice Metrics (if available)
+            if (feedback?.voice_metrics) {
+              quality.push({
+                feature: 'Voice Metrics (Web Audio)',
+                present: true,
+                details: `✅ Confidence: ${feedback.voice_metrics.confidence_score}, Delivery: ${feedback.voice_metrics.delivery_score}, Pace: ${feedback.voice_metrics.pace_score}`
+              });
+            }
+
+            // User tracking
             quality.push({
               feature: 'User Tracking (Browser, Device, Location)',
               present: !!(session.browser_type && session.device_type),
@@ -261,6 +356,11 @@ export default function FeedbackDiagnostic() {
                 `✅ ${session.browser_type}, ${session.device_type}, ${session.user_country}` : 
                 '❌ Missing tracking data'
             });
+            
+            // Enable auto-check for AI example if not ready
+            if (!session.ai_example_text || !session.ai_example_audio) {
+              setAutoCheckEnabled(true);
+            }
           }
         }
 
@@ -287,18 +387,19 @@ export default function FeedbackDiagnostic() {
     setIsRunning(false);
   };
 
-  const totalTime = diagnostics.reduce((sum, d) => sum + (d.time || 0), 0);
   const apiTime = diagnostics.find(d => d.test === 'Feedback API Call')?.time || 0;
   const hasCriticalIssues = diagnostics.some(d => d.recommendation?.includes('🚨'));
   const hasWarnings = diagnostics.some(d => d.recommendation?.includes('⚠️'));
-  const allQualityPresent = qualityChecks.every(q => q.present);
+  const presentChecks = qualityChecks.filter(q => q.present && !q.isPending).length;
+  const totalChecks = qualityChecks.filter(q => !q.isPending).length;
+  const pendingChecks = qualityChecks.filter(q => q.isPending).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 p-4 sm:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+        <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
             🎯 Feedback API Performance Diagnostic
           </h1>
           <p className="text-gray-600 mb-6">
@@ -306,7 +407,7 @@ export default function FeedbackDiagnostic() {
           </p>
           
           {/* Recording Controls */}
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 mb-4">
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 sm:p-6 mb-4">
             <h3 className="font-bold text-gray-900 mb-3">Step 1: Record Test Audio</h3>
             {!audioFile && !isRecording && (
               <button
@@ -318,7 +419,7 @@ export default function FeedbackDiagnostic() {
             )}
             
             {isRecording && (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <div className="w-4 h-4 bg-red-600 rounded-full animate-pulse"></div>
                 <span className="text-gray-700 font-semibold">Recording... (speak for 5-10 seconds)</span>
                 <button
@@ -331,7 +432,7 @@ export default function FeedbackDiagnostic() {
             )}
             
             {audioFile && !isRecording && (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <div className="px-4 py-2 bg-green-100 text-green-800 rounded-lg font-semibold">
                   ✅ Audio recorded ({Math.round(audioFile.size / 1024)}KB)
                 </div>
@@ -367,30 +468,27 @@ export default function FeedbackDiagnostic() {
             {/* Summary */}
             <div className="bg-white rounded-2xl shadow-2xl p-6 mb-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">📊 Performance Summary</h2>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="text-sm text-gray-600">API Response Time</div>
-                  <div className="text-3xl font-bold text-gray-900">{apiTime}ms</div>
+                  <div className="text-2xl sm:text-3xl font-bold text-gray-900">{apiTime}ms</div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {apiTime < 4000 ? '✅ Under 4s target!' : apiTime < 5000 ? '⚠️ Close to target' : '🚨 Too slow'}
+                    {apiTime < 4000 ? '✅ Under 4s!' : apiTime < 5000 ? '⚠️ Close' : '🚨 Too slow'}
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="text-sm text-gray-600">Total Tests</div>
-                  <div className="text-3xl font-bold text-gray-900">
-                    {diagnostics.length}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {diagnostics.filter(d => d.status === 'SUCCESS').length} passed
+                  <div className="text-sm text-gray-600">Tests Passed</div>
+                  <div className="text-2xl sm:text-3xl font-bold text-gray-900">
+                    {diagnostics.filter(d => d.status === 'SUCCESS').length}/{diagnostics.length}
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="text-sm text-gray-600">Quality Score</div>
-                  <div className="text-3xl font-bold text-gray-900">
-                    {Math.round((qualityChecks.filter(q => q.present).length / qualityChecks.length) * 100)}%
+                  <div className="text-2xl sm:text-3xl font-bold text-gray-900">
+                    {totalChecks > 0 ? Math.round((presentChecks / totalChecks) * 100) : 0}%
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {allQualityPresent ? '✅ All features' : '⚠️ Some missing'}
+                    {pendingChecks > 0 ? `⏳ ${pendingChecks} pending` : '✅ Complete'}
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">
@@ -399,7 +497,7 @@ export default function FeedbackDiagnostic() {
                     {hasCriticalIssues ? '🚨' : hasWarnings ? '⚠️' : '✅'}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {hasCriticalIssues ? 'Critical Issues' : hasWarnings ? 'Warnings' : 'Excellent'}
+                    {hasCriticalIssues ? 'Critical' : hasWarnings ? 'Warnings' : 'Excellent'}
                   </div>
                 </div>
               </div>
@@ -416,15 +514,16 @@ export default function FeedbackDiagnostic() {
                       diag.status === 'SUCCESS' ? 'border-green-200 bg-green-50' :
                       diag.status === 'FAILED' ? 'border-red-200 bg-red-50' :
                       diag.status === 'WARNING' ? 'border-yellow-200 bg-yellow-50' :
-                      'border-blue-200 bg-blue-50'
+                      diag.status === 'PENDING' ? 'border-blue-200 bg-blue-50' :
+                      'border-gray-200 bg-gray-50'
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-2">
+                    <div className="flex justify-between items-start mb-2 flex-wrap gap-2">
                       <h3 className="font-bold text-gray-900">{diag.test}</h3>
                       {diag.time > 0 && (
                         <div className={`px-3 py-1 rounded-full text-sm font-semibold ${
                           diag.time < 1000 ? 'bg-green-200 text-green-800' :
-                          diag.time < 3000 ? 'bg-yellow-200 text-yellow-800' :
+                          diag.time < 4000 ? 'bg-yellow-200 text-yellow-800' :
                           'bg-red-200 text-red-800'
                         }`}>
                           {diag.time}ms
@@ -434,7 +533,7 @@ export default function FeedbackDiagnostic() {
                     <div className="text-sm text-gray-700 mb-2">
                       <span className="font-semibold">Status:</span> {diag.status}
                     </div>
-                    <div className="text-sm text-gray-600 mb-2">
+                    <div className="text-sm text-gray-600 mb-2 break-words">
                       {diag.details}
                     </div>
                     {diag.recommendation && (
@@ -454,23 +553,57 @@ export default function FeedbackDiagnostic() {
             {/* Quality Checks */}
             {qualityChecks.length > 0 && (
               <div className="bg-white rounded-2xl shadow-2xl p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">✨ Quality Feature Checks</h2>
+                <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                  <h2 className="text-xl font-bold text-gray-900">✨ Quality Feature Checks</h2>
+                  {pendingChecks > 0 && lastSessionId && (
+                    <button
+                      onClick={() => checkAIExample(lastSessionId)}
+                      disabled={isCheckingAI}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm flex items-center gap-2"
+                    >
+                      {isCheckingAI ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Checking...
+                        </>
+                      ) : (
+                        <>🔄 Check AI Example</>
+                      )}
+                    </button>
+                  )}
+                </div>
+                
+                {/* Auto-check status */}
+                {autoCheckEnabled && pendingChecks > 0 && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    Auto-checking for AI example... ({aiCheckCount}/5 checks)
+                  </div>
+                )}
+                
                 <div className="space-y-3">
                   {qualityChecks.map((check, idx) => (
                     <div 
                       key={idx}
                       className={`border-2 rounded-lg p-4 ${
-                        check.present ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+                        check.isPending ? 'border-blue-200 bg-blue-50' :
+                        check.present ? 'border-green-200 bg-green-50' : 
+                        'border-red-200 bg-red-50'
                       }`}
                     >
                       <div className="flex items-start gap-3">
                         <div className="text-2xl">
-                          {check.present ? '✅' : '❌'}
+                          {check.isPending ? '⏳' : check.present ? '✅' : '❌'}
                         </div>
                         <div className="flex-1">
                           <h3 className="font-bold text-gray-900 mb-1">{check.feature}</h3>
                           <p className="text-sm text-gray-700">{check.details}</p>
                         </div>
+                        {check.isPending && (
+                          <div className="animate-pulse text-blue-600 text-sm font-medium">
+                            Background
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -478,23 +611,67 @@ export default function FeedbackDiagnostic() {
 
                 {/* Final Verdict */}
                 <div className={`mt-6 p-6 rounded-xl ${
-                  apiTime < 4000 && allQualityPresent ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
-                  apiTime < 5000 && allQualityPresent ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                  'bg-gradient-to-r from-red-400 to-pink-500'
+                  apiTime < 4000 && presentChecks === totalChecks && pendingChecks === 0 
+                    ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
+                  apiTime < 5000 && presentChecks === totalChecks 
+                    ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
+                  pendingChecks > 0
+                    ? 'bg-gradient-to-r from-blue-400 to-indigo-500' :
+                    'bg-gradient-to-r from-red-400 to-pink-500'
                 } text-white`}>
                   <h3 className="text-2xl font-bold mb-2">
-                    {apiTime < 4000 && allQualityPresent ? '🎉 PERFECT!' :
-                     apiTime < 5000 && allQualityPresent ? '⚠️ CLOSE!' :
-                     '🚨 NEEDS WORK'}
+                    {apiTime < 4000 && presentChecks === totalChecks && pendingChecks === 0 
+                      ? '🎉 PERFECT!' :
+                     apiTime < 5000 && presentChecks === totalChecks 
+                      ? '⚠️ CLOSE!' :
+                     pendingChecks > 0
+                      ? '⏳ WAITING FOR BACKGROUND TASKS' :
+                      '🚨 NEEDS WORK'}
                   </h3>
                   <p className="text-lg">
-                    {apiTime < 4000 && allQualityPresent ? 
-                      `Your API runs in ${apiTime}ms with 100% quality features. Target achieved! 🚀` :
-                     apiTime < 5000 && allQualityPresent ?
-                      `Your API runs in ${apiTime}ms (target: <4000ms). Very close, slight optimization needed.` :
-                      `Your API needs optimization. Time: ${apiTime}ms, Quality: ${Math.round((qualityChecks.filter(q => q.present).length / qualityChecks.length) * 100)}%`
+                    {pendingChecks > 0 
+                      ? `API responded in ${apiTime}ms. AI example generating in background (${pendingChecks} tasks pending). This is expected behavior!`
+                      : apiTime < 4000 && presentChecks === totalChecks
+                        ? `Your API runs in ${apiTime}ms with 100% quality features. Target achieved! 🚀`
+                        : apiTime < 5000
+                          ? `Your API runs in ${apiTime}ms (target: <4000ms). Very close!`
+                          : `Your API needs optimization. Time: ${apiTime}ms, Quality: ${totalChecks > 0 ? Math.round((presentChecks / totalChecks) * 100) : 0}%`
                     }
                   </p>
+                  
+                  {pendingChecks > 0 && (
+                    <p className="mt-2 text-sm opacity-90">
+                      💡 Tip: The AI example generates in the background to keep API response fast. 
+                      Click "Check AI Example" or wait for auto-check to verify it's ready.
+                    </p>
+                  )}
+                </div>
+
+                {/* Time Breakdown */}
+                <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+                  <h3 className="font-bold text-gray-900 mb-3">⏱️ Expected Time Breakdown</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Phase 1: Auth + Whisper + Lesson (parallel)</span>
+                      <span className="font-semibold">~2000ms</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Phase 2: GPT-4o-mini Feedback</span>
+                      <span className="font-semibold">~1000ms</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Phase 3: DB Saves (parallel)</span>
+                      <span className="font-semibold">~300ms</span>
+                    </div>
+                    <div className="flex justify-between border-t border-gray-300 pt-2 mt-2">
+                      <span className="text-gray-800 font-semibold">Target Total</span>
+                      <span className="font-bold text-green-600">~3300ms</span>
+                    </div>
+                    <div className="flex justify-between text-gray-500">
+                      <span>Background: AI Example + TTS</span>
+                      <span>+3-5s (async)</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
