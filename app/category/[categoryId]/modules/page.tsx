@@ -198,21 +198,25 @@ export default async function CategoryModulesPage({
         )}
 
         {!hasFullAccess && (
-          <div className="mb-4 sm:mb-6 bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-xl p-4 sm:p-6 shadow-lg">
-            <div className="flex items-start gap-3 sm:gap-4">
-              <div className="flex-shrink-0 text-3xl sm:text-4xl">🔒</div>
-              <div className="flex-1">
-                <h3 className="text-lg sm:text-xl font-bold text-orange-900 mb-2">Unlock Full Access</h3>
-                <p className="text-sm sm:text-base text-orange-800 mb-4">
-                  You're currently on the free plan. Module 1 is fully accessible, but modules 2+ require a subscription.
-                </p>
-                <Link 
-                  href="/pricing"
-                  className="inline-block px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl"
-                >
-                  Upgrade Now 🚀
-                </Link>
+          <div className="mb-4 sm:mb-6 rounded-xl border border-orange-200/70 bg-white shadow-sm">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 px-4 sm:px-5 py-3">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-2xl">🔒</div>
+                <div className="flex-1">
+                  <p className="text-sm sm:text-base font-semibold text-orange-900">
+                    Keep your streak going – unlock every module with Pro.
+                  </p>
+                  <p className="text-xs sm:text-sm text-orange-700">
+                    The free plan covers Module 1; Modules 2+ open up the moment you upgrade.
+                  </p>
+                </div>
               </div>
+              <Link
+                href="/pricing"
+                className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-sm font-semibold text-white shadow hover:from-orange-600 hover:to-amber-600 transition"
+              >
+                Upgrade to Pro
+              </Link>
             </div>
           </div>
         )}
