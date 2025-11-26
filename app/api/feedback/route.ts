@@ -1,4 +1,6 @@
 // app/api/feedback/route.ts
+// Key change: Pass threshold changed from 80 to 75
+
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
@@ -18,15 +20,6 @@ const categoryMap: { [key: string]: string } = {
   'casual-conversation': 'Casual Conversation',
   'workplace-communication': 'Workplace Communication',
   'pitch-anything': 'Pitch Anything',
-}
-
-const toneVoiceMap: { [key: string]: string } = {
-  'Normal': 'shimmer',
-  'Supportive': 'nova',
-  'Inspiring': 'fable',
-  'Funny': 'onyx',
-  'Diplomatic': 'nova',
-  'Bossy': 'echo',
 }
 
 // Filler detection
@@ -74,16 +67,11 @@ export async function POST(request: NextRequest) {
     const phase1Start = Date.now()
     
     const [authResult, transcriptionResult, lessonResult] = await Promise.all([
-      // Auth
       supabase.auth.getUser(),
-      
-      // Whisper - this is the slowest part (~2-3s)
       openai.audio.transcriptions.create({
         file: audioFile,
         model: 'whisper-1',
       }),
-      
-      // Lesson fetch
       supabase
         .from('lessons')
         .select('level_title, practice_prompt, feedback_focus_areas')
@@ -103,7 +91,6 @@ export async function POST(request: NextRequest) {
 
     const lesson = lessonResult.data
     if (!lesson) {
-      // Fallback if lesson not found
       console.warn('Lesson not found, using defaults')
     }
     
@@ -112,7 +99,7 @@ export async function POST(request: NextRequest) {
     log(`Transcript: "${userTranscript.substring(0, 50)}..."`)
 
     // ============================================
-    // ⚡ QUICK ANALYSIS (NO API CALL)
+    // ⚡ QUICK ANALYSIS
     // ============================================
     const words = userTranscript.split(/\s+/).filter(w => w.length > 0)
     const wordCount = words.length
@@ -140,11 +127,10 @@ export async function POST(request: NextRequest) {
       : ['Clarity', 'Delivery', 'Confidence']
 
     // ============================================
-    // ⚡ PHASE 2: GPT-4O (Quality + Speed Balance)
+    // ⚡ PHASE 2: GPT-4O
     // ============================================
     const phase2Start = Date.now()
     
-    // BUILD COMPREHENSIVE PROMPT FOR QUALITY FEEDBACK
     const systemPrompt = `You are an expert speaking coach providing detailed, personalized feedback on voice communication practice.
 
 Your role:
@@ -156,8 +142,9 @@ Your role:
 
 Scoring Philosophy:
 - Be fair and realistic, not overly harsh or overly generous
+- 75+ = Pass - good execution of the task
 - 80+ = Excellent execution of the task
-- 60-79 = Good attempt with room for improvement  
+- 60-74 = Good attempt with room for improvement  
 - 40-59 = Needs work, but shows effort
 - Below 40 = Did not address the task adequately
 
@@ -215,19 +202,19 @@ Always provide specific examples from what they said to justify your feedback.`
 - Improvements: ["Replace filler 'um' before key points with a silent 2-second pause", "Instead of repeating 'basically', vary your transition words with 'essentially' or 'in other words'"]`
 
     const gptResponse = await openai.chat.completions.create({
-      model: 'gpt-4o', // Use gpt-4o for quality (still fast, ~2-3s)
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      temperature: 0.7, // Slightly higher for more natural feedback
-      max_tokens: 800, // Allow detailed feedback
+      temperature: 0.7,
+      max_tokens: 800,
       response_format: { type: "json_object" }
     })
     
     log(`PHASE 2 complete (GPT) - took ${Date.now() - phase2Start}ms`)
 
-    // Parse response with better error handling
+    // Parse response
     let gpt: any = { 
       task: 70, 
       grammar: 70, 
@@ -246,7 +233,6 @@ Always provide specific examples from what they said to justify your feedback.`
     
     try {
       const parsed = JSON.parse(gptResponse.choices[0].message.content || '{}')
-      // Merge with defaults to ensure all fields exist
       gpt = { ...gpt, ...parsed }
     } catch (e) {
       console.error('GPT parse failed:', e)
@@ -259,14 +245,11 @@ Always provide specific examples from what they said to justify your feedback.`
     const vocabScore = Math.min(100, Math.max(0, gpt.vocabulary || 70))
     let deliveryScore = Math.min(100, Math.max(0, gpt.delivery || 70))
     
-    // Apply voice metrics if available
     if (voiceMetrics?.deliveryScore) {
       deliveryScore = Math.round((deliveryScore + voiceMetrics.deliveryScore) / 2)
     }
     
-    // Apply filler penalty
     deliveryScore = Math.max(0, deliveryScore - fillerPenalty)
-    
     const linguisticScore = Math.round((grammarScore + vocabScore) / 2)
     
     // 40-30-30 weighted
@@ -275,7 +258,9 @@ Always provide specific examples from what they said to justify your feedback.`
       linguisticScore * 0.30 +
       deliveryScore * 0.30
     )
-    const passLevel = overallScore >= 80
+    
+    // *** CHANGED: Pass threshold from 80 to 75 ***
+    const passLevel = overallScore >= 75
 
     log('Scores calculated')
 
@@ -354,13 +339,12 @@ Always provide specific examples from what they said to justify your feedback.`
     }
 
     // ============================================
-    // ⚡ PHASE 3: SAVE TO DB (Parallel)
+    // ⚡ PHASE 3: SAVE TO DB
     // ============================================
     const phase3Start = Date.now()
     
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     
-    // Get user agent info
     const userAgent = request.headers.get('user-agent') || ''
     const ua = userAgent.toLowerCase()
     let browser = 'Other'
@@ -369,6 +353,19 @@ Always provide specific examples from what they said to justify your feedback.`
     else if (ua.includes('firefox')) browser = 'Firefox'
     const deviceType = ua.includes('mobile') ? 'Mobile' : 'Desktop'
     const country = request.headers.get('x-vercel-ip-country') || 'Unknown'
+
+    // Get current progress to check if this is the best score
+    const { data: currentProgress } = await supabase
+      .from('user_progress')
+      .select('best_score')
+      .eq('user_id', user.id)
+      .eq('category', categoryName)
+      .eq('module_number', parseInt(moduleId) || 1)
+      .eq('lesson_number', levelNumber)
+      .single()
+
+    const currentBestScore = currentProgress?.best_score || 0
+    const newBestScore = Math.max(currentBestScore, overallScore)
 
     await Promise.all([
       supabase.from('sessions').insert({
@@ -396,21 +393,17 @@ Always provide specific examples from what they said to justify your feedback.`
         category: categoryName,
         module_number: parseInt(moduleId) || 1,
         lesson_number: levelNumber,
-        completed: passLevel,
-        best_score: overallScore,
+        completed: passLevel, // This will be true if score >= 75
+        best_score: newBestScore, // Update to best score
         last_practiced: new Date().toISOString(),
       }, { onConflict: 'user_id,category,module_number,lesson_number' })
     ])
     
     log(`PHASE 3 complete (DB) - took ${Date.now() - phase3Start}ms`)
 
-    // Note: AI Example is generated via separate /api/generate-example endpoint
-    // This is called by the client after receiving this response
-
     const totalTime = Date.now() - START
     log(`✅ TOTAL TIME: ${totalTime}ms`)
     
-    // Log timing breakdown
     console.log('📊 TIMING BREAKDOWN:', timing)
     
     return NextResponse.json({
@@ -418,7 +411,7 @@ Always provide specific examples from what they said to justify your feedback.`
       sessionId: sessionId,
       practice_prompt: practicePrompt,
       processingTime: totalTime,
-      apiVersion: 'v4-specific-bullets', // Version identifier
+      apiVersion: 'v4-pass-threshold-75',
       timing: timing,
       quickFeedback: {
         score: overallScore,

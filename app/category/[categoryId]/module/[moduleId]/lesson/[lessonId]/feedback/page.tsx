@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { ChevronLeft, Volume2, Loader2, RefreshCw } from 'lucide-react'
+import { ChevronLeft, Volume2, Loader2, RefreshCw, Mic, Trophy, Star, Zap } from 'lucide-react'
 
 interface SessionData {
   id: string
@@ -39,6 +39,9 @@ export default function FeedbackPage() {
   const [aiExampleText, setAiExampleText] = useState<string>('')
   const [aiExampleAudio, setAiExampleAudio] = useState<string>('')
 
+  // Success popup state
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false)
+
   // Fetch session data
   useEffect(() => {
     async function fetchSession() {
@@ -66,6 +69,11 @@ export default function FeedbackPage() {
       setAiExampleText(data.ai_example_text || '')
       setAiExampleAudio(data.ai_example_audio || '')
       setLoading(false)
+      
+      // Show success popup if score >= 75
+      if (data.overall_score >= 75) {
+        setShowSuccessPopup(true)
+      }
       
       // If AI example is missing, generate it
       if (!data.ai_example_text || !data.ai_example_audio) {
@@ -126,6 +134,30 @@ export default function FeedbackPage() {
     return 'bg-red-50 border-red-200'
   }
 
+  // Get motivational message based on score
+  const getMotivationalMessage = (score: number) => {
+    if (score >= 90) return {
+      title: "Outstanding Performance! 🏆",
+      message: "You've mastered this lesson! Your speaking skills are exceptional.",
+      emoji: "🌟"
+    }
+    if (score >= 80) return {
+      title: "Excellent Work! 🎯",
+      message: "You've passed with flying colors! Keep up the great work.",
+      emoji: "⭐"
+    }
+    if (score >= 75) return {
+      title: "Well Done! 💪",
+      message: "You've successfully completed this lesson! You're making great progress.",
+      emoji: "✨"
+    }
+    return {
+      title: "Keep Practicing! 🚀",
+      message: "You're on the right track! Try again to improve your score.",
+      emoji: "💫"
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
@@ -155,7 +187,7 @@ export default function FeedbackPage() {
 
   const feedback = session.feedback
   const overallScore = session.overall_score || feedback?.overall_score || 0
-  const passed = feedback?.pass_level || overallScore >= 80
+  const passed = feedback?.pass_level || overallScore >= 75 // Changed from 80 to 75
 
   // Extract scores
   const taskScore = feedback?.task_completion_score || 0
@@ -166,8 +198,65 @@ export default function FeedbackPage() {
   const focusScores = feedback?.focus_area_scores || {}
   const focusAreas = Object.entries(focusScores)
 
+  const motivationalContent = getMotivationalMessage(overallScore)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      {/* Success Popup */}
+      {showSuccessPopup && overallScore >= 75 && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center transform animate-scaleIn">
+            {/* Animated Trophy */}
+            <div className="mb-6 relative">
+              <div className="w-24 h-24 mx-auto bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center animate-bounce">
+                <Trophy className="w-12 h-12 text-white" />
+              </div>
+              {/* Sparkles */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4">
+                <Star className="w-6 h-6 text-yellow-400 animate-ping" />
+              </div>
+              <div className="absolute bottom-0 left-1/4 translate-y-4">
+                <Zap className="w-5 h-5 text-purple-500 animate-pulse" />
+              </div>
+              <div className="absolute bottom-0 right-1/4 translate-y-4">
+                <Zap className="w-5 h-5 text-blue-500 animate-pulse" />
+              </div>
+            </div>
+
+            {/* Message */}
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">
+              {motivationalContent.title}
+            </h2>
+            <div className="text-5xl mb-4">{motivationalContent.emoji}</div>
+            <p className="text-slate-600 mb-2 leading-relaxed">
+              {motivationalContent.message}
+            </p>
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-6">
+              <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">
+                {overallScore}/100
+              </div>
+              <p className="text-sm text-slate-600 mt-1">Your Score</p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <button
+                onClick={() => setShowSuccessPopup(false)}
+                className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all transform hover:scale-105"
+              >
+                View Detailed Feedback
+              </button>
+              <Link
+                href={`/category/${categoryId}/modules?tone=${session.tone}`}
+                className="block w-full px-6 py-3 bg-white text-purple-600 border-2 border-purple-200 rounded-xl font-semibold hover:border-purple-400 transition-colors"
+              >
+                Continue to Next Lesson →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-lg border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -412,8 +501,15 @@ export default function FeedbackPage() {
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons - Updated Sequence */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4 pb-8">
+          <Link
+            href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}`}
+            className="px-6 py-3 bg-white text-purple-600 border-2 border-purple-300 rounded-xl font-semibold text-center hover:border-purple-500 hover:bg-purple-50 transition-all flex items-center justify-center gap-2"
+          >
+            <Mic className="w-4 h-4" />
+            Re-record Again
+          </Link>
           <Link
             href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}`}
             className="px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold text-center hover:bg-purple-700 transition-colors"
@@ -422,12 +518,29 @@ export default function FeedbackPage() {
           </Link>
           <Link
             href={`/category/${categoryId}/modules?tone=${session.tone}`}
-            className="px-6 py-3 bg-white text-purple-600 border-2 border-purple-200 rounded-xl font-semibold text-center hover:border-purple-400 transition-colors"
+            className="px-6 py-3 bg-white text-slate-600 border-2 border-slate-200 rounded-xl font-semibold text-center hover:border-slate-400 transition-colors"
           >
             ← Back to Lessons
           </Link>
         </div>
       </div>
+
+      <style jsx global>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from { transform: scale(0.9); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+        .animate-scaleIn {
+          animation: scaleIn 0.4s ease-out;
+        }
+      `}</style>
     </div>
   )
 }
