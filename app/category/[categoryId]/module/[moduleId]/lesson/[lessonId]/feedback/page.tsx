@@ -234,18 +234,53 @@ export default function FeedbackPage() {
         {/* Detailed Feedback */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <h2 className="font-bold text-slate-900 mb-4">Detailed Feedback</h2>
-          <p className="text-slate-700 leading-relaxed mb-6">
-            {feedback?.detailed_feedback || 'Great effort! Keep practicing to improve your speaking skills.'}
-          </p>
+          <div className="prose prose-slate max-w-none">
+            <p className="text-slate-700 leading-relaxed mb-4">
+              {feedback?.detailed_feedback || 'Great effort! Keep practicing to improve your speaking skills.'}
+            </p>
+            
+            {/* Task Analysis */}
+            {feedback?.task_completion_analysis?.specific_observations && (
+              <div className="bg-purple-50 rounded-lg p-4 mb-4 border border-purple-200">
+                <h3 className="font-semibold text-purple-900 mb-2 text-sm">Task Completion</h3>
+                <p className="text-purple-700 text-sm leading-relaxed">
+                  {feedback.task_completion_analysis.specific_observations}
+                </p>
+              </div>
+            )}
+            
+            {/* Linguistic Details */}
+            {feedback?.linguistic_analysis?.vocabulary?.observations && (
+              <div className="bg-blue-50 rounded-lg p-4 mb-4 border border-blue-200">
+                <h3 className="font-semibold text-blue-900 mb-2 text-sm">Vocabulary & Language</h3>
+                <p className="text-blue-700 text-sm leading-relaxed">
+                  {feedback.linguistic_analysis.vocabulary.observations}
+                </p>
+              </div>
+            )}
+            
+            {/* Pace Analysis */}
+            {feedback?.pace_analysis && (
+              <div className="bg-indigo-50 rounded-lg p-4 mb-4 border border-indigo-200">
+                <h3 className="font-semibold text-indigo-900 mb-2 text-sm">Speaking Pace</h3>
+                <p className="text-indigo-700 text-sm">
+                  <span className="font-medium">{feedback.pace_analysis.words_per_minute} WPM</span> • {feedback.pace_analysis.assessment}
+                </p>
+              </div>
+            )}
+          </div>
           
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4 mt-6">
             {/* Strengths */}
-            <div className="bg-green-50 rounded-xl p-4 border border-green-200">
-              <h3 className="font-semibold text-green-800 mb-3">Strengths</h3>
-              <ul className="space-y-2">
+            <div className="bg-green-50 rounded-xl p-5 border border-green-200">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">💪</span>
+                <h3 className="font-semibold text-green-800">What You Did Well</h3>
+              </div>
+              <ul className="space-y-2.5">
                 {(feedback?.strengths || ['Good effort']).map((strength: string, idx: number) => (
-                  <li key={idx} className="flex items-start gap-2 text-green-700">
-                    <span className="text-green-500 mt-0.5">•</span>
+                  <li key={idx} className="flex items-start gap-2.5 text-green-700 text-sm leading-relaxed">
+                    <span className="text-green-500 font-bold mt-0.5 flex-shrink-0">✓</span>
                     <span>{strength}</span>
                   </li>
                 ))}
@@ -253,12 +288,15 @@ export default function FeedbackPage() {
             </div>
             
             {/* Areas to Improve */}
-            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-              <h3 className="font-semibold text-blue-800 mb-3">Areas to Improve</h3>
-              <ul className="space-y-2">
+            <div className="bg-blue-50 rounded-xl p-5 border border-blue-200">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">🎯</span>
+                <h3 className="font-semibold text-blue-800">How to Improve</h3>
+              </div>
+              <ul className="space-y-2.5">
                 {(feedback?.improvements || ['Keep practicing']).map((improvement: string, idx: number) => (
-                  <li key={idx} className="flex items-start gap-2 text-blue-700">
-                    <span className="text-blue-500 mt-0.5">•</span>
+                  <li key={idx} className="flex items-start gap-2.5 text-blue-700 text-sm leading-relaxed">
+                    <span className="text-blue-500 font-bold mt-0.5 flex-shrink-0">→</span>
                     <span>{improvement}</span>
                   </li>
                 ))}
@@ -276,14 +314,31 @@ export default function FeedbackPage() {
           
           {/* Filler Analysis */}
           {feedback?.filler_analysis && feedback.filler_analysis.filler_words_count > 0 && (
-            <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-              <p className="text-sm text-yellow-800">
-                <span className="font-semibold">Filler words detected:</span>{' '}
-                {feedback.filler_analysis.filler_words_count} 
-                ({feedback.filler_analysis.filler_words_detected?.join(', ') || 'um, uh, like'})
-                {feedback.filler_analysis.penalty_applied > 0 && (
-                  <span className="text-yellow-600"> • -{feedback.filler_analysis.penalty_applied} points</span>
-                )}
+            <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+              <h3 className="font-semibold text-yellow-800 mb-2">Filler Word Analysis</h3>
+              <p className="text-sm text-yellow-700 mb-2">
+                {feedback.filler_analysis.analysis}
+              </p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {feedback.filler_analysis.filler_words_detected?.map((word: string, idx: number) => (
+                  <span key={idx} className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
+                    {word}
+                  </span>
+                ))}
+              </div>
+              {feedback.filler_analysis.penalty_applied > 0 && (
+                <p className="text-xs text-yellow-600 mt-2">
+                  Score penalty: -{feedback.filler_analysis.penalty_applied} points
+                </p>
+              )}
+            </div>
+          )}
+          
+          {/* Perfect - No Fillers! */}
+          {feedback?.filler_analysis && feedback.filler_analysis.filler_words_count === 0 && (
+            <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+              <p className="text-sm text-green-700 font-medium">
+                ✨ Excellent! No filler words detected in your response.
               </p>
             </div>
           )}

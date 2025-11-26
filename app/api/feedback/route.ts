@@ -140,37 +140,117 @@ export async function POST(request: NextRequest) {
       : ['Clarity', 'Delivery', 'Confidence']
 
     // ============================================
-    // ⚡ PHASE 2: GPT-4O-MINI (Fast!)
+    // ⚡ PHASE 2: GPT-4O (Quality + Speed Balance)
     // ============================================
     const phase2Start = Date.now()
     
-    // MINIMAL PROMPT - ~200 tokens input
-    const prompt = `Rate this speaking response 0-100. Be encouraging.
-Task: "${practicePrompt.substring(0, 100)}"
-Response: "${userTranscript.substring(0, 500)}"
-Level: ${levelNumber <= 10 ? 'Beginner' : levelNumber <= 30 ? 'Intermediate' : 'Advanced'}
+    // BUILD COMPREHENSIVE PROMPT FOR QUALITY FEEDBACK
+    const systemPrompt = `You are an expert speaking coach providing detailed, personalized feedback on voice communication practice.
 
-JSON only: {"task":0-100,"grammar":0-100,"vocabulary":0-100,"delivery":0-100,"strengths":["s1","s2"],"improvements":["i1","i2"],"feedback":"2-3 sentences"}`
+Your role:
+- Analyze how well the speaker addressed the specific task given
+- Provide specific, actionable feedback based on what they actually said
+- Be encouraging but honest
+- Give concrete examples from their response
+- Tailor advice to their level (${levelNumber <= 10 ? 'Beginner' : levelNumber <= 30 ? 'Intermediate' : 'Advanced'})
+
+Scoring Philosophy:
+- Be fair and realistic, not overly harsh or overly generous
+- 80+ = Excellent execution of the task
+- 60-79 = Good attempt with room for improvement  
+- 40-59 = Needs work, but shows effort
+- Below 40 = Did not address the task adequately
+
+Always provide specific examples from what they said to justify your feedback.`
+
+    const userPrompt = `Evaluate this speaking practice session:
+
+**TASK GIVEN:**
+"${practicePrompt}"
+
+**WHAT THEY SAID:**
+"${userTranscript}"
+
+**CONTEXT:**
+- Category: ${categoryName}
+- Level: ${levelNumber} (${levelNumber <= 10 ? 'Beginner' : levelNumber <= 30 ? 'Intermediate' : 'Advanced'})
+- Coaching Tone: ${tone}
+- Word Count: ${wordCount} words
+- Speaking Pace: ${wordsPerMinute} WPM
+- Filler Words: ${fillerCount} (${fillerWords.join(', ') || 'none'})
+
+**REQUIRED OUTPUT (JSON format):**
+{
+  "task": 0-100 score for how well they addressed the specific task,
+  "grammar": 0-100 score for grammar and sentence structure,
+  "vocabulary": 0-100 score for word choice and vocabulary usage,
+  "delivery": 0-100 score for speaking flow and naturalness,
+  "strengths": [
+    "Specific strength with concrete example from their speech",
+    "Another specific strength citing what they actually said or did well"
+  ],
+  "improvements": [
+    "Specific actionable improvement: 'Instead of X, try Y'",
+    "Another concrete suggestion with clear next step"
+  ],
+  "feedback": "4-5 sentence detailed analysis that references what they actually said and provides specific guidance"
+}
+
+**CRITICAL for strengths & improvements:**
+- Must be SPECIFIC to this person's actual response
+- Reference actual words/phrases they used or techniques they demonstrated
+- Strengths: Point out exactly what they did well with examples
+- Improvements: Give actionable advice in format "Instead of X, try Y" or "To improve X, do Y"
+- Keep each point to ONE clear, concise sentence
+- Avoid generic phrases like "good effort" or "keep practicing"
+
+**EXAMPLE of good vs bad feedback:**
+
+❌ BAD (too generic):
+- Strengths: ["Good speaking", "Nice delivery"]
+- Improvements: ["Work on clarity", "Practice more"]
+
+✅ GOOD (specific & actionable):
+- Strengths: ["Your phrase 'persistence is key' was clear and memorable", "Used natural pauses after 'listen carefully' which emphasized your point"]
+- Improvements: ["Replace filler 'um' before key points with a silent 2-second pause", "Instead of repeating 'basically', vary your transition words with 'essentially' or 'in other words'"]`
 
     const gptResponse = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', // MUST be gpt-4o-mini for speed
+      model: 'gpt-4o', // Use gpt-4o for quality (still fast, ~2-3s)
       messages: [
-        { role: 'system', content: 'Speaking coach. JSON only. Be encouraging.' },
-        { role: 'user', content: prompt }
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
       ],
-      temperature: 0.5,
-      max_tokens: 300, // Limit output
+      temperature: 0.7, // Slightly higher for more natural feedback
+      max_tokens: 800, // Allow detailed feedback
       response_format: { type: "json_object" }
     })
     
     log(`PHASE 2 complete (GPT) - took ${Date.now() - phase2Start}ms`)
 
-    // Parse response
-    let gpt: any = { task: 70, grammar: 70, vocabulary: 70, delivery: 70, strengths: [], improvements: [], feedback: '' }
+    // Parse response with better error handling
+    let gpt: any = { 
+      task: 70, 
+      grammar: 70, 
+      vocabulary: 70, 
+      delivery: 70, 
+      strengths: [
+        'You successfully completed the speaking task',
+        'Your response showed clear understanding of the prompt'
+      ], 
+      improvements: [
+        'Practice reducing filler words by pausing silently',
+        'Expand your vocabulary by using varied word choices'
+      ], 
+      feedback: 'You made a solid effort on this practice session. Your response addressed the task, though there is room to refine your delivery and language use. Keep practicing regularly to build confidence.' 
+    }
+    
     try {
-      gpt = JSON.parse(gptResponse.choices[0].message.content || '{}')
+      const parsed = JSON.parse(gptResponse.choices[0].message.content || '{}')
+      // Merge with defaults to ensure all fields exist
+      gpt = { ...gpt, ...parsed }
     } catch (e) {
-      console.warn('GPT parse failed, using defaults')
+      console.error('GPT parse failed:', e)
+      console.log('Raw GPT response:', gptResponse.choices[0].message.content)
     }
 
     // Calculate final scores
@@ -199,7 +279,7 @@ JSON only: {"task":0-100,"grammar":0-100,"vocabulary":0-100,"delivery":0-100,"st
 
     log('Scores calculated')
 
-    // Build feedback object
+    // Build comprehensive feedback object
     const feedback = {
       task_completion_score: taskScore,
       delivery_score: deliveryScore,
@@ -210,24 +290,62 @@ JSON only: {"task":0-100,"grammar":0-100,"vocabulary":0-100,"delivery":0-100,"st
       task_completion_analysis: {
         did_address_task: taskScore >= 50,
         relevance_percentage: taskScore,
-        explanation: gpt.feedback?.substring(0, 100) || 'Good attempt at the task.'
+        explanation: gpt.feedback || 'Your response showed effort in addressing the task. Continue practicing to improve your delivery and content quality.',
+        specific_observations: `You were asked to: "${practicePrompt.substring(0, 200)}${practicePrompt.length > 200 ? '...' : ''}". Your response demonstrated ${taskScore >= 80 ? 'excellent' : taskScore >= 60 ? 'good' : 'some'} understanding of the task requirements.`
       },
       linguistic_analysis: {
-        grammar: { score: grammarScore, issues: [], suggestions: [] },
-        vocabulary: { score: vocabScore, diversity_score: vocabDiversity, advanced_words_used: [] },
-        sentence_formation: { score: linguisticScore, complexity_level: levelNumber <= 10 ? 'beginner' : levelNumber <= 30 ? 'intermediate' : 'advanced', variety_score: 70, flow_score: 70, issues: [], suggestions: [] }
+        grammar: { 
+          score: grammarScore, 
+          issues: grammarScore < 70 ? ['Consider reviewing sentence structure and verb tenses'] : [], 
+          suggestions: grammarScore < 80 ? ['Practice with grammar exercises at your level'] : ['Maintain your strong grammar foundation']
+        },
+        vocabulary: { 
+          score: vocabScore, 
+          diversity_score: vocabDiversity, 
+          advanced_words_used: uniqueWords.size > 30 ? ['Demonstrated good vocabulary range'] : [],
+          observations: `Used ${uniqueWords.size} unique words with ${vocabDiversity}% vocabulary diversity. ${vocabScore >= 80 ? 'Excellent' : vocabScore >= 60 ? 'Good' : 'Developing'} word choice for your level.`
+        },
+        sentence_formation: { 
+          score: linguisticScore, 
+          complexity_level: levelNumber <= 10 ? 'beginner' : levelNumber <= 30 ? 'intermediate' : 'advanced', 
+          variety_score: vocabDiversity, 
+          flow_score: deliveryScore, 
+          issues: linguisticScore < 70 ? ['Work on sentence variety and complexity'] : [], 
+          suggestions: linguisticScore < 80 ? ['Try using more complex sentence structures'] : ['Your sentence formation is strong']
+        }
       },
       filler_analysis: {
         filler_words_count: fillerCount,
         filler_words_detected: fillerWords,
         awkward_pauses_count: voiceMetrics?.longPauseCount || 0,
         repetitive_phrases: [],
-        penalty_applied: fillerPenalty
+        penalty_applied: fillerPenalty,
+        analysis: fillerCount === 0 ? 'Excellent - no filler words detected!' : 
+                 fillerCount <= 3 ? 'Very good - minimal filler words.' :
+                 fillerCount <= 6 ? `Watch out for filler words like "${fillerWords.join(', ')}". Try to pause silently instead.` :
+                 `High filler word usage (${fillerCount} times). Practice pausing silently instead of using "${fillerWords.join(', ')}".`
+      },
+      pace_analysis: {
+        words_per_minute: wordsPerMinute,
+        assessment: wordsPerMinute < 100 ? 'Too slow - try speaking a bit faster' :
+                   wordsPerMinute > 180 ? 'Too fast - slow down for clarity' :
+                   'Good speaking pace',
+        word_count: wordCount
       },
       voice_metrics: voiceMetrics || null,
-      strengths: gpt.strengths?.length > 0 ? gpt.strengths : ['Good effort', 'Completed the task'],
-      improvements: gpt.improvements?.length > 0 ? gpt.improvements : ['Keep practicing'],
-      detailed_feedback: gpt.feedback || 'Good work! Keep practicing to improve your speaking skills.',
+      strengths: Array.isArray(gpt.strengths) && gpt.strengths.length >= 2 
+        ? gpt.strengths 
+        : [
+            'You completed the speaking task as instructed',
+            `Your speaking pace of ${wordsPerMinute} WPM was ${wordsPerMinute >= 100 && wordsPerMinute <= 180 ? 'well-controlled' : 'noticeable'}`
+          ],
+      improvements: Array.isArray(gpt.improvements) && gpt.improvements.length >= 2 
+        ? gpt.improvements 
+        : [
+            fillerCount > 3 ? `Reduce filler words like "${fillerWords[0] || 'um'}" by practicing silent pauses` : 'Practice varying your sentence structure for better flow',
+            vocabDiversity < 60 ? 'Expand vocabulary by using more diverse word choices' : 'Work on maintaining consistent energy throughout your response'
+          ],
+      detailed_feedback: gpt.feedback || 'Good work on this practice session! Your response showed effort and engagement with the task. Continue practicing regularly to build your speaking confidence and skills.',
       focus_area_scores: {
         [focusAreas[0]]: taskScore,
         [focusAreas[1]]: deliveryScore,
@@ -300,7 +418,7 @@ JSON only: {"task":0-100,"grammar":0-100,"vocabulary":0-100,"delivery":0-100,"st
       sessionId: sessionId,
       practice_prompt: practicePrompt,
       processingTime: totalTime,
-      apiVersion: 'v3-ultra-optimized', // Version identifier
+      apiVersion: 'v4-specific-bullets', // Version identifier
       timing: timing,
       quickFeedback: {
         score: overallScore,
