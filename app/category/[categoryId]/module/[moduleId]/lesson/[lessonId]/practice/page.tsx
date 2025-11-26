@@ -542,15 +542,6 @@ export default function PracticePage() {
 
                   <div className="flex items-center justify-center gap-2 sm:gap-3">
                     <button
-                      onClick={skipToRecording}
-                      disabled={isSubmitting || isLoadingIntro}
-                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-slate-700 flex items-center justify-center shadow-md hover:bg-white/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                      aria-label="Skip intro"
-                    >
-                      <X className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </button>
-
-                    <button
                       onClick={toggleIntroLike}
                       disabled={!introAudio}
                       className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-md transition ${
