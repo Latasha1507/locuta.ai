@@ -24,442 +24,528 @@ const toneVoiceMap: { [key: string]: string } = {
   'Bossy': 'echo',
 }
 
-const SCORING_WEIGHTS = {
-  TASK_COMPLETION_WEIGHT: 0.4,
-  DELIVERY_WEIGHT: 0.3,
-  LINGUISTIC_WEIGHT: 0.3,
+// ============================================
+// SCORING WEIGHTS (40-30-30)
+// ============================================
+const WEIGHTS = {
+  TASK: 0.40,       // Content/relevance (GPT evaluates)
+  LINGUISTIC: 0.30, // Grammar/vocab (GPT evaluates)
+  DELIVERY: 0.30,   // Voice metrics (Pre-calculated from Web Audio API)
 }
 
-interface LevelExpectation {
-  grammar: { tolerance: string; focus: string[] }
-  vocabulary: { expected: string; complexity: string; variety: string }
-  sentence_formation: { complexity: string; transitions: string }
+// Filler patterns for transcript analysis
+const FILLER_PATTERNS = /\b(um|uh|uhh|umm|erm|like|you know|basically|actually|literally|so yeah|i mean|kind of|sort of|right|okay so|well|anyway)\b/gi
+
+// ============================================
+// VOICE METRICS INTERFACE (from Web Audio API)
+// ============================================
+interface VoiceMetrics {
+  currentVolume: number
+  averageVolume: number
+  volumeStability: number
+  speakingTimeMs: number
+  silenceTimeMs: number
+  speakingRatio: number
+  pauseCount: number
+  averagePauseDuration: number
+  longPauseCount: number
+  strategicPauseCount: number
+  pitchStability: number
+  averagePitch: number
+  pitchRange: number
+  volumeDropCount: number
+  trailingOffCount: number
+  confidenceScore: number
+  deliveryScore: number
+  paceScore: number
 }
 
-function getLevelExpectations(levelNumber: number): LevelExpectation {
-  const category = levelNumber <= 10 ? 'beginner' : 
-                   levelNumber <= 30 ? 'intermediate' : 'advanced'
+// ============================================
+// TRANSCRIPT ANALYSIS (Runs in parallel)
+// ============================================
+function analyzeTranscript(transcript: string, durationSeconds: number) {
+  const words = transcript.split(/\s+/).filter(w => w.length > 0)
+  const wordCount = words.length
+  const wordsPerMinute = durationSeconds > 0 ? Math.round((wordCount / durationSeconds) * 60) : 0
   
-  const expectations: Record<string, LevelExpectation> = {
-    beginner: {
-      grammar: { tolerance: 'high', focus: ['basic sentence structure', 'simple tenses', 'basic questions'] },
-      vocabulary: { expected: 'basic conversational vocabulary', complexity: 'simple everyday words', variety: 'moderate repetition acceptable' },
-      sentence_formation: { complexity: 'simple and compound sentences', transitions: 'basic connectors (and, but, so)' },
-    },
-    intermediate: {
-      grammar: { tolerance: 'medium', focus: ['consistent tenses', 'proper conjunctions', 'varied sentence types'] },
-      vocabulary: { expected: 'expanded casual vocabulary', complexity: 'mix of simple and intermediate words', variety: 'good variety expected' },
-      sentence_formation: { complexity: 'mix of compound and complex sentences', transitions: 'varied transitions and connectors' },
-    },
-    advanced: {
-      grammar: { tolerance: 'low', focus: ['complex sentences', 'advanced grammar', 'nuanced expressions'] },
-      vocabulary: { expected: 'rich conversational vocabulary', complexity: 'sophisticated word choices', variety: 'minimal repetition, creative expression' },
-      sentence_formation: { complexity: 'sophisticated sentence variety', transitions: 'smooth, natural flow with advanced transitions' },
-    },
+  // Filler analysis
+  const fillerMatches = transcript.match(FILLER_PATTERNS) || []
+  const fillerCount = fillerMatches.length
+  const fillerWords = [...new Set(fillerMatches.map(f => f.toLowerCase()))]
+  
+  // Vocabulary diversity
+  const uniqueWords = new Set(words.map(w => w.toLowerCase().replace(/[^a-z]/g, '')))
+  const diversityRatio = wordCount > 0 ? uniqueWords.size / wordCount : 0
+  
+  // Sentence analysis
+  const sentences = transcript.split(/[.!?]+/).filter(s => s.trim().length > 0)
+  const avgSentenceLength = sentences.length > 0 ? wordCount / sentences.length : 0
+  
+  // Repetition detection
+  const wordFreq: Record<string, number> = {}
+  words.forEach(w => {
+    const normalized = w.toLowerCase().replace(/[^a-z]/g, '')
+    if (normalized.length > 3) {
+      wordFreq[normalized] = (wordFreq[normalized] || 0) + 1
+    }
+  })
+  const repetitions = Object.entries(wordFreq).filter(([, c]) => c > 2)
+  
+  // Calculate filler penalty
+  let fillerPenalty = 0
+  if (fillerCount <= 3) fillerPenalty = 0
+  else if (fillerCount <= 6) fillerPenalty = 2
+  else if (fillerCount <= 10) fillerPenalty = 5
+  else if (fillerCount <= 15) fillerPenalty = 8
+  else if (fillerCount <= 20) fillerPenalty = 12
+  else fillerPenalty = 15
+  
+  return {
+    wordCount,
+    wordsPerMinute,
+    fillerCount,
+    fillerWords,
+    fillerPenalty,
+    vocabularyDiversity: Math.round(diversityRatio * 100),
+    sentenceCount: sentences.length,
+    avgSentenceLength: Math.round(avgSentenceLength),
+    repetitions: repetitions.map(([word, count]) => ({ word, count })),
+  }
+}
+
+// ============================================
+// LEVEL EXPECTATIONS
+// ============================================
+function getLevelContext(levelNumber: number): string {
+  if (levelNumber <= 10) {
+    return 'BEGINNER: Accept basic grammar, simple vocabulary, encourage attempts'
+  } else if (levelNumber <= 30) {
+    return 'INTERMEDIATE: Expect consistent tenses, varied vocabulary, compound sentences'
+  } else {
+    return 'ADVANCED: Expect sophisticated grammar, rich vocabulary, complex sentences'
+  }
+}
+
+// ============================================
+// OPTIMIZED GPT PROMPT (Content + Linguistic ONLY)
+// ============================================
+function buildEvaluationPrompt(
+  transcript: string,
+  task: string,
+  levelNumber: number,
+  transcriptMetrics: ReturnType<typeof analyzeTranscript>,
+  focusAreas: string[]
+): string {
+  const levelContext = getLevelContext(levelNumber)
+  
+  // Minimal, focused prompt - GPT only evaluates CONTENT & LANGUAGE
+  return `Evaluate this speaking response for CONTENT and LANGUAGE only.
+
+TASK: "${task}"
+RESPONSE: "${transcript}"
+LEVEL: ${levelNumber}/50 (${levelContext})
+STATS: ${transcriptMetrics.wordCount} words, ${transcriptMetrics.sentenceCount} sentences, ${transcriptMetrics.fillerCount} fillers
+
+Evaluate:
+1. TASK COMPLETION (0-100): Did they address the prompt? Relevant? Complete?
+2. LINGUISTIC QUALITY (0-100): Grammar accuracy, vocabulary appropriateness, sentence variety
+
+Scoring: 60-69=adequate, 70-79=good, 80-89=very good, 90+=excellent
+
+Respond with JSON only:
+{
+  "task_score": 0-100,
+  "task_addressed": true/false,
+  "task_explanation": "1 sentence",
+  "linguistic_score": 0-100,
+  "grammar_score": 0-100,
+  "vocabulary_score": 0-100,
+  "sentence_variety_score": 0-100,
+  "linguistic_notes": "1 sentence",
+  "strengths": ["2-3 specific positives"],
+  "improvements": ["2-3 actionable tips"],
+  "feedback": "4-5 encouraging sentences with specific observations",
+  "focus_scores": {"${focusAreas[0]}": 0-100, "${focusAreas[1]}": 0-100, "${focusAreas[2]}": 0-100}
+}`
+}
+
+// ============================================
+// COMBINE SCORES (GPT + Voice Metrics)
+// ============================================
+function calculateFinalScores(
+  gptScores: { task_score: number; linguistic_score: number },
+  voiceMetrics: VoiceMetrics | null,
+  transcriptMetrics: ReturnType<typeof analyzeTranscript>
+): { overall: number; delivery: number; weighted: number; pass: boolean } {
+  
+  // Delivery score: Use voice metrics if available, otherwise estimate from transcript
+  let deliveryScore: number
+  
+  if (voiceMetrics && voiceMetrics.deliveryScore > 0) {
+    // Real voice metrics from Web Audio API
+    deliveryScore = voiceMetrics.deliveryScore
+  } else {
+    // Fallback: Estimate from transcript (less accurate but functional)
+    const fluencyFromFillers = Math.max(50, 100 - transcriptMetrics.fillerPenalty * 3)
+    const paceFromWPM = calculatePaceScore(transcriptMetrics.wordsPerMinute)
+    deliveryScore = fluencyFromFillers * 0.6 + paceFromWPM * 0.4
   }
   
-  return expectations[category]
+  // Apply filler penalty
+  deliveryScore = Math.max(0, deliveryScore - transcriptMetrics.fillerPenalty)
+  
+  // Weighted calculation
+  const weighted = (
+    gptScores.task_score * WEIGHTS.TASK +
+    gptScores.linguistic_score * WEIGHTS.LINGUISTIC +
+    deliveryScore * WEIGHTS.DELIVERY
+  )
+  
+  const overall = Math.round(weighted)
+  const pass = overall >= 80
+  
+  return { overall, delivery: Math.round(deliveryScore), weighted, pass }
 }
 
-function parseUserAgent(userAgent: string): { browser: string; deviceType: string } {
-  const ua = userAgent.toLowerCase()
-  
-  let browser = 'Other'
-  if (ua.includes('edg/')) browser = 'Edge'
-  else if (ua.includes('chrome') && !ua.includes('edg')) browser = 'Chrome'
-  else if (ua.includes('safari') && !ua.includes('chrome')) browser = 'Safari'
-  else if (ua.includes('firefox')) browser = 'Firefox'
-  else if (ua.includes('opera') || ua.includes('opr/')) browser = 'Opera'
-  
-  let deviceType = 'Desktop'
-  if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
-    deviceType = 'Mobile'
-  } else if (ua.includes('tablet') || ua.includes('ipad')) {
-    deviceType = 'Tablet'
-  }
-  
-  return { browser, deviceType }
+function calculatePaceScore(wpm: number): number {
+  // Optimal: 120-150 WPM
+  if (wpm >= 120 && wpm <= 150) return 95
+  if (wpm >= 100 && wpm < 120) return 85
+  if (wpm >= 150 && wpm <= 170) return 85
+  if (wpm >= 80 && wpm < 100) return 70
+  if (wpm > 170 && wpm <= 200) return 70
+  if (wpm < 80) return Math.max(40, 40 + wpm / 2)
+  return Math.max(50, 100 - (wpm - 200) / 2)
 }
 
+// ============================================
+// MAIN API HANDLER
+// ============================================
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
+  const log = (msg: string) => console.log(`⏱️ [${Date.now() - startTime}ms] ${msg}`)
   
   try {
-    console.log('📥 [0ms] Feedback API called')
+    log('📥 Feedback API called')
     
-    const userAgent = request.headers.get('user-agent') || ''
-    const country = request.headers.get('x-vercel-ip-country') || 'Unknown'
-    const city = request.headers.get('x-vercel-ip-city') || 'Unknown'
-    const { browser, deviceType } = parseUserAgent(userAgent)
-    
+    // Parse form data
     const formData = await request.formData()
     const audioFile = formData.get('audio') as File
     const tone = formData.get('tone') as string
     const categoryId = formData.get('categoryId') as string
     const moduleId = formData.get('moduleId') as string
     const lessonId = formData.get('lessonId') as string
+    const durationStr = formData.get('duration') as string
+    const voiceMetricsStr = formData.get('voiceMetrics') as string
+    
+    const duration = parseFloat(durationStr) || 60
+    let voiceMetrics: VoiceMetrics | null = null
+    
+    try {
+      if (voiceMetricsStr) {
+        voiceMetrics = JSON.parse(voiceMetricsStr)
+        log('✅ Voice metrics received from client')
+      }
+    } catch (e) {
+      log('⚠️ Failed to parse voice metrics, will estimate from transcript')
+    }
 
     if (!audioFile) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
     }
 
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    console.log(`✅ [${Date.now() - startTime}ms] User authenticated`)
-
     const categoryName = categoryMap[categoryId]
     const levelNumber = parseInt(lessonId)
-    const levelExpectations = getLevelExpectations(levelNumber)
 
-    // ⚡ CRITICAL OPTIMIZATION 1: Parallel transcription + lesson fetch
-    const [transcription, lessonResult] = await Promise.all([
+    // ============================================
+    // ⚡ PHASE 1: PARALLEL - Auth + Transcription + Lesson
+    // ============================================
+    const [authResult, transcription, lessonResult] = await Promise.all([
+      supabase.auth.getUser(),
       openai.audio.transcriptions.create({
         file: audioFile,
         model: 'whisper-1',
       }),
       supabase
         .from('lessons')
-        .select('level_title, practice_prompt, practice_example, feedback_focus_areas')
+        .select('level_title, practice_prompt, feedback_focus_areas')
         .eq('category', categoryName)
         .eq('module_number', parseInt(moduleId))
         .eq('level_number', levelNumber)
         .single()
     ])
+    
+    log('✅ Phase 1 complete (auth + transcription + lesson)')
+
+    const user = authResult.data.user
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const lesson = lessonResult.data
-
-    if (lessonResult.error || !lesson) {
-      console.error('❌ Lesson not found:', lessonResult.error)
-      return NextResponse.json({ 
-        error: 'Lesson not found', 
-        details: lessonResult.error?.message
-      }, { status: 404 })
+    if (!lesson) {
+      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
     }
 
     const userTranscript = transcription.text
-    console.log(`✅ [${Date.now() - startTime}ms] Transcription + Lesson loaded`)
-
+    
+    // ============================================
+    // ⚡ PHASE 2: PARALLEL - Transcript Analysis + GPT Evaluation
+    // ============================================
+    const transcriptMetrics = analyzeTranscript(userTranscript, duration)
+    log('✅ Transcript analysis complete')
+    
     const focusAreas = Array.isArray(lesson.feedback_focus_areas) 
       ? lesson.feedback_focus_areas 
-      : (lesson.feedback_focus_areas || 'Clarity, Confidence, Delivery').split(',').map((s: string) => s.trim())
+      : ['Clarity', 'Delivery', 'Confidence']
 
-    // ⚡ STREAMLINED PROMPT: 500-800 tokens (down from 2500) but SAME quality
-    const feedbackPrompt = `Professional speaking coach evaluation. Be encouraging, honest, and generate with scores that reflect actual performance.
+    const evaluationPrompt = buildEvaluationPrompt(
+      userTranscript,
+      lesson.practice_prompt,
+      levelNumber,
+      transcriptMetrics,
+      focusAreas
+    )
 
-**Context:**
-Level ${levelNumber}/50 (${levelNumber <= 10 ? 'Beginner' : levelNumber <= 30 ? 'Intermediate' : 'Advanced'})
-Task: "${lesson.practice_prompt}"
-User Response: "${userTranscript}"
-Coaching Tone: ${tone}
-
-**Level ${levelNumber} Standards:**
-Grammar: ${levelExpectations.grammar.tolerance} tolerance - ${levelExpectations.grammar.focus.join(', ')}
-Vocabulary: ${levelExpectations.vocabulary.expected} - ${levelExpectations.vocabulary.complexity}
-Sentences: ${levelExpectations.sentence_formation.complexity} - ${levelExpectations.sentence_formation.transitions}
-
-**Evaluate:**
-1. Task Completion (40%): Addressed prompt? Relevant? Complete?
-2. Delivery (30%): Clear? Confident? Structured? Natural?
-3. Linguistic (30%): Grammar, sentence variety, vocabulary for this level
-
-**Scoring (be fair):**
-15-35=off-task, 40-55=minimal, 60-69=adequate, 70-79=good, 80-87=very good (PASS), 88-95=excellent
-
-**Fillers:** 1-5=-0, 6-10=-2, 11-15=-5, 16-20=-8, 21+=-12
-
-**Required JSON (all fields mandatory):**
-{
-  "task_completion_analysis": {
-    "did_address_task": boolean,
-    "relevance_percentage": 0-100,
-    "explanation": "1-2 sentences"
-  },
-  "task_completion_score": 0-100,
-  "delivery_score": 0-100,
-  "linguistic_score": 0-100,
-  "filler_analysis": {
-    "filler_words_count": number,
-    "filler_words_detected": ["word"],
-    "awkward_pauses_count": number,
-    "repetitive_phrases": ["phrase"],
-    "penalty_applied": number
-  },
-  "overall_score": 0-100,
-  "weighted_overall_score": 0-100,
-  "pass_level": boolean,
-  "strengths": ["2-3 specific positives"],
-  "improvements": ["2-3 actionable tips"],
-  "detailed_feedback": "4-6 sentences: compliment, assessment, guidance, encouragement",
-  "focus_area_scores": {
-    "${focusAreas[0]}": 0-100,
-    "${focusAreas[1]}": 0-100,
-    "${focusAreas[2]}": 0-100
-  },
-  "linguistic_analysis": {
-    "grammar": {
-      "score": 0-100,
-      "issues": ["specific issues"],
-      "suggestions": ["tips"]
-    },
-    "sentence_formation": {
-      "score": 0-100,
-      "complexity_level": "basic/intermediate/advanced",
-      "variety_score": 0-100,
-      "flow_score": 0-100,
-      "issues": ["issues"],
-      "suggestions": ["tips"]
-    },
-    "vocabulary": {
-      "score": 0-100,
-      "level_appropriateness": 0-100,
-      "variety_score": 0-100,
-      "casual_tone_score": 0-100,
-      "advanced_words_used": ["words"],
-      "suggested_alternatives": {"word": ["alternatives"]},
-      "issues": ["issues"]
-    }
-  }
-}`
-
-    const voice = toneVoiceMap[tone] || 'shimmer'
-
-    // ⚡ CRITICAL OPTIMIZATION 2: Parallel feedback + AI example generation
-    const [feedbackResponse, aiExampleResponse] = await Promise.all([
-      openai.chat.completions.create({
-        model: 'gpt-4o', // Keep quality!
-        messages: [
-          { 
-            role: 'system', 
-            content: 'Professional speaking coach. Evaluate accurately and fairly. Be generous with scores when deserved. Respond ONLY with valid JSON.'
-          },
-          { role: 'user', content: feedbackPrompt }
-        ],
-        temperature: 0.6,
-        response_format: { type: "json_object" }
-      }),
-      openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: 'Demonstrate speaking tasks naturally and authentically.' },
-          { 
-            role: 'user', 
-            content: `Task: ${lesson.practice_prompt}\nLevel: ${levelNumber}\n\nCreate natural 75-150 word demonstration. Speech text only.`
-          }
-        ],
-        temperature: 0.9,
-      })
-    ])
-
-    console.log(`✅ [${Date.now() - startTime}ms] Feedback + AI Example generated`)
-
-    // Parse feedback
-    let feedback
-    try {
-      const feedbackText = feedbackResponse.choices[0].message.content || '{}'
-      feedback = JSON.parse(feedbackText)
-      
-      // Ensure all required fields exist
-      if (!feedback.task_completion_score && feedback.task_completion_analysis) {
-        feedback.task_completion_score = feedback.task_completion_analysis.relevance_percentage || 50
-      } else if (!feedback.task_completion_score) {
-        feedback.task_completion_score = 50
-      }
-      
-      if (!feedback.delivery_score && feedback.focus_area_scores) {
-        const scores = Object.values(feedback.focus_area_scores) as number[]
-        feedback.delivery_score = scores.reduce((a: number, b: number) => a + b, 0) / scores.length
-      } else if (!feedback.delivery_score) {
-        feedback.delivery_score = 50
-      }
-      
-      if (!feedback.linguistic_score && feedback.linguistic_analysis) {
-        const g = feedback.linguistic_analysis.grammar?.score || 50
-        const s = feedback.linguistic_analysis.sentence_formation?.score || 50
-        const v = feedback.linguistic_analysis.vocabulary?.score || 50
-        
-        feedback.linguistic_score = (
-          g * 0.35 +
-          s * 0.35 +
-          v * 0.30
-        )
-      } else if (!feedback.linguistic_score) {
-        feedback.linguistic_score = 50
-      }
-      
-      feedback.weighted_overall_score = (
-        feedback.task_completion_score * SCORING_WEIGHTS.TASK_COMPLETION_WEIGHT +
-        feedback.delivery_score * SCORING_WEIGHTS.DELIVERY_WEIGHT +
-        feedback.linguistic_score * SCORING_WEIGHTS.LINGUISTIC_WEIGHT
-      )
-      
-      if (feedback.filler_analysis?.penalty_applied) {
-        feedback.weighted_overall_score -= feedback.filler_analysis.penalty_applied
-      }
-      
-      feedback.weighted_overall_score = Math.max(0, Math.min(100, feedback.weighted_overall_score))
-      feedback.overall_score = Math.round(feedback.weighted_overall_score)
-      feedback.pass_level = feedback.overall_score >= 80
-      
-    } catch (e) {
-      console.error('⚠️ Failed to parse feedback:', e)
-      // Full fallback with all fields
-      feedback = {
-        task_completion_analysis: {
-          did_address_task: true,
-          relevance_percentage: 70,
-          explanation: "You made a solid attempt at addressing the task"
+    // 🎯 Use gpt-4o for QUALITY but with minimal prompt
+    const gptResponse = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'You are a speaking coach. Evaluate content and language. Be encouraging but honest. Respond with valid JSON only.'
         },
-        task_completion_score: 70,
-        delivery_score: 68,
-        linguistic_score: 65,
-        overall_score: 68,
-        weighted_overall_score: 68,
-        pass_level: false,
-        strengths: [
-          'You addressed the task requirements',
-          'You showed good effort and engagement',
-          'You delivered a complete response'
-        ],
-        improvements: [
-          'Work on your pacing and flow',
-          'Practice reducing filler words',
-          'Focus on clarity and confidence in delivery'
-        ],
-        detailed_feedback: "You did a solid job addressing this task! Your effort and engagement really came through. While you're not quite at passing level yet, you're close - with a bit more practice on clarity and confidence, you'll definitely get there. Keep focusing on the task requirements and your delivery will continue to improve. Great work so far!",
-        focus_area_scores: { 'Task Completion': 70, 'Delivery': 68, 'Quality': 65 },
-        filler_analysis: {
-          filler_words_count: 0,
-          filler_words_detected: [],
-          awkward_pauses_count: 0,
-          repetitive_phrases: [],
-          penalty_applied: 0
-        },
-        linguistic_analysis: {
-          grammar: { score: 65, issues: [], suggestions: ['Continue developing natural fluency'] },
-          sentence_formation: { 
-            score: 65, 
-            complexity_level: 'intermediate', 
-            variety_score: 60, 
-            flow_score: 65, 
-            issues: [], 
-            suggestions: ['Practice varying sentence structure'] 
-          },
-          vocabulary: { 
-            score: 65, 
-            level_appropriateness: 65, 
-            variety_score: 60, 
-            casual_tone_score: 70, 
-            advanced_words_used: [], 
-            suggested_alternatives: {}, 
-            issues: [] 
-          }
-        }
-      }
-    }
-
-    const aiExampleText = aiExampleResponse.choices[0].message.content || 'Example not available.'
-
-    // ⚡ CRITICAL OPTIMIZATION 3: Generate high-quality audio ASYNC (non-blocking)
-    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    const shouldComplete = feedback.pass_level === true && feedback.overall_score >= 80
-
-    // Start HIGH QUALITY audio in background - don't make user wait
-    const audioPromise = openai.audio.speech.create({
-      model: 'tts-1-hd', // Keep high quality!
-      voice: voice as any,
-      input: aiExampleText,
-      speed: 0.95
-    }).then(async (response) => {
-      const aiAudioBuffer = Buffer.from(await response.arrayBuffer())
-      await supabase
-        .from('sessions')
-        .update({ 
-          ai_example_audio: aiAudioBuffer.toString('base64'),
-          ai_example_text: aiExampleText
-        })
-        .eq('id', sessionId)
-      console.log(`✅ [${Date.now() - startTime}ms] High-quality audio saved (background)`)
-    }).catch(err => {
-      console.error('⚠️ Audio generation failed:', err)
+        { role: 'user', content: evaluationPrompt }
+      ],
+      temperature: 0.5,
+      max_tokens: 600,
+      response_format: { type: "json_object" }
     })
+    
+    log('✅ GPT evaluation complete')
 
-    // ⚡ CRITICAL OPTIMIZATION 4: Parallel DB saves (don't wait for audio)
-    const [sessionResult, progressResult] = await Promise.all([
-      supabase
-        .from('sessions')
-        .insert({
-          id: sessionId,
-          user_id: user.id,
-          category: categoryName,
-          module_number: parseInt(moduleId),
-          level_number: levelNumber,
-          tone: tone,
-          user_transcript: userTranscript,
-          ai_example_text: '', // Updated by background process
-          ai_example_audio: '', // Updated by background process
-          feedback: feedback,
-          overall_score: feedback.overall_score,
-          status: 'completed',
-          browser_type: browser,
-          device_type: deviceType,
-          user_country: country,
-          user_city: city,
-          completed_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-        }),
+    // ============================================
+    // PARSE GPT RESPONSE
+    // ============================================
+    let gptEvaluation
+    try {
+      gptEvaluation = JSON.parse(gptResponse.choices[0].message.content || '{}')
+    } catch (e) {
+      log('⚠️ GPT parse error, using defaults')
+      gptEvaluation = {
+        task_score: 70,
+        linguistic_score: 70,
+        task_addressed: true,
+        task_explanation: 'Response recorded',
+        grammar_score: 70,
+        vocabulary_score: 70,
+        sentence_variety_score: 70,
+        linguistic_notes: '',
+        strengths: ['Good effort', 'Completed the task'],
+        improvements: ['Keep practicing'],
+        feedback: 'Good work! Keep practicing to improve your skills.',
+        focus_scores: { [focusAreas[0]]: 70, [focusAreas[1]]: 70, [focusAreas[2]]: 70 }
+      }
+    }
+
+    // ============================================
+    // COMBINE SCORES (GPT + Voice Metrics)
+    // ============================================
+    const finalScores = calculateFinalScores(
+      { 
+        task_score: gptEvaluation.task_score || 70, 
+        linguistic_score: gptEvaluation.linguistic_score || 70 
+      },
+      voiceMetrics,
+      transcriptMetrics
+    )
+    
+    log('✅ Final scores calculated')
+
+    // ============================================
+    // BUILD COMPLETE FEEDBACK OBJECT
+    // ============================================
+    const feedback = {
+      // Main scores
+      task_completion_score: gptEvaluation.task_score,
+      delivery_score: finalScores.delivery,
+      linguistic_score: gptEvaluation.linguistic_score,
+      overall_score: finalScores.overall,
+      weighted_overall_score: finalScores.weighted,
+      pass_level: finalScores.pass,
       
-      supabase
-        .from('user_progress')
-        .upsert({
-          user_id: user.id,
-          category: categoryName,
-          module_number: parseInt(moduleId),
-          lesson_number: levelNumber,
-          completed: shouldComplete,
-          best_score: feedback.overall_score,
-          last_practiced: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id,category,module_number,lesson_number'
-        })
+      // Task analysis
+      task_completion_analysis: {
+        did_address_task: gptEvaluation.task_addressed ?? true,
+        relevance_percentage: gptEvaluation.task_score,
+        explanation: gptEvaluation.task_explanation || '',
+      },
+      
+      // Linguistic analysis
+      linguistic_analysis: {
+        grammar: { 
+          score: gptEvaluation.grammar_score || gptEvaluation.linguistic_score,
+          notes: gptEvaluation.linguistic_notes || '',
+        },
+        vocabulary: { 
+          score: gptEvaluation.vocabulary_score || gptEvaluation.linguistic_score,
+          diversity_score: transcriptMetrics.vocabularyDiversity,
+        },
+        sentence_formation: {
+          score: gptEvaluation.sentence_variety_score || gptEvaluation.linguistic_score,
+          avg_length: transcriptMetrics.avgSentenceLength,
+          count: transcriptMetrics.sentenceCount,
+        }
+      },
+      
+      // Filler analysis
+      filler_analysis: {
+        filler_words_count: transcriptMetrics.fillerCount,
+        filler_words_detected: transcriptMetrics.fillerWords,
+        penalty_applied: transcriptMetrics.fillerPenalty,
+      },
+      
+      // Voice metrics (from Web Audio API)
+      voice_metrics: voiceMetrics ? {
+        confidence_score: voiceMetrics.confidenceScore,
+        delivery_score: voiceMetrics.deliveryScore,
+        pace_score: voiceMetrics.paceScore,
+        volume_stability: voiceMetrics.volumeStability,
+        pause_count: voiceMetrics.pauseCount,
+        strategic_pauses: voiceMetrics.strategicPauseCount,
+        long_pauses: voiceMetrics.longPauseCount,
+        speaking_ratio: voiceMetrics.speakingRatio,
+        trailing_off_count: voiceMetrics.trailingOffCount,
+        pitch_stability: voiceMetrics.pitchStability,
+      } : null,
+      
+      // Transcript metrics
+      transcript_metrics: {
+        word_count: transcriptMetrics.wordCount,
+        words_per_minute: transcriptMetrics.wordsPerMinute,
+        vocabulary_diversity: transcriptMetrics.vocabularyDiversity,
+      },
+      
+      // Feedback content
+      strengths: gptEvaluation.strengths || ['Good effort'],
+      improvements: gptEvaluation.improvements || ['Keep practicing'],
+      detailed_feedback: gptEvaluation.feedback || 'Good work!',
+      focus_area_scores: gptEvaluation.focus_scores || {},
+    }
+
+    // ============================================
+    // ⚡ PHASE 3: PARALLEL - Save to DB + Start async tasks
+    // ============================================
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // Save session and progress in parallel
+    const [sessionResult, progressResult] = await Promise.all([
+      supabase.from('sessions').insert({
+        id: sessionId,
+        user_id: user.id,
+        category: categoryName,
+        module_number: parseInt(moduleId),
+        level_number: levelNumber,
+        tone: tone,
+        user_transcript: userTranscript,
+        feedback: feedback,
+        overall_score: finalScores.overall,
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+      }),
+      supabase.from('user_progress').upsert({
+        user_id: user.id,
+        category: categoryName,
+        module_number: parseInt(moduleId),
+        lesson_number: levelNumber,
+        completed: finalScores.pass,
+        best_score: finalScores.overall,
+        last_practiced: new Date().toISOString(),
+      }, { onConflict: 'user_id,category,module_number,lesson_number' })
     ])
+    
+    log('✅ Database saves complete')
 
     if (sessionResult.error) {
-      console.error('❌ Database error:', sessionResult.error)
-      return NextResponse.json({ 
-        error: 'Failed to save session', 
-        details: sessionResult.error.message 
-      }, { status: 500 })
+      console.error('DB error:', sessionResult.error)
     }
 
-    if (progressResult.error) {
-      console.warn('⚠️ Progress update warning:', progressResult.error)
-    }
+    // 🎯 Generate AI example in BACKGROUND (non-blocking)
+    generateAIExampleAsync(openai, supabase, sessionId, lesson.practice_prompt, levelNumber, toneVoiceMap[tone] || 'shimmer')
 
     const totalTime = Date.now() - startTime
-    console.log(`🎉 [${totalTime}ms] API Complete! Quality: 100%, Audio: HD (background)`)
+    log(`🎉 API Complete! Total time: ${totalTime}ms`)
     
     return NextResponse.json({
       success: true,
       sessionId: sessionId,
       practice_prompt: lesson.practice_prompt,
-      processingTime: totalTime
+      processingTime: totalTime,
+      quickFeedback: {
+        score: finalScores.overall,
+        passed: finalScores.pass,
+        message: feedback.detailed_feedback,
+        delivery: finalScores.delivery,
+        task: gptEvaluation.task_score,
+        linguistic: gptEvaluation.linguistic_score,
+      }
     })
 
   } catch (error) {
     console.error('❌ Feedback API error:', error)
-    console.error('Stack:', error instanceof Error ? error.stack : 'No stack trace')
-    
     return NextResponse.json(
-      { 
-        error: 'Failed to process feedback', 
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to process feedback', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
+  }
+}
+
+// ============================================
+// BACKGROUND: AI EXAMPLE GENERATION
+// ============================================
+async function generateAIExampleAsync(
+  openai: OpenAI,
+  supabase: any,
+  sessionId: string,
+  prompt: string,
+  level: number,
+  voice: string
+) {
+  try {
+    // Use gpt-4o-mini for speed on example (content less critical)
+    const exampleResponse = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'Create a natural speaking example. 60-100 words, speech text only.' },
+        { role: 'user', content: `Task: ${prompt}\nLevel: ${level}` }
+      ],
+      temperature: 0.8,
+      max_tokens: 200,
+    })
+
+    const exampleText = exampleResponse.choices[0].message.content || ''
+
+    // Generate TTS audio
+    const audioResponse = await openai.audio.speech.create({
+      model: 'tts-1',
+      voice: voice as any,
+      input: exampleText,
+      speed: 0.95
+    })
+
+    const audioBuffer = Buffer.from(await audioResponse.arrayBuffer())
+
+    await supabase
+      .from('sessions')
+      .update({ 
+        ai_example_text: exampleText,
+        ai_example_audio: audioBuffer.toString('base64')
+      })
+      .eq('id', sessionId)
+
+    console.log(`✅ AI Example saved for ${sessionId}`)
+  } catch (err) {
+    console.error('⚠️ Background AI example failed:', err)
   }
 }
