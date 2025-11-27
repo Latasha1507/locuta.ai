@@ -98,33 +98,9 @@ export default function PracticePage() {
   // NEW: If skipTask=true, skip intro and go straight to recording
   useEffect(() => {
     if (skipTask) {
-      loadIntroForRerecord()
-    }
-  }, [])
-
-  // Load intro but skip straight to recording (for re-record)
-  const loadIntroForRerecord = async () => {
-    setError(null)
-    setIsLoadingIntro(true)
-    
-    try {
-      const response = await fetch('/api/lesson-intro', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tone, categoryId, moduleId, lessonId }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load lesson')
-      }
-
-      const data = await response.json()
-      
-      setPracticePrompt(data.practice_prompt || 'Practice speaking clearly and confidently')
-      setLessonTitle(data.lessonTitle || 'Lesson')
-      setIsLoadingIntro(false)
-      
-      // Skip straight to recording
+      // Skip API call entirely - just go straight to recording
+      setPracticePrompt('Practice speaking clearly and confidently on your chosen topic.')
+      setLessonTitle(`Lesson ${lessonId}`)
       setStep('recording')
       
       Mixpanel.track('Re-record Started', {
@@ -132,13 +108,8 @@ export default function PracticePage() {
         category: categoryId,
         coaching_style: tone
       });
-      
-    } catch (error) {
-      console.error('Error loading lesson:', error)
-      setError('Failed to load lesson')
-      setIsLoadingIntro(false)
     }
-  }
+  }, [])
 
   // Animated loader effect
   useEffect(() => {
@@ -413,7 +384,7 @@ export default function PracticePage() {
 
   // Real-time audio analysis
   const analyzeAudio = () => {
-    if (!analyserRef.current || !isRecording) return
+    if (!analyserRef.current) return
 
     const analyser = analyserRef.current
     const dataArray = new Uint8Array(analyser.frequencyBinCount)
@@ -465,7 +436,10 @@ export default function PracticePage() {
       energy: volume
     })
 
-    animationFrameRef.current = requestAnimationFrame(analyzeAudio)
+    // Continue animation loop
+    if (isRecording) {
+      animationFrameRef.current = requestAnimationFrame(analyzeAudio)
+    }
   }
 
   const stopRecording = () => {
