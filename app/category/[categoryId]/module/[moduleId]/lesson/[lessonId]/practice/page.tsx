@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mic, Square, Play, Pause, SkipBack, SkipForward, RotateCcw, ThumbsUp } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion, trackError } from '@/lib/analytics/helpers';
 import Mixpanel from '@/lib/mixpanel';
 
@@ -95,37 +96,49 @@ export default function PracticePage() {
   const lastSoundTimeRef = useRef<number>(0)
   const wordCountRef = useRef<number>(0)
 
-  // NEW: If skipTask=true, go to recording immediately and load task in background
+  // NEW: If skipTask=true, fetch task directly from Supabase (FAST)
   useEffect(() => {
     if (skipTask) {
-      // Go to recording IMMEDIATELY - no loading screen
+      // Go to recording IMMEDIATELY
       setStep('recording')
       setPracticePrompt('Loading task...')
       setLessonTitle(`Lesson ${lessonId}`)
       
-      // Load task in background
-      loadTaskForRerecord()
+      // Fetch task directly from Supabase (FAST - no AI generation)
+      fetchTaskFromDatabase()
     }
   }, [])
 
-  // Load only the task (no intro audio) for re-recording
-  const loadTaskForRerecord = async () => {
+  // Fetch lesson task directly from Supabase database (INSTANT)
+  const fetchTaskFromDatabase = async () => {
     try {
-      const response = await fetch('/api/lesson-intro', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tone, categoryId, moduleId, lessonId }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load lesson')
-      }
-
-      const data = await response.json()
+      const supabase = createClient()
       
-      // Update with real task
-      setPracticePrompt(data.practice_prompt || 'Practice speaking clearly and confidently')
-      setLessonTitle(data.lessonTitle || 'Lesson')
+      const categoryMap: { [key: string]: string } = {
+        'public-speaking': 'Public Speaking',
+        'storytelling': 'Storytelling',
+        'creator-speaking': 'Creator Speaking',
+        'casual-conversation': 'Casual Conversation',
+        'workplace-communication': 'Workplace Communication',
+        'pitch-anything': 'Pitch Anything',
+      }
+      
+      const categoryName = categoryMap[categoryId] || 'Public Speaking'
+      
+      const { data, error } = await supabase
+        .from('lessons')
+        .select('practice_prompt, level_title')
+        .eq('category', categoryName)
+        .eq('module_number', parseInt(moduleId) || 1)
+        .eq('level_number', parseInt(lessonId) || 1)
+        .single()
+      
+      if (data) {
+        setPracticePrompt(data.practice_prompt || 'Practice speaking clearly and confidently')
+        setLessonTitle(data.level_title || `Lesson ${lessonId}`)
+      } else {
+        setPracticePrompt('Practice speaking clearly and confidently')
+      }
       
       Mixpanel.track('Re-record Started', {
         lesson_id: lessonId,
@@ -136,7 +149,6 @@ export default function PracticePage() {
     } catch (error) {
       console.error('Error loading lesson:', error)
       setPracticePrompt('Practice speaking clearly and confidently')
-      setError('Could not load task, but you can still record')
     }
   }
 
@@ -361,9 +373,11 @@ export default function PracticePage() {
         // Clean up audio analysis
         if (animationFrameRef.current) {
           cancelAnimationFrame(animationFrameRef.current)
+          animationFrameRef.current = null
         }
-        if (audioContextRef.current) {
+        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
           audioContextRef.current.close()
+          audioContextRef.current = null
         }
       }
 
@@ -622,7 +636,9 @@ export default function PracticePage() {
       if (timerRef.current) clearInterval(timerRef.current)
       if (loaderTimerRef.current) clearInterval(loaderTimerRef.current)
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current)
-      if (audioContextRef.current) audioContextRef.current.close()
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close()
+      }
     }
   }, [])
 
