@@ -59,8 +59,8 @@ export default function PracticePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingIntro, setIsLoadingIntro] = useState(false)
   
-  // NEW: Control task visibility - hide by default if skipTask=true
-  const [showInstructions, setShowInstructions] = useState(!skipTask)
+  // NEW: Control task visibility - ALWAYS show by default
+  const [showInstructions, setShowInstructions] = useState(true)
   
   const [error, setError] = useState<string | null>(null)
   const [currentLoaderMessage, setCurrentLoaderMessage] = useState(0)
@@ -95,18 +95,21 @@ export default function PracticePage() {
   const lastSoundTimeRef = useRef<number>(0)
   const wordCountRef = useRef<number>(0)
 
-  // NEW: If skipTask=true, load task but skip intro and go straight to recording
+  // NEW: If skipTask=true, go to recording immediately and load task in background
   useEffect(() => {
     if (skipTask) {
+      // Go to recording IMMEDIATELY - no loading screen
+      setStep('recording')
+      setPracticePrompt('Loading task...')
+      setLessonTitle(`Lesson ${lessonId}`)
+      
+      // Load task in background
       loadTaskForRerecord()
     }
   }, [])
 
   // Load only the task (no intro audio) for re-recording
   const loadTaskForRerecord = async () => {
-    setError(null)
-    setIsLoadingIntro(true)
-    
     try {
       const response = await fetch('/api/lesson-intro', {
         method: 'POST',
@@ -120,13 +123,9 @@ export default function PracticePage() {
 
       const data = await response.json()
       
-      // Set the real task from the lesson
+      // Update with real task
       setPracticePrompt(data.practice_prompt || 'Practice speaking clearly and confidently')
       setLessonTitle(data.lessonTitle || 'Lesson')
-      setIsLoadingIntro(false)
-      
-      // Skip straight to recording (no intro audio)
-      setStep('recording')
       
       Mixpanel.track('Re-record Started', {
         lesson_id: lessonId,
@@ -136,8 +135,8 @@ export default function PracticePage() {
       
     } catch (error) {
       console.error('Error loading lesson:', error)
-      setError('Failed to load lesson')
-      setIsLoadingIntro(false)
+      setPracticePrompt('Practice speaking clearly and confidently')
+      setError('Could not load task, but you can still record')
     }
   }
 
@@ -453,9 +452,13 @@ export default function PracticePage() {
     const pace = recordingTime > 0 ? Math.round((estimatedWords / recordingTime) * 60) : 0
 
     // Calculate confidence (based on volume consistency and minimal pauses)
-    const volumeConfidence = Math.min(100, volume * 1.5)
-    const pauseConfidence = Math.max(0, 100 - (pauseCount * 5))
-    const confidence = Math.round((volumeConfidence * 0.6 + pauseConfidence * 0.4))
+    // If not speaking (volume very low), confidence should be 0
+    let confidence = 0
+    if (volume > 10) {
+      const volumeConfidence = Math.min(100, volume * 1.5)
+      const pauseConfidence = Math.max(0, 100 - (pauseCount * 5))
+      confidence = Math.round((volumeConfidence * 0.6 + pauseConfidence * 0.4))
+    }
 
     setVoiceMetrics({
       volume,
@@ -466,10 +469,8 @@ export default function PracticePage() {
       energy: volume
     })
 
-    // Continue animation loop
-    if (isRecording) {
-      animationFrameRef.current = requestAnimationFrame(analyzeAudio)
-    }
+    // Continue animation loop - will be stopped by stopRecording
+    animationFrameRef.current = requestAnimationFrame(analyzeAudio)
   }
 
   const stopRecording = () => {
