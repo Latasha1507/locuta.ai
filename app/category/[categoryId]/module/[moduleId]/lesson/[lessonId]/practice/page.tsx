@@ -95,12 +95,37 @@ export default function PracticePage() {
   const lastSoundTimeRef = useRef<number>(0)
   const wordCountRef = useRef<number>(0)
 
-  // NEW: If skipTask=true, skip intro and go straight to recording
+  // NEW: If skipTask=true, load task but skip intro and go straight to recording
   useEffect(() => {
     if (skipTask) {
-      // Skip API call entirely - just go straight to recording
-      setPracticePrompt('Practice speaking clearly and confidently on your chosen topic.')
-      setLessonTitle(`Lesson ${lessonId}`)
+      loadTaskForRerecord()
+    }
+  }, [])
+
+  // Load only the task (no intro audio) for re-recording
+  const loadTaskForRerecord = async () => {
+    setError(null)
+    setIsLoadingIntro(true)
+    
+    try {
+      const response = await fetch('/api/lesson-intro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tone, categoryId, moduleId, lessonId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to load lesson')
+      }
+
+      const data = await response.json()
+      
+      // Set the real task from the lesson
+      setPracticePrompt(data.practice_prompt || 'Practice speaking clearly and confidently')
+      setLessonTitle(data.lessonTitle || 'Lesson')
+      setIsLoadingIntro(false)
+      
+      // Skip straight to recording (no intro audio)
       setStep('recording')
       
       Mixpanel.track('Re-record Started', {
@@ -108,8 +133,13 @@ export default function PracticePage() {
         category: categoryId,
         coaching_style: tone
       });
+      
+    } catch (error) {
+      console.error('Error loading lesson:', error)
+      setError('Failed to load lesson')
+      setIsLoadingIntro(false)
     }
-  }, [])
+  }
 
   // Animated loader effect
   useEffect(() => {
