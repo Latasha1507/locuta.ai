@@ -501,26 +501,28 @@ export default function FeedbackPage() {
           </div>
         </div>
 
-        {/* Action Buttons - Updated Sequence */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4 pb-8">
+        {/* Action Buttons - Unified & Symmetrical */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl mx-auto pt-4 pb-8">
           <Link
-            href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}`}
-            className="px-6 py-3 bg-white text-purple-600 border-2 border-purple-300 rounded-xl font-semibold text-center hover:border-purple-500 hover:bg-purple-50 transition-all flex items-center justify-center gap-2"
+            href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}&skipTask=true`}
+            className="group relative px-6 py-4 bg-white text-purple-600 border-2 border-purple-300 rounded-xl font-semibold text-center hover:border-purple-500 hover:bg-purple-50 transition-all flex items-center justify-center gap-2"
           >
-            <Mic className="w-4 h-4" />
-            Re-record Again
+            <Mic className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span>Re-record Again</span>
           </Link>
           <Link
             href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}`}
-            className="px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold text-center hover:bg-purple-700 transition-colors"
+            className="group relative px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-semibold text-center hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-2"
           >
-            Practice Again
+            <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
+            <span>Practice Again</span>
           </Link>
           <Link
             href={`/category/${categoryId}/modules?tone=${session.tone}`}
-            className="px-6 py-3 bg-white text-slate-600 border-2 border-slate-200 rounded-xl font-semibold text-center hover:border-slate-400 transition-colors"
+            className="group relative px-6 py-4 bg-white text-slate-700 border-2 border-slate-300 rounded-xl font-semibold text-center hover:border-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
           >
-            ← Back to Lessons
+            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            <span>Back to Lessons</span>
           </Link>
         </div>
       </div>

@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mic, Square, Play, Pause, SkipBack, SkipForward, RotateCcw, ThumbsUp } from 'lucide-react'
-import { useAudioAnalyzer, VoiceMetrics } from '@/lib/hooks/useAudioAnalyzer'
 import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion, trackError } from '@/lib/analytics/helpers';
 import Mixpanel from '@/lib/mixpanel';
 
@@ -37,18 +36,9 @@ export default function PracticePage() {
   const moduleId = params?.moduleId as string
   const lessonId = params?.lessonId as string
   const tone = searchParams?.get('tone') || 'Normal'
-
-  // 🎤 Audio Analyzer Hook
-  const { 
-    metrics: voiceMetrics, 
-    isAnalyzing, 
-    startAnalyzing, 
-    stopAnalyzing, 
-    getMetrics 
-  } = useAudioAnalyzer({
-    silenceThreshold: 12,
-    pauseMinDuration: 250,
-  })
+  
+  // NEW: Check if we should skip showing the task
+  const skipTask = searchParams?.get('skipTask') === 'true'
 
   const [step, setStep] = useState<'start' | 'intro' | 'recording'>('start')
   const [introAudio, setIntroAudio] = useState<string>('')
@@ -59,10 +49,12 @@ export default function PracticePage() {
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
-  const [finalVoiceMetrics, setFinalVoiceMetrics] = useState<VoiceMetrics | null>(null) // 🎤 Store final metrics
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingIntro, setIsLoadingIntro] = useState(false)
-  const [showInstructions, setShowInstructions] = useState(true)
+  
+  // NEW: Control task visibility - hide by default if skipTask=true
+  const [showInstructions, setShowInstructions] = useState(!skipTask)
+  
   const [error, setError] = useState<string | null>(null)
   const [currentLoaderMessage, setCurrentLoaderMessage] = useState(0)
   const [introStartTime, setIntroStartTime] = useState<number>(0)
@@ -76,11 +68,55 @@ export default function PracticePage() {
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const streamRef = useRef<MediaStream | null>(null) // 🎤 Store stream for analyzer
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const loaderTimerRef = useRef<NodeJS.Timeout | null>(null)
   const submissionInProgressRef = useRef(false)
+
+  // NEW: If skipTask=true, skip intro and go straight to recording
+  useEffect(() => {
+    if (skipTask && !isLoadingIntro) {
+      loadIntroForRerecord()
+    }
+  }, [skipTask])
+
+  // Load intro but skip straight to recording (for re-record)
+  const loadIntroForRerecord = async () => {
+    setError(null)
+    setIsLoadingIntro(true)
+    
+    try {
+      const response = await fetch('/api/lesson-intro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tone, categoryId, moduleId, lessonId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to load lesson')
+      }
+
+      const data = await response.json()
+      
+      setPracticePrompt(data.practice_prompt || 'Practice speaking clearly and confidently')
+      setLessonTitle(data.lessonTitle || 'Lesson')
+      setIsLoadingIntro(false)
+      
+      // Skip straight to recording
+      setStep('recording')
+      
+      Mixpanel.track('Re-record Started', {
+        lesson_id: lessonId,
+        category: categoryId,
+        coaching_style: tone
+      });
+      
+    } catch (error) {
+      console.error('Error loading lesson:', error)
+      setError('Failed to load lesson')
+      setIsLoadingIntro(false)
+    }
+  }
 
   // Animated loader effect
   useEffect(() => {
@@ -272,11 +308,6 @@ export default function PracticePage() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream // 🎤 Store stream reference
-      
-      // 🎤 Start audio analysis
-      await startAnalyzing(stream)
-      
       const mediaRecorder = new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
@@ -288,7 +319,7 @@ export default function PracticePage() {
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
         setAudioBlob(blob)
-        // Don't stop tracks here - we do it after getting metrics
+        stream.getTracks().forEach(track => track.stop())
       }
 
       mediaRecorder.start(100)
@@ -338,18 +369,6 @@ export default function PracticePage() {
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop()
-      
-      // 🎤 Stop audio analysis and capture final metrics
-      const metrics = stopAnalyzing()
-      setFinalVoiceMetrics(metrics)
-      console.log('🎤 Final Voice Metrics:', metrics)
-      
-      // Now stop the stream tracks
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
-        streamRef.current = null
-      }
-      
       setIsRecording(false)
       if (timerRef.current) clearInterval(timerRef.current)
       
@@ -364,7 +383,6 @@ export default function PracticePage() {
 
   const reRecord = () => {
     setAudioBlob(null)
-    setFinalVoiceMetrics(null) // 🎤 Reset metrics
     setRecordingTime(0)
   }
 
@@ -392,12 +410,7 @@ export default function PracticePage() {
       formData.append('categoryId', categoryId)
       formData.append('moduleId', moduleId)
       formData.append('lessonId', lessonId)
-      formData.append('duration', recordingTime.toString()) // 🎤 Add duration
-      
-      // 🎤 Include voice metrics from Web Audio API
-      if (finalVoiceMetrics) {
-        formData.append('voiceMetrics', JSON.stringify(finalVoiceMetrics))
-      }
+      formData.append('duration', recordingTime.toString())
 
       trackAudioSubmission({
         lessonId: lessonId,
@@ -432,7 +445,6 @@ export default function PracticePage() {
 
       const data = await response.json()
       
-      // 🎤 Track with voice metrics
       if (apiDuration > 15000) {
         Mixpanel.track('Slow API Response', {
           endpoint: 'feedback',
@@ -449,8 +461,8 @@ export default function PracticePage() {
         moduleNumber: parseInt(moduleId),
         lessonNumber: parseInt(lessonId),
         coachingStyle: tone,
-        overallScore: data.quickFeedback?.score || 0,
-        passed: data.quickFeedback?.passed || false,
+        overallScore: 0,
+        passed: false,
         attempts: 1,
         totalTime: recordingTime,
         transcriptWordCount: 0,
@@ -481,13 +493,6 @@ export default function PracticePage() {
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  // 🎤 Helper to get confidence color
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600'
-    if (score >= 60) return 'text-yellow-600'
-    return 'text-red-500'
   }
 
   useEffect(() => {
@@ -537,21 +542,26 @@ export default function PracticePage() {
                 <div className="text-4xl sm:text-5xl lg:text-6xl mb-4 sm:mb-6 inline-block animate-pulse">
                   🎵
                 </div>
+                
                 <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-20 animate-ping"></div>
               </div>
+              
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600 mb-2">
-                Preparing Your Lesson
+                {skipTask ? 'Preparing to Re-record' : 'Preparing Your Lesson'}
               </h2>
+              
               <div className="h-6 sm:h-8 overflow-hidden">
                 <p className="text-slate-600 text-sm sm:text-base lg:text-lg animate-pulse transition-all duration-500">
                   {INTRO_LOADER_MESSAGES[currentLoaderMessage]}
                 </p>
               </div>
+              
               <div className="mt-6 sm:mt-8 max-w-md mx-auto">
                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                   <div className="h-full bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500 rounded-full animate-shimmer"></div>
                 </div>
               </div>
+              
               <p className="text-slate-500 text-xs sm:text-sm mt-4 sm:mt-6">
                 This usually takes 3-5 seconds
               </p>
@@ -658,30 +668,44 @@ export default function PracticePage() {
         {/* RECORDING SCREEN */}
         {step === 'recording' && (
           <div className="space-y-4 sm:space-y-6">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border-2 border-blue-200">
-              <div className="flex items-start justify-between mb-3 sm:mb-4">
-                <h3 className="text-lg sm:text-xl font-bold text-blue-900 flex items-center gap-2">
-                  📝 Your Task
-                </h3>
-                <button onClick={() => setShowInstructions(!showInstructions)}
-                  className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex-shrink-0">
-                  {showInstructions ? 'Hide' : 'Show'}
-                </button>
-              </div>
-              
-              {showInstructions && (
+            {/* UPDATED: Conditionally show task section */}
+            {showInstructions && (
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border-2 border-blue-200">
+                <div className="flex items-start justify-between mb-3 sm:mb-4">
+                  <h3 className="text-lg sm:text-xl font-bold text-blue-900 flex items-center gap-2">
+                    📝 Your Task
+                  </h3>
+                  <button onClick={() => setShowInstructions(false)}
+                    className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex-shrink-0">
+                    Hide
+                  </button>
+                </div>
+                
                 <div className="bg-white rounded-lg p-3 sm:p-4">
                   <p className="text-slate-800 text-sm sm:text-base lg:text-lg leading-relaxed whitespace-pre-wrap break-words">
                     {practice_prompt || 'Loading task...'}
                   </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* UPDATED: Show task button when hidden */}
+            {!showInstructions && (
+              <button
+                onClick={() => setShowInstructions(true)}
+                className="text-purple-600 hover:text-purple-700 font-medium text-sm flex items-center gap-2"
+              >
+                <span>📝</span>
+                Show Task Instructions
+              </button>
+            )}
 
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8 text-center">
               {!isRecording && !audioBlob && !isSubmitting && (
                 <>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-6 sm:mb-8">Ready to Record</h2>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-6 sm:mb-8">
+                    {skipTask ? 'Ready to Re-record' : 'Ready to Record'}
+                  </h2>
                   <div className="relative inline-block">
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full animate-pulse opacity-30 scale-110"></div>
                     <button onClick={startRecording}
@@ -692,52 +716,10 @@ export default function PracticePage() {
                 </>
               )}
 
-              {/* 🎤 RECORDING STATE WITH REAL-TIME METRICS */}
               {isRecording && (
                 <>
                   <h2 className="text-2xl sm:text-3xl font-bold text-red-600 mb-3 sm:mb-4">Recording...</h2>
-                  <div className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6">{formatTime(recordingTime)}</div>
-                  
-                  {/* 🎤 REAL-TIME VOICE METRICS */}
-                  <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8 max-w-sm mx-auto">
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-2 sm:p-3">
-                      <div className={`text-xl sm:text-2xl font-bold ${getScoreColor(voiceMetrics.confidenceScore)}`}>
-                        {voiceMetrics.confidenceScore}
-                      </div>
-                      <div className="text-[10px] sm:text-xs text-slate-500 font-medium">Confidence</div>
-                    </div>
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-2 sm:p-3">
-                      <div className="text-xl sm:text-2xl font-bold text-blue-600">
-                        {voiceMetrics.currentVolume}
-                      </div>
-                      <div className="text-[10px] sm:text-xs text-slate-500 font-medium">Volume</div>
-                      <div className="h-1 bg-blue-200 rounded mt-1 overflow-hidden">
-                        <div 
-                          className="h-full bg-blue-500 transition-all duration-100" 
-                          style={{ width: `${Math.min(100, voiceMetrics.currentVolume)}%` }} 
-                        />
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-2 sm:p-3">
-                      <div className="text-xl sm:text-2xl font-bold text-green-600">
-                        {voiceMetrics.pauseCount}
-                      </div>
-                      <div className="text-[10px] sm:text-xs text-slate-500 font-medium">Pauses</div>
-                    </div>
-                  </div>
-
-                  {/* Additional metrics row */}
-                  <div className="flex justify-center gap-4 sm:gap-6 mb-6 text-xs sm:text-sm text-slate-600">
-                    <div>
-                      <span className="font-semibold">Stability:</span>{' '}
-                      <span className={getScoreColor(voiceMetrics.volumeStability)}>{voiceMetrics.volumeStability}%</span>
-                    </div>
-                    <div>
-                      <span className="font-semibold">Pace:</span>{' '}
-                      <span className={getScoreColor(voiceMetrics.paceScore)}>{voiceMetrics.paceScore}%</span>
-                    </div>
-                  </div>
-                  
+                  <div className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6 sm:mb-8">{formatTime(recordingTime)}</div>
                   <div className="relative inline-block">
                     <div className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-40"></div>
                     <button onClick={stopRecording}
@@ -748,60 +730,11 @@ export default function PracticePage() {
                 </>
               )}
 
-              {/* 🎤 RECORDING COMPLETE WITH FINAL METRICS */}
               {audioBlob && !isSubmitting && (
                 <>
                   <div className="text-5xl sm:text-6xl mb-4 sm:mb-6">✅</div>
                   <h2 className="text-2xl sm:text-3xl font-bold text-green-600 mb-3 sm:mb-4">Recording Complete!</h2>
-                  <p className="text-slate-600 mb-4 text-base sm:text-lg">Duration: {formatTime(recordingTime)}</p>
-                  
-                  {/* 🎤 FINAL VOICE METRICS SUMMARY */}
-                  {finalVoiceMetrics && (
-                    <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 sm:p-5 mb-6 max-w-md mx-auto">
-                      <h3 className="font-semibold text-slate-700 mb-3 text-sm sm:text-base">🎤 Voice Analysis Preview</h3>
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div className="flex justify-between items-center bg-white rounded-lg p-2">
-                          <span className="text-slate-500">Confidence</span>
-                          <span className={`font-bold ${getScoreColor(finalVoiceMetrics.confidenceScore)}`}>
-                            {finalVoiceMetrics.confidenceScore}%
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center bg-white rounded-lg p-2">
-                          <span className="text-slate-500">Delivery</span>
-                          <span className={`font-bold ${getScoreColor(finalVoiceMetrics.deliveryScore)}`}>
-                            {finalVoiceMetrics.deliveryScore}%
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center bg-white rounded-lg p-2">
-                          <span className="text-slate-500">Pace</span>
-                          <span className={`font-bold ${getScoreColor(finalVoiceMetrics.paceScore)}`}>
-                            {finalVoiceMetrics.paceScore}%
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center bg-white rounded-lg p-2">
-                          <span className="text-slate-500">Vol. Stability</span>
-                          <span className={`font-bold ${getScoreColor(finalVoiceMetrics.volumeStability)}`}>
-                            {finalVoiceMetrics.volumeStability}%
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-3 gap-2 text-xs">
-                        <div className="text-center">
-                          <div className="font-bold text-slate-700">{finalVoiceMetrics.pauseCount}</div>
-                          <div className="text-slate-500">Pauses</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="font-bold text-green-600">{finalVoiceMetrics.strategicPauseCount}</div>
-                          <div className="text-slate-500">Good</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="font-bold text-red-500">{finalVoiceMetrics.longPauseCount}</div>
-                          <div className="text-slate-500">Long</div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
+                  <p className="text-slate-600 mb-6 sm:mb-8 text-base sm:text-lg">Duration: {formatTime(recordingTime)}</p>
                   <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
                     <button 
                       onClick={reRecord} 
@@ -825,23 +758,28 @@ export default function PracticePage() {
                     <div className="text-5xl sm:text-6xl mb-4 sm:mb-6 inline-block animate-bounce">
                       🤔
                     </div>
+                    
                     <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-20 animate-ping"></div>
                   </div>
+                  
                   <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600 mb-2">
                     Analyzing Your Response
                   </h2>
+                  
                   <div className="h-6 sm:h-8 overflow-hidden">
                     <p className="text-slate-600 text-sm sm:text-base lg:text-lg animate-pulse transition-all duration-500">
                       {FEEDBACK_LOADER_MESSAGES[currentLoaderMessage]}
                     </p>
                   </div>
+                  
                   <div className="mt-6 sm:mt-8 max-w-md mx-auto">
                     <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500 rounded-full animate-shimmer"></div>
                     </div>
                   </div>
+                  
                   <p className="text-slate-500 text-xs sm:text-sm mt-4 sm:mt-6">
-                    This usually takes 3-5 seconds
+                    This usually takes 5-10 seconds
                   </p>
                 </div>
               )}
@@ -852,8 +790,12 @@ export default function PracticePage() {
 
       <style jsx>{`
         @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
         }
         .animate-shimmer {
           animation: shimmer 2s ease-in-out infinite;
