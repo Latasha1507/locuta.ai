@@ -7,6 +7,13 @@ import { Mic, Square, Play, Pause, SkipBack, SkipForward, RotateCcw, ThumbsUp } 
 import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion, trackError } from '@/lib/analytics/helpers';
 import Mixpanel from '@/lib/mixpanel';
 
+// Extend Window type for Web Audio API
+declare global {
+  interface Window {
+    webkitAudioContext: typeof AudioContext;
+  }
+}
+
 // Loader messages for LESSON INTRO
 const INTRO_LOADER_MESSAGES = [
   'Personalizing your lesson...',
@@ -66,19 +73,34 @@ export default function PracticePage() {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
 
+  // Real-time voice metrics
+  const [voiceMetrics, setVoiceMetrics] = useState({
+    volume: 0,
+    pace: 0, // words per minute estimate
+    pauseCount: 0,
+    currentPauseLength: 0,
+    confidence: 0,
+    energy: 0
+  })
+
   const audioRef = useRef<HTMLAudioElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const loaderTimerRef = useRef<NodeJS.Timeout | null>(null)
   const submissionInProgressRef = useRef(false)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
+  const lastSoundTimeRef = useRef<number>(0)
+  const wordCountRef = useRef<number>(0)
 
   // NEW: If skipTask=true, skip intro and go straight to recording
   useEffect(() => {
-    if (skipTask && !isLoadingIntro) {
+    if (skipTask) {
       loadIntroForRerecord()
     }
-  }, [skipTask])
+  }, [])
 
   // Load intro but skip straight to recording (for re-record)
   const loadIntroForRerecord = async () => {
@@ -312,6 +334,21 @@ export default function PracticePage() {
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
 
+      // Set up audio analysis for real-time metrics
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const source = audioContext.createMediaStreamSource(stream)
+      const analyser = audioContext.createAnalyser()
+      analyser.fftSize = 2048
+      source.connect(analyser)
+      
+      audioContextRef.current = audioContext
+      analyserRef.current = analyser
+      lastSoundTimeRef.current = Date.now()
+      wordCountRef.current = 0
+
+      // Start real-time analysis
+      analyzeAudio()
+
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data)
       }
@@ -320,6 +357,14 @@ export default function PracticePage() {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
         setAudioBlob(blob)
         stream.getTracks().forEach(track => track.stop())
+        
+        // Clean up audio analysis
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current)
+        }
+        if (audioContextRef.current) {
+          audioContextRef.current.close()
+        }
       }
 
       mediaRecorder.start(100)
@@ -366,11 +411,74 @@ export default function PracticePage() {
     }
   }
 
+  // Real-time audio analysis
+  const analyzeAudio = () => {
+    if (!analyserRef.current || !isRecording) return
+
+    const analyser = analyserRef.current
+    const dataArray = new Uint8Array(analyser.frequencyBinCount)
+    analyser.getByteTimeDomainData(dataArray)
+
+    // Calculate volume (0-100)
+    let sum = 0
+    for (let i = 0; i < dataArray.length; i++) {
+      const normalized = (dataArray[i] - 128) / 128
+      sum += normalized * normalized
+    }
+    const rms = Math.sqrt(sum / dataArray.length)
+    const volume = Math.min(100, Math.round(rms * 200))
+
+    // Detect speech (volume threshold)
+    const isSpeaking = volume > 15
+    const now = Date.now()
+
+    let pauseCount = voiceMetrics.pauseCount
+    let currentPauseLength = 0
+
+    if (isSpeaking) {
+      const pauseDuration = (now - lastSoundTimeRef.current) / 1000
+      if (pauseDuration > 1) {
+        pauseCount++
+        // Estimate word count (rough approximation)
+        wordCountRef.current += Math.floor(pauseDuration * 2.5)
+      }
+      lastSoundTimeRef.current = now
+    } else {
+      currentPauseLength = (now - lastSoundTimeRef.current) / 1000
+    }
+
+    // Calculate pace (words per minute estimate)
+    const estimatedWords = wordCountRef.current + Math.floor(volume / 10)
+    const pace = recordingTime > 0 ? Math.round((estimatedWords / recordingTime) * 60) : 0
+
+    // Calculate confidence (based on volume consistency and minimal pauses)
+    const volumeConfidence = Math.min(100, volume * 1.5)
+    const pauseConfidence = Math.max(0, 100 - (pauseCount * 5))
+    const confidence = Math.round((volumeConfidence * 0.6 + pauseConfidence * 0.4))
+
+    setVoiceMetrics({
+      volume,
+      pace: Math.min(200, pace),
+      pauseCount,
+      currentPauseLength: Math.round(currentPauseLength * 10) / 10,
+      confidence: Math.min(100, confidence),
+      energy: volume
+    })
+
+    animationFrameRef.current = requestAnimationFrame(analyzeAudio)
+  }
+
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop()
       setIsRecording(false)
       if (timerRef.current) clearInterval(timerRef.current)
+      
+      // Stop audio analysis
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
       
       trackRecordingStop({
         lessonId: lessonId,
@@ -384,6 +492,15 @@ export default function PracticePage() {
   const reRecord = () => {
     setAudioBlob(null)
     setRecordingTime(0)
+    setVoiceMetrics({
+      volume: 0,
+      pace: 0,
+      pauseCount: 0,
+      currentPauseLength: 0,
+      confidence: 0,
+      energy: 0
+    })
+    wordCountRef.current = 0
   }
 
   const submitRecording = async () => {
@@ -499,6 +616,8 @@ export default function PracticePage() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
       if (loaderTimerRef.current) clearInterval(loaderTimerRef.current)
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current)
+      if (audioContextRef.current) audioContextRef.current.close()
     }
   }, [])
 
@@ -720,6 +839,50 @@ export default function PracticePage() {
                 <>
                   <h2 className="text-2xl sm:text-3xl font-bold text-red-600 mb-3 sm:mb-4">Recording...</h2>
                   <div className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6 sm:mb-8">{formatTime(recordingTime)}</div>
+                  
+                  {/* Real-time Voice Metrics */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 max-w-2xl mx-auto">
+                    {/* Volume */}
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-3 border border-purple-200">
+                      <div className="text-xs text-purple-600 font-semibold mb-1">Volume</div>
+                      <div className="text-2xl font-bold text-purple-700">{voiceMetrics.volume}%</div>
+                      <div className="w-full bg-purple-200 rounded-full h-1.5 mt-2">
+                        <div 
+                          className="bg-purple-600 h-1.5 rounded-full transition-all duration-100"
+                          style={{ width: `${voiceMetrics.volume}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    {/* Pace */}
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200">
+                      <div className="text-xs text-blue-600 font-semibold mb-1">Pace</div>
+                      <div className="text-2xl font-bold text-blue-700">{voiceMetrics.pace}</div>
+                      <div className="text-xs text-blue-500 mt-1">WPM</div>
+                    </div>
+
+                    {/* Confidence */}
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3 border border-green-200">
+                      <div className="text-xs text-green-600 font-semibold mb-1">Confidence</div>
+                      <div className="text-2xl font-bold text-green-700">{voiceMetrics.confidence}%</div>
+                      <div className="w-full bg-green-200 rounded-full h-1.5 mt-2">
+                        <div 
+                          className="bg-green-600 h-1.5 rounded-full transition-all duration-100"
+                          style={{ width: `${voiceMetrics.confidence}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    {/* Pauses */}
+                    <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-3 border border-yellow-200">
+                      <div className="text-xs text-yellow-600 font-semibold mb-1">Pauses</div>
+                      <div className="text-2xl font-bold text-yellow-700">{voiceMetrics.pauseCount}</div>
+                      {voiceMetrics.currentPauseLength > 0 && (
+                        <div className="text-xs text-yellow-500 mt-1">{voiceMetrics.currentPauseLength}s</div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="relative inline-block">
                     <div className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-40"></div>
                     <button onClick={stopRecording}
