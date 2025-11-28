@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { ChevronLeft, Volume2, Loader2, RefreshCw, Mic, Trophy, Star, Zap } from 'lucide-react'
+import { ChevronLeft, Volume2, Loader2, RefreshCw, Mic, Trophy, Star, Sparkles, CheckCircle, TrendingUp } from 'lucide-react'
+import confetti from 'canvas-confetti'
 
 interface SessionData {
   id: string
@@ -32,65 +33,83 @@ export default function FeedbackPage() {
   const [session, setSession] = useState<SessionData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
-  // AI Example states
-  const [aiExampleLoading, setAiExampleLoading] = useState(false)
-  const [aiExampleError, setAiExampleError] = useState<string | null>(null)
-  const [aiExampleText, setAiExampleText] = useState<string>('')
-  const [aiExampleAudio, setAiExampleAudio] = useState<string>('')
-
-  // Success popup state
   const [showSuccessPopup, setShowSuccessPopup] = useState(false)
+  const [isFirstPass, setIsFirstPass] = useState(false)
+  const [aiExampleLoading, setAiExampleLoading] = useState(false)
+  const [aiExampleText, setAiExampleText] = useState('')
+  const [aiExampleAudio, setAiExampleAudio] = useState('')
 
-  // Fetch session data
   useEffect(() => {
-    async function fetchSession() {
-      if (!sessionId) {
-        setError('No session ID provided')
-        setLoading(false)
-        return
-      }
-
-      const supabase = createClient()
-      
-      const { data, error: fetchError } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('id', sessionId)
-        .single()
-
-      if (fetchError || !data) {
-        setError('Failed to load feedback')
-        setLoading(false)
-        return
-      }
-
-      setSession(data)
-      setAiExampleText(data.ai_example_text || '')
-      setAiExampleAudio(data.ai_example_audio || '')
-      setLoading(false)
-      
-      // Show success popup if score >= 75
-      if (data.overall_score >= 75) {
-        setShowSuccessPopup(true)
-      }
-      
-      // If AI example is missing, generate it
-      if (!data.ai_example_text || !data.ai_example_audio) {
-        generateAIExample(data)
-      }
-    }
-
     fetchSession()
   }, [sessionId])
 
-  // Generate AI example
+  const fetchSession = async () => {
+    if (!sessionId) {
+      setError('No session ID')
+      setLoading(false)
+      return
+    }
+
+    const supabase = createClient()
+    const { data, error: fetchError } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .single()
+
+    if (fetchError || !data) {
+      setError('Failed to load feedback')
+      setLoading(false)
+      return
+    }
+
+    setSession(data)
+    setAiExampleText(data.ai_example_text || '')
+    setAiExampleAudio(data.ai_example_audio || '')
+    setLoading(false)
+    
+    // Check if user passed
+    const passThreshold = data.feedback?.pass_threshold || 75
+    const passed = data.overall_score >= passThreshold
+    
+    if (passed) {
+      // Check if this is their first time passing
+      const { data: progressData } = await supabase
+        .from('user_progress')
+        .select('completed')
+        .eq('user_id', data.user_id)
+        .eq('category', data.category)
+        .eq('module_number', data.module_number)
+        .eq('lesson_number', data.level_number)
+        .single()
+      
+      const isFirst = !progressData?.completed
+      setIsFirstPass(isFirst)
+      setShowSuccessPopup(true)
+      
+      // Fire confetti if first pass!
+      if (isFirst) {
+        setTimeout(() => {
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          })
+        }, 300)
+      }
+    }
+    
+    // Generate AI example if missing
+    if (!data.ai_example_text || !data.ai_example_audio) {
+      generateAIExample(data)
+    }
+  }
+
   const generateAIExample = async (sessionData?: SessionData) => {
     const sess = sessionData || session
     if (!sess) return
     
     setAiExampleLoading(true)
-    setAiExampleError(null)
     
     try {
       const response = await fetch('/api/generate-example', {
@@ -98,86 +117,76 @@ export default function FeedbackPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: sess.id,
-          prompt: sess.feedback?.task_completion_analysis?.explanation || 'Practice speaking',
-          level: sess.level_number,
-          tone: sess.tone
+          tone: sess.tone,
+          level: sess.level_number
         })
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to generate example')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.text) setAiExampleText(data.text)
+        if (data.audio) setAiExampleAudio(data.audio)
       }
-
-      const data = await response.json()
-      
-      if (data.text) setAiExampleText(data.text)
-      if (data.audio) setAiExampleAudio(data.audio)
-      
     } catch (err) {
-      console.error('AI Example generation failed:', err)
-      setAiExampleError('Failed to generate example. Click to retry.')
+      console.error('Failed to generate example')
     } finally {
       setAiExampleLoading(false)
     }
   }
 
-  // Get score color
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600'
-    if (score >= 60) return 'text-yellow-600'
-    return 'text-red-500'
+    if (score >= 85) return 'text-green-600'
+    if (score >= 70) return 'text-blue-600'
+    return 'text-orange-600'
   }
 
   const getScoreBg = (score: number) => {
-    if (score >= 80) return 'bg-green-50 border-green-200'
-    if (score >= 60) return 'bg-yellow-50 border-yellow-200'
-    return 'bg-red-50 border-red-200'
+    if (score >= 85) return 'bg-green-50 border-green-200'
+    if (score >= 70) return 'bg-blue-50 border-blue-200'
+    return 'bg-orange-50 border-orange-200'
   }
 
-  // Get motivational message based on score
-  const getMotivationalMessage = (score: number) => {
+  const getMotivationalContent = (score: number, threshold: number, isFirst: boolean) => {
     if (score >= 90) return {
       title: "Outstanding Performance! 🏆",
-      message: "You've mastered this lesson! Your speaking skills are exceptional.",
-      emoji: "🌟"
+      subtitle: isFirst ? "First time passing this lesson!" : "You've mastered this!",
+      message: "Your speaking skills are exceptional. You're ready for more challenges!",
+      color: "from-yellow-400 to-orange-500"
     }
-    if (score >= 80) return {
-      title: "Excellent Work! 🎯",
-      message: "You've passed with flying colors! Keep up the great work.",
-      emoji: "⭐"
+    if (score >= 85) return {
+      title: "Excellent Work! 🌟",
+      subtitle: isFirst ? "Lesson completed!" : "Great improvement!",
+      message: "You demonstrated strong speaking skills with clear delivery and confidence.",
+      color: "from-green-400 to-emerald-500"
     }
-    if (score >= 75) return {
-      title: "Well Done! 💪",
-      message: "You've successfully completed this lesson! You're making great progress.",
-      emoji: "✨"
+    if (score >= threshold) return {
+      title: "Well Done! ✨",
+      subtitle: isFirst ? "You passed this lesson!" : "Keep up the good work!",
+      message: "You successfully completed the task with good speaking fundamentals.",
+      color: "from-blue-400 to-indigo-500"
     }
     return {
-      title: "Keep Practicing! 🚀",
-      message: "You're on the right track! Try again to improve your score.",
-      emoji: "💫"
+      title: "Keep Practicing! 💪",
+      subtitle: `You need ${threshold}+ to pass`,
+      message: "You're making progress! Review the feedback and try again.",
+      color: "from-purple-400 to-pink-500"
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
-          <p className="text-slate-600">Loading your feedback...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <Loader2 className="w-12 h-12 animate-spin text-purple-600" />
       </div>
     )
   }
 
   if (error || !session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error || 'Session not found'}</p>
-          <Link 
-            href={`/category/${categoryId}/modules`}
-            className="text-purple-600 hover:underline"
-          >
+          <Link href={`/category/${categoryId}/modules`} className="text-purple-600 hover:underline">
             Back to Lessons
           </Link>
         </div>
@@ -186,71 +195,92 @@ export default function FeedbackPage() {
   }
 
   const feedback = session.feedback
-  const overallScore = session.overall_score || feedback?.overall_score || 0
-  const passed = feedback?.pass_level || overallScore >= 75 // Changed from 80 to 75
-
-  // Extract scores
-  const taskScore = feedback?.task_completion_score || 0
-  const deliveryScore = feedback?.delivery_score || 0
-  const linguisticScore = feedback?.linguistic_score || 0
+  const score = session.overall_score
+  const threshold = feedback?.pass_threshold || 75
+  const passed = score >= threshold
   
-  // Focus area scores
-  const focusScores = feedback?.focus_area_scores || {}
-  const focusAreas = Object.entries(focusScores)
-
-  const motivationalContent = getMotivationalMessage(overallScore)
+  const clarity = feedback?.clarity_score || 0
+  const delivery = feedback?.delivery_score || 0
+  const confidence = feedback?.confidence_score || 0
+  
+  const motivational = getMotivationalContent(score, threshold, isFirstPass)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Success Popup */}
-      {showSuccessPopup && overallScore >= 75 && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center transform animate-scaleIn">
-            {/* Animated Trophy */}
+      {showSuccessPopup && passed && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 text-center relative overflow-hidden">
+            {/* Decorative elements */}
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 via-blue-500 to-green-500"></div>
+            
+            {/* Trophy animation */}
             <div className="mb-6 relative">
-              <div className="w-24 h-24 mx-auto bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center animate-bounce">
-                <Trophy className="w-12 h-12 text-white" />
+              <div className={`w-28 h-28 mx-auto bg-gradient-to-br ${motivational.color} rounded-full flex items-center justify-center animate-bounce shadow-2xl`}>
+                <Trophy className="w-14 h-14 text-white" />
               </div>
-              {/* Sparkles */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4">
-                <Star className="w-6 h-6 text-yellow-400 animate-ping" />
-              </div>
-              <div className="absolute bottom-0 left-1/4 translate-y-4">
-                <Zap className="w-5 h-5 text-purple-500 animate-pulse" />
-              </div>
-              <div className="absolute bottom-0 right-1/4 translate-y-4">
-                <Zap className="w-5 h-5 text-blue-500 animate-pulse" />
-              </div>
+              
+              {isFirstPass && (
+                <>
+                  <Star className="absolute top-0 left-1/4 w-8 h-8 text-yellow-400 animate-ping" />
+                  <Sparkles className="absolute top-0 right-1/4 w-8 h-8 text-blue-400 animate-pulse" />
+                </>
+              )}
             </div>
 
-            {/* Message */}
-            <h2 className="text-3xl font-bold text-slate-900 mb-2">
-              {motivationalContent.title}
+            {/* Content */}
+            <h2 className="text-4xl font-bold text-slate-900 mb-2">
+              {motivational.title}
             </h2>
-            <div className="text-5xl mb-4">{motivationalContent.emoji}</div>
-            <p className="text-slate-600 mb-2 leading-relaxed">
-              {motivationalContent.message}
-            </p>
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-6">
-              <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">
-                {overallScore}/100
+            
+            {isFirstPass && (
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full mb-4">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <span className="text-sm font-semibold text-green-700">First Time Achievement!</span>
               </div>
-              <p className="text-sm text-slate-600 mt-1">Your Score</p>
+            )}
+            
+            <p className="text-lg text-slate-600 mb-2">{motivational.subtitle}</p>
+            <p className="text-slate-500 mb-6 leading-relaxed">{motivational.message}</p>
+            
+            {/* Score display */}
+            <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl p-6 mb-6">
+              <div className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600 mb-2">
+                {score}
+              </div>
+              <p className="text-slate-600 font-medium">Your Score</p>
+              <p className="text-sm text-slate-500 mt-1">Required: {threshold}+</p>
             </div>
 
-            {/* Action Buttons */}
+            {/* Quick stats */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 border border-purple-200">
+                <div className="text-2xl font-bold text-purple-700">{clarity}</div>
+                <div className="text-xs text-purple-600">Clarity</div>
+              </div>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 border border-blue-200">
+                <div className="text-2xl font-bold text-blue-700">{delivery}</div>
+                <div className="text-xs text-blue-600">Delivery</div>
+              </div>
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 border border-green-200">
+                <div className="text-2xl font-bold text-green-700">{confidence}</div>
+                <div className="text-xs text-green-600">Confidence</div>
+              </div>
+            </div>
+
+            {/* Actions */}
             <div className="space-y-3">
               <button
                 onClick={() => setShowSuccessPopup(false)}
-                className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all transform hover:scale-105"
+                className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold text-lg hover:opacity-90 transition shadow-lg"
               >
                 View Detailed Feedback
               </button>
               <Link
                 href={`/category/${categoryId}/modules?tone=${session.tone}`}
-                className="block w-full px-6 py-3 bg-white text-purple-600 border-2 border-purple-200 rounded-xl font-semibold hover:border-purple-400 transition-colors"
+                className="block w-full px-6 py-4 bg-white text-purple-600 border-2 border-purple-200 rounded-xl font-semibold hover:border-purple-400 transition"
               >
-                Continue to Next Lesson →
+                Continue Learning →
               </Link>
             </div>
           </div>
@@ -259,134 +289,89 @@ export default function FeedbackPage() {
 
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-lg border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link 
-            href={`/category/${categoryId}/modules`}
-            className="text-slate-600 hover:text-purple-600 transition-colors"
-          >
-            <ChevronLeft className="w-6 h-6" />
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <Link href={`/category/${categoryId}/modules`} className="text-slate-600 hover:text-purple-600 flex items-center gap-2">
+            <ChevronLeft className="w-5 h-5" />
+            <span className="font-medium">Back</span>
           </Link>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
-              <Volume2 className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <h1 className="font-bold text-slate-900">Your Feedback</h1>
-              <p className="text-xs text-slate-500">Lesson {lessonId} • {session.tone} Tone</p>
-            </div>
+            <Volume2 className="w-5 h-5 text-purple-600" />
+            <span className="font-bold text-slate-900">Lesson {lessonId} Feedback</span>
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Overall Score */}
-        <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-6 text-white text-center">
-          <div className="text-6xl sm:text-7xl font-bold mb-2">{overallScore}</div>
-          <div className="text-lg font-medium opacity-90">Overall Score</div>
-          <div className="text-sm opacity-75 mt-1">
-            {passed ? '🎉 Great job!' : 'Keep practicing!'}
+        {/* Overall Score Card */}
+        <div className={`bg-gradient-to-br ${passed ? 'from-green-500 to-emerald-600' : 'from-orange-500 to-red-600'} rounded-2xl p-8 text-white text-center shadow-xl`}>
+          <div className="text-7xl font-bold mb-2">{score}</div>
+          <div className="text-xl font-semibold opacity-90 mb-1">
+            {passed ? '✅ Passed!' : `Need ${threshold}+ to Pass`}
+          </div>
+          <div className="text-sm opacity-80">
+            {passed ? 'Great job! Lesson completed.' : 'Keep practicing - you\'re improving!'}
           </div>
         </div>
 
-        {/* Focus Area Breakdown */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="font-bold text-slate-900 mb-4">Focus Area Breakdown</h2>
-          <div className="grid grid-cols-3 gap-3">
-            {focusAreas.length > 0 ? (
-              focusAreas.map(([area, score]) => (
-                <div key={area} className={`rounded-xl p-4 border ${getScoreBg(score as number)}`}>
-                  <div className={`text-2xl sm:text-3xl font-bold ${getScoreColor(score as number)}`}>
-                    {score as number}
-                  </div>
-                  <div className="text-sm text-slate-600 mt-1">{area}</div>
-                </div>
-              ))
-            ) : (
-              <>
-                <div className={`rounded-xl p-4 border ${getScoreBg(taskScore)}`}>
-                  <div className={`text-2xl sm:text-3xl font-bold ${getScoreColor(taskScore)}`}>{taskScore}</div>
-                  <div className="text-sm text-slate-600 mt-1">Task</div>
-                </div>
-                <div className={`rounded-xl p-4 border ${getScoreBg(deliveryScore)}`}>
-                  <div className={`text-2xl sm:text-3xl font-bold ${getScoreColor(deliveryScore)}`}>{deliveryScore}</div>
-                  <div className="text-sm text-slate-600 mt-1">Delivery</div>
-                </div>
-                <div className={`rounded-xl p-4 border ${getScoreBg(linguisticScore)}`}>
-                  <div className={`text-2xl sm:text-3xl font-bold ${getScoreColor(linguisticScore)}`}>{linguisticScore}</div>
-                  <div className="text-sm text-slate-600 mt-1">Language</div>
-                </div>
-              </>
-            )}
+        {/* Focus Areas */}
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <h2 className="text-xl font-bold text-slate-900 mb-4">Performance Breakdown</h2>
+          <div className="grid grid-cols-3 gap-4">
+            <div className={`rounded-xl p-5 border-2 ${getScoreBg(clarity)}`}>
+              <div className={`text-4xl font-bold ${getScoreColor(clarity)} mb-1`}>{clarity}</div>
+              <div className="text-sm font-medium text-slate-700">Clarity</div>
+              <div className="text-xs text-slate-500 mt-1">Pronunciation</div>
+            </div>
+            <div className={`rounded-xl p-5 border-2 ${getScoreBg(delivery)}`}>
+              <div className={`text-4xl font-bold ${getScoreColor(delivery)} mb-1`}>{delivery}</div>
+              <div className="text-sm font-medium text-slate-700">Delivery</div>
+              <div className="text-xs text-slate-500 mt-1">Flow & Pace</div>
+            </div>
+            <div className={`rounded-xl p-5 border-2 ${getScoreBg(confidence)}`}>
+              <div className={`text-4xl font-bold ${getScoreColor(confidence)} mb-1`}>{confidence}</div>
+              <div className="text-sm font-medium text-slate-700">Confidence</div>
+              <div className="text-xs text-slate-500 mt-1">Energy & Voice</div>
+            </div>
           </div>
         </div>
 
-        {/* Detailed Feedback */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="font-bold text-slate-900 mb-4">Detailed Feedback</h2>
-          <div className="prose prose-slate max-w-none">
-            <p className="text-slate-700 leading-relaxed mb-4">
-              {feedback?.detailed_feedback || 'Great effort! Keep practicing to improve your speaking skills.'}
-            </p>
-            
-            {/* Task Analysis */}
-            {feedback?.task_completion_analysis?.specific_observations && (
-              <div className="bg-purple-50 rounded-lg p-4 mb-4 border border-purple-200">
-                <h3 className="font-semibold text-purple-900 mb-2 text-sm">Task Completion</h3>
-                <p className="text-purple-700 text-sm leading-relaxed">
-                  {feedback.task_completion_analysis.specific_observations}
-                </p>
-              </div>
-            )}
-            
-            {/* Linguistic Details */}
-            {feedback?.linguistic_analysis?.vocabulary?.observations && (
-              <div className="bg-blue-50 rounded-lg p-4 mb-4 border border-blue-200">
-                <h3 className="font-semibold text-blue-900 mb-2 text-sm">Vocabulary & Language</h3>
-                <p className="text-blue-700 text-sm leading-relaxed">
-                  {feedback.linguistic_analysis.vocabulary.observations}
-                </p>
-              </div>
-            )}
-            
-            {/* Pace Analysis */}
-            {feedback?.pace_analysis && (
-              <div className="bg-indigo-50 rounded-lg p-4 mb-4 border border-indigo-200">
-                <h3 className="font-semibold text-indigo-900 mb-2 text-sm">Speaking Pace</h3>
-                <p className="text-indigo-700 text-sm">
-                  <span className="font-medium">{feedback.pace_analysis.words_per_minute} WPM</span> • {feedback.pace_analysis.assessment}
-                </p>
-              </div>
-            )}
-          </div>
+        {/* Feedback */}
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <h2 className="text-xl font-bold text-slate-900 mb-4">Personalized Feedback</h2>
+          <p className="text-slate-700 leading-relaxed mb-6 text-lg">
+            {feedback?.detailed_feedback}
+          </p>
           
-          <div className="grid sm:grid-cols-2 gap-4 mt-6">
-            {/* Strengths */}
-            <div className="bg-green-50 rounded-xl p-5 border border-green-200">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">💪</span>
-                <h3 className="font-semibold text-green-800">What You Did Well</h3>
+          <div className="grid md:grid-cols-2 gap-5">
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 border-2 border-green-200">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-bold text-green-800 text-lg">What You Did Well</h3>
               </div>
-              <ul className="space-y-2.5">
-                {(feedback?.strengths || ['Good effort']).map((strength: string, idx: number) => (
-                  <li key={idx} className="flex items-start gap-2.5 text-green-700 text-sm leading-relaxed">
-                    <span className="text-green-500 font-bold mt-0.5 flex-shrink-0">✓</span>
-                    <span>{strength}</span>
+              <ul className="space-y-3">
+                {(feedback?.strengths || []).map((strength: string, idx: number) => (
+                  <li key={idx} className="flex items-start gap-3">
+                    <span className="text-green-600 font-bold text-lg flex-shrink-0">✓</span>
+                    <span className="text-green-800 leading-relaxed">{strength}</span>
                   </li>
                 ))}
               </ul>
             </div>
             
-            {/* Areas to Improve */}
-            <div className="bg-blue-50 rounded-xl p-5 border border-blue-200">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">🎯</span>
-                <h3 className="font-semibold text-blue-800">How to Improve</h3>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border-2 border-blue-200">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-bold text-blue-800 text-lg">How to Improve</h3>
               </div>
-              <ul className="space-y-2.5">
-                {(feedback?.improvements || ['Keep practicing']).map((improvement: string, idx: number) => (
-                  <li key={idx} className="flex items-start gap-2.5 text-blue-700 text-sm leading-relaxed">
-                    <span className="text-blue-500 font-bold mt-0.5 flex-shrink-0">→</span>
-                    <span>{improvement}</span>
+              <ul className="space-y-3">
+                {(feedback?.improvements || []).map((tip: string, idx: number) => (
+                  <li key={idx} className="flex items-start gap-3">
+                    <span className="text-blue-600 font-bold text-lg flex-shrink-0">→</span>
+                    <span className="text-blue-800 leading-relaxed">{tip}</span>
                   </li>
                 ))}
               </ul>
@@ -395,134 +380,46 @@ export default function FeedbackPage() {
         </div>
 
         {/* What You Said */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="font-bold text-slate-900 mb-4">What You Said</h2>
-          <div className="bg-slate-50 rounded-lg p-4">
-            <p className="text-slate-700 italic">"{session.user_transcript}"</p>
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <h2 className="text-xl font-bold text-slate-900 mb-4">Your Response</h2>
+          <div className="bg-slate-50 rounded-xl p-5 mb-5 border border-slate-200">
+            <p className="text-slate-700 italic leading-relaxed text-lg">"{session.user_transcript}"</p>
           </div>
           
-          {/* Filler Analysis */}
-          {feedback?.filler_analysis && feedback.filler_analysis.filler_words_count > 0 && (
-            <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-              <h3 className="font-semibold text-yellow-800 mb-2">Filler Word Analysis</h3>
-              <p className="text-sm text-yellow-700 mb-2">
-                {feedback.filler_analysis.analysis}
-              </p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {feedback.filler_analysis.filler_words_detected?.map((word: string, idx: number) => (
-                  <span key={idx} className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
-                    {word}
-                  </span>
-                ))}
-              </div>
-              {feedback.filler_analysis.penalty_applied > 0 && (
-                <p className="text-xs text-yellow-600 mt-2">
-                  Score penalty: -{feedback.filler_analysis.penalty_applied} points
-                </p>
-              )}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-purple-50 rounded-lg p-4 text-center border border-purple-200">
+              <div className="text-3xl font-bold text-purple-700">{feedback?.word_count || 0}</div>
+              <div className="text-sm text-purple-600 mt-1">Words</div>
             </div>
-          )}
-          
-          {/* Perfect - No Fillers! */}
-          {feedback?.filler_analysis && feedback.filler_analysis.filler_words_count === 0 && (
-            <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-              <p className="text-sm text-green-700 font-medium">
-                ✨ Excellent! No filler words detected in your response.
-              </p>
+            <div className="bg-blue-50 rounded-lg p-4 text-center border border-blue-200">
+              <div className="text-3xl font-bold text-blue-700">{feedback?.words_per_minute || 0}</div>
+              <div className="text-sm text-blue-600 mt-1">WPM</div>
             </div>
-          )}
-        </div>
-
-        {/* AI Example - How I Would Have Done It */}
-        <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl overflow-hidden">
-          <div className="p-6 text-white">
-            <h2 className="font-bold text-xl mb-1">How I Would Have Done It</h2>
-            <p className="text-purple-100 text-sm">Listen to an example response</p>
-          </div>
-          
-          <div className="bg-white p-6">
-            {/* Loading State */}
-            {aiExampleLoading && (
-              <div className="text-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-600 mx-auto mb-3" />
-                <p className="text-slate-600">Generating example response...</p>
-                <p className="text-slate-400 text-sm mt-1">This may take a few seconds</p>
-              </div>
-            )}
-            
-            {/* Error State */}
-            {aiExampleError && !aiExampleLoading && (
-              <div className="text-center py-8">
-                <p className="text-red-600 mb-3">{aiExampleError}</p>
-                <button
-                  onClick={() => generateAIExample()}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Try Again
-                </button>
-              </div>
-            )}
-            
-            {/* Audio Player */}
-            {!aiExampleLoading && !aiExampleError && aiExampleAudio && (
-              <>
-                <audio 
-                  controls 
-                  className="w-full mb-4"
-                  src={`data:audio/mpeg;base64,${aiExampleAudio}`}
-                >
-                  Your browser does not support the audio element.
-                </audio>
-                
-                {/* Transcript */}
-                <div className="bg-slate-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-slate-700 mb-2">Transcript:</h3>
-                  <p className="text-slate-600 leading-relaxed">
-                    {aiExampleText || 'Transcript not available'}
-                  </p>
-                </div>
-              </>
-            )}
-            
-            {/* Not yet loaded - show generate button */}
-            {!aiExampleLoading && !aiExampleError && !aiExampleAudio && (
-              <div className="text-center py-8">
-                <p className="text-slate-500 mb-3">Example not yet generated</p>
-                <button
-                  onClick={() => generateAIExample()}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  <Volume2 className="w-4 h-4" />
-                  Generate Example
-                </button>
-              </div>
-            )}
+            <div className="bg-yellow-50 rounded-lg p-4 text-center border border-yellow-200">
+              <div className="text-3xl font-bold text-yellow-700">{feedback?.filler_words_count || 0}</div>
+              <div className="text-sm text-yellow-600 mt-1">Fillers</div>
+            </div>
+            <div className="bg-green-50 rounded-lg p-4 text-center border border-green-200">
+              <div className="text-sm text-green-700 font-medium">{feedback?.pace_assessment || 'Good'}</div>
+            </div>
           </div>
         </div>
 
-        {/* Action Buttons - Unified & Symmetrical */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl mx-auto pt-4 pb-8">
-          <Link
-            href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}&skipTask=true`}
-            className="group relative px-6 py-4 bg-white text-purple-600 border-2 border-purple-300 rounded-xl font-semibold text-center hover:border-purple-500 hover:bg-purple-50 transition-all flex items-center justify-center gap-2"
-          >
-            <Mic className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            <span>Re-record Again</span>
+        {/* Actions */}
+        <div className="grid sm:grid-cols-3 gap-3 pb-8">
+          <Link href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}&skipTask=true`}
+            className="px-6 py-4 bg-white text-purple-600 border-2 border-purple-300 rounded-xl font-semibold text-center hover:bg-purple-50 transition flex items-center justify-center gap-2">
+            <Mic className="w-5 h-5" />
+            Re-record
           </Link>
-          <Link
-            href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}`}
-            className="group relative px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-semibold text-center hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-2"
-          >
-            <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
-            <span>Practice Again</span>
+          <Link href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}`}
+            className="px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold text-center hover:opacity-90 transition shadow-lg flex items-center justify-center gap-2">
+            <RefreshCw className="w-5 h-5" />
+            Practice Again
           </Link>
-          <Link
-            href={`/category/${categoryId}/modules?tone=${session.tone}`}
-            className="group relative px-6 py-4 bg-white text-slate-700 border-2 border-slate-300 rounded-xl font-semibold text-center hover:border-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-          >
-            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Lessons</span>
+          <Link href={`/category/${categoryId}/modules?tone=${session.tone}`}
+            className="px-6 py-4 bg-white text-slate-700 border-2 border-slate-300 rounded-xl font-semibold text-center hover:bg-slate-50 transition flex items-center justify-center gap-2">
+            Continue
           </Link>
         </div>
       </div>
@@ -532,15 +429,8 @@ export default function FeedbackPage() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        @keyframes scaleIn {
-          from { transform: scale(0.9); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
         .animate-fadeIn {
           animation: fadeIn 0.3s ease-out;
-        }
-        .animate-scaleIn {
-          animation: scaleIn 0.4s ease-out;
         }
       `}</style>
     </div>
