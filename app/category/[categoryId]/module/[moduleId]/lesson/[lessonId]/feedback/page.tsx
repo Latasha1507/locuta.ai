@@ -8,11 +8,11 @@ import { ChevronLeft, Volume2, Loader2, RefreshCw, Mic, Trophy, Star, Sparkles, 
 import confetti from 'canvas-confetti'
 
 interface SessionData {
-  session_id: string
+  id: string  // ✅ FIXED: Changed from session_id to id
   user_id: string
   user_transcript: string
-  ai_example_text: string
-  ai_example_audio: string
+  ai_example_text?: string
+  ai_example_audio?: string
   feedback: any
   overall_score: number
   tone: string
@@ -52,7 +52,6 @@ export default function FeedbackPage() {
     try {
       const supabase = createClient()
       
-      // Get authenticated user
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       
       if (authError || !user) {
@@ -62,12 +61,12 @@ export default function FeedbackPage() {
         return
       }
 
-      // Query sessions table with CORRECT field: session_id (not id)
+      console.log('🔍 Fetching session:', sessionId, 'for user:', user.id)
+
       const { data, error: fetchError } = await supabase
         .from('sessions')
         .select('*')
-        .eq('id', sessionId)
-        .eq('user_id', user.id)
+        .eq('id', sessionId)  // ✅ Using correct column name
         .single()
 
       if (fetchError) {
@@ -78,20 +77,26 @@ export default function FeedbackPage() {
       }
 
       if (!data) {
-        setError('Feedback not found')
+        setError('Session not found')
         setLoading(false)
         return
       }
 
-      setSession(data)
+      // Check if session belongs to current user
+      if (data.user_id !== user.id) {
+        setError('You do not have permission to view this session')
+        setLoading(false)
+        return
+      }
+
+      console.log('✅ Session loaded successfully')
+      setSession(data as SessionData)
       setLoading(false)
       
-      // Check if user passed
       const passThreshold = data.feedback?.pass_threshold || 75
       const passed = data.overall_score >= passThreshold
       
       if (passed) {
-        // Check if this is their first time passing
         const { data: progressData } = await supabase
           .from('user_progress')
           .select('completed')
@@ -105,7 +110,6 @@ export default function FeedbackPage() {
         setIsFirstPass(isFirst)
         setShowSuccessPopup(true)
         
-        // Fire confetti if first pass!
         if (isFirst) {
           setTimeout(() => {
             confetti({
@@ -196,7 +200,6 @@ export default function FeedbackPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Success Popup */}
       {showSuccessPopup && passed && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 text-center relative overflow-hidden">
@@ -270,7 +273,6 @@ export default function FeedbackPage() {
         </div>
       )}
 
-      {/* Header */}
       <div className="bg-white/80 backdrop-blur-lg border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link href={`/category/${categoryId}/modules`} className="text-slate-600 hover:text-purple-600 flex items-center gap-2">
@@ -285,7 +287,6 @@ export default function FeedbackPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Overall Score Card */}
         <div className={`bg-gradient-to-br ${passed ? 'from-green-500 to-emerald-600' : 'from-orange-500 to-red-600'} rounded-2xl p-8 text-white text-center shadow-xl`}>
           <div className="text-7xl font-bold mb-2">{score}</div>
           <div className="text-xl font-semibold opacity-90 mb-1">
@@ -296,7 +297,6 @@ export default function FeedbackPage() {
           </div>
         </div>
 
-        {/* Focus Areas */}
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h2 className="text-xl font-bold text-slate-900 mb-4">Performance Breakdown</h2>
           <div className="grid grid-cols-3 gap-4">
@@ -318,7 +318,6 @@ export default function FeedbackPage() {
           </div>
         </div>
 
-        {/* Feedback */}
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h2 className="text-xl font-bold text-slate-900 mb-4">Personalized Feedback</h2>
           <p className="text-slate-700 leading-relaxed mb-6 text-lg">
@@ -362,7 +361,6 @@ export default function FeedbackPage() {
           </div>
         </div>
 
-        {/* What You Said */}
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h2 className="text-xl font-bold text-slate-900 mb-4">Your Response</h2>
           <div className="bg-slate-50 rounded-xl p-5 mb-5 border border-slate-200">
@@ -388,7 +386,6 @@ export default function FeedbackPage() {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="grid sm:grid-cols-3 gap-3 pb-8">
           <Link href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}&skipTask=true`}
             className="px-6 py-4 bg-white text-purple-600 border-2 border-purple-300 rounded-xl font-semibold text-center hover:bg-purple-50 transition flex items-center justify-center gap-2">
