@@ -1,418 +1,385 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useParams, useSearchParams, useRouter } from 'next/navigation'
+// app/category/[categoryId]/module/[moduleId]/lesson/[lessonId]/feedback/page.tsx
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
-import { ChevronLeft, Volume2, Loader2, RefreshCw, Mic, Trophy, Star, Sparkles, CheckCircle, TrendingUp } from 'lucide-react'
-import confetti from 'canvas-confetti'
+import { notFound } from 'next/navigation'
 
-interface SessionData {
-  id: string  // ✅ FIXED: Changed from session_id to id
-  user_id: string
-  user_transcript: string
-  ai_example_text?: string
-  ai_example_audio?: string
-  feedback: any
-  overall_score: number
-  tone: string
-  category: string
-  module_number: number
-  level_number: number
-  created_at: string
-}
+export default async function FeedbackPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ categoryId: string; moduleId: string; lessonId: string }>
+  searchParams: Promise<{ session?: string }>
+}) {
+  const resolvedParams = await params
+  const resolvedSearchParams = await searchParams
+  const { categoryId, moduleId, lessonId } = resolvedParams
+  const sessionId = resolvedSearchParams.session
 
-export default function FeedbackPage() {
-  const params = useParams()
-  const searchParams = useSearchParams()
-  const router = useRouter()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/auth/login')
+  }
+
+  if (!sessionId) {
+    notFound()
+  }
+
+  // Get session data
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('id', sessionId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!session) {
+    notFound()
+  }
+
+  const feedback = session.feedback
+  const score = feedback?.overall_score || 0
+  const passed = feedback?.passed || score >= 70
   
-  const categoryId = params?.categoryId as string
-  const moduleId = params?.moduleId as string
-  const lessonId = params?.lessonId as string
-  const sessionId = searchParams?.get('session')
+  // Calculate pass threshold based on level
+  const levelNumber = session.level_number || parseInt(lessonId)
+  const passThreshold = levelNumber <= 10 ? 60 : levelNumber <= 30 ? 65 : 70
   
-  const [session, setSession] = useState<SessionData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false)
-  const [isFirstPass, setIsFirstPass] = useState(false)
-
-  useEffect(() => {
-    fetchSession()
-  }, [sessionId])
-
-  const fetchSession = async () => {
-    if (!sessionId) {
-      setError('No session ID provided')
-      setLoading(false)
-      return
-    }
-
-    try {
-      const supabase = createClient()
-      
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      if (authError || !user) {
-        setError('Please sign in to view feedback')
-        setLoading(false)
-        router.push('/login')
-        return
-      }
-
-      console.log('🔍 Fetching session:', sessionId, 'for user:', user.id)
-
-      const { data, error: fetchError } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('id', sessionId)  // ✅ Using correct column name
-        .single()
-
-      if (fetchError) {
-        console.error('Fetch error:', fetchError)
-        setError('Failed to load feedback')
-        setLoading(false)
-        return
-      }
-
-      if (!data) {
-        setError('Session not found')
-        setLoading(false)
-        return
-      }
-
-      // Check if session belongs to current user
-      if (data.user_id !== user.id) {
-        setError('You do not have permission to view this session')
-        setLoading(false)
-        return
-      }
-
-      console.log('✅ Session loaded successfully')
-      setSession(data as SessionData)
-      setLoading(false)
-      
-      const passThreshold = data.feedback?.pass_threshold || 75
-      const passed = data.overall_score >= passThreshold
-      
-      if (passed) {
-        const { data: progressData } = await supabase
-          .from('user_progress')
-          .select('completed')
-          .eq('user_id', user.id)
-          .eq('category', data.category)
-          .eq('module_number', data.module_number)
-          .eq('lesson_number', data.level_number)
-          .single()
-        
-        const isFirst = !progressData?.completed
-        setIsFirstPass(isFirst)
-        setShowSuccessPopup(true)
-        
-        if (isFirst) {
-          setTimeout(() => {
-            confetti({
-              particleCount: 100,
-              spread: 70,
-              origin: { y: 0.6 }
-            })
-          }, 300)
-        }
-      }
-    } catch (err) {
-      console.error('Error loading feedback:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load feedback')
-      setLoading(false)
-    }
-  }
-
-  const getScoreColor = (score: number) => {
-    if (score >= 85) return 'text-green-600'
-    if (score >= 70) return 'text-blue-600'
-    return 'text-orange-600'
-  }
-
-  const getScoreBg = (score: number) => {
-    if (score >= 85) return 'bg-green-50 border-green-200'
-    if (score >= 70) return 'bg-blue-50 border-blue-200'
-    return 'bg-orange-50 border-orange-200'
-  }
-
-  const getMotivationalContent = (score: number, threshold: number, isFirst: boolean) => {
-    if (score >= 90) return {
-      title: "Outstanding Performance! 🏆",
-      subtitle: isFirst ? "First time passing this lesson!" : "You've mastered this!",
-      message: "Your speaking skills are exceptional. You're ready for more challenges!",
-      color: "from-yellow-400 to-orange-500"
-    }
-    if (score >= 85) return {
-      title: "Excellent Work! 🌟",
-      subtitle: isFirst ? "Lesson completed!" : "Great improvement!",
-      message: "You demonstrated strong speaking skills with clear delivery and confidence.",
-      color: "from-green-400 to-emerald-500"
-    }
-    if (score >= threshold) return {
-      title: "Well Done! ✨",
-      subtitle: isFirst ? "You passed this lesson!" : "Keep up the good work!",
-      message: "You successfully completed the task with good speaking fundamentals.",
-      color: "from-blue-400 to-indigo-500"
-    }
-    return {
-      title: "Keep Practicing! 💪",
-      subtitle: `You need ${threshold}+ to pass`,
-      message: "You're making progress! Review the feedback and try again.",
-      color: "from-purple-400 to-pink-500"
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <Loader2 className="w-12 h-12 animate-spin text-purple-600" />
-      </div>
-    )
-  }
-
-  if (error || !session) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error || 'Session not found'}</p>
-          <Link href={`/category/${categoryId}/modules`} className="text-purple-600 hover:underline">
-            Back to Lessons
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
-  const feedback = session.feedback || {}
-  const score = session.overall_score
-  const threshold = feedback?.pass_threshold || 75
-  const passed = score >= threshold
-  
-  const clarity = feedback?.clarity_score || feedback?.focus_area_scores?.Clarity || 0
-  const delivery = feedback?.delivery_score || feedback?.focus_area_scores?.Delivery || 0
-  const confidence = feedback?.confidence_score || feedback?.focus_area_scores?.Confidence || 0
-  
-  const motivational = getMotivationalContent(score, threshold, isFirstPass)
+  const scoreColor = passed 
+    ? 'from-green-500 to-emerald-600' 
+    : 'from-orange-500 to-red-600'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {showSuccessPopup && passed && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 text-center relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 via-blue-500 to-green-500"></div>
-            
-            <div className="mb-6 relative">
-              <div className={`w-28 h-28 mx-auto bg-gradient-to-br ${motivational.color} rounded-full flex items-center justify-center animate-bounce shadow-2xl`}>
-                <Trophy className="w-14 h-14 text-white" />
+    <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
+      {/* Header */}
+      <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="flex items-center justify-between">
+            <Link
+              href={`/category/${categoryId}/modules?tone=${session.tone}`}
+              className="text-slate-700 hover:text-indigo-600 font-medium text-sm sm:text-base flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Lessons
+            </Link>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
               </div>
-              
-              {isFirstPass && (
-                <>
-                  <Star className="absolute top-0 left-1/4 w-8 h-8 text-yellow-400 animate-ping" />
-                  <Sparkles className="absolute top-0 right-1/4 w-8 h-8 text-blue-400 animate-pulse" />
-                </>
-              )}
+              <div className="text-purple-600 font-semibold text-sm">
+                🔊 Lesson {lessonId} Feedback
+              </div>
             </div>
+          </div>
+        </div>
+      </header>
 
-            <h2 className="text-4xl font-bold text-slate-900 mb-2">
-              {motivational.title}
-            </h2>
-            
-            {isFirstPass && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full mb-4">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <span className="text-sm font-semibold text-green-700">First Time Achievement!</span>
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12">
+        {/* Overall Score Card */}
+        <div className={`bg-gradient-to-br ${scoreColor} rounded-3xl shadow-2xl overflow-hidden mb-8`}>
+          <div className="px-6 sm:px-8 py-10 sm:py-12 text-center text-white">
+            <div className="text-7xl sm:text-8xl font-bold mb-4">{score}</div>
+            <div className="text-2xl sm:text-3xl font-semibold mb-2">
+              {passed ? '🎉 Great Job!' : `Need ${passThreshold}+ to Pass`}
+            </div>
+            <p className="text-lg text-white/90">
+              {passed 
+                ? "You're making excellent progress!" 
+                : "Keep practicing - you're improving!"}
+            </p>
+          </div>
+
+          {/* Focus Area Scores */}
+          {feedback?.focus_area_scores && Object.keys(feedback.focus_area_scores).length > 0 && (
+            <div className="px-6 sm:px-8 py-8 bg-white/10 backdrop-blur-sm">
+              <h3 className="font-bold text-xl text-white mb-6 text-center">
+                Performance Breakdown
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {Object.entries(feedback.focus_area_scores).map(([area, areaScore]: [string, any]) => (
+                  <div key={area} className="bg-white rounded-xl p-4 sm:p-5 border border-gray-200">
+                    <div className={`text-4xl font-bold mb-2 ${
+                      areaScore >= 75 ? 'text-blue-700' :
+                      areaScore >= 65 ? 'text-yellow-700' :
+                      'text-orange-700'
+                    }`}>
+                      {areaScore}
+                    </div>
+                    <div className="text-sm font-semibold text-gray-700">{area}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {area === 'Clarity' ? 'Pronunciation' : 
+                       area === 'Delivery' ? 'Flow & Pace' : 
+                       'Energy & Voice'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Personalized Feedback */}
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-6">
+            Personalized Feedback
+          </h2>
+          
+          {feedback?.detailed_feedback && (
+            <div className="prose max-w-none mb-8">
+              <p className="text-slate-700 text-base sm:text-lg leading-relaxed">
+                {feedback.detailed_feedback}
+              </p>
+            </div>
+          )}
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Strengths */}
+            {feedback?.strengths && feedback.strengths.length > 0 && (
+              <div className="bg-green-50 rounded-xl p-5 sm:p-6 border-2 border-green-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center">
+                    <span className="text-white text-lg font-bold">✓</span>
+                  </div>
+                  <h3 className="font-bold text-lg text-green-900">What You Did Well</h3>
+                </div>
+                <ul className="space-y-3">
+                  {feedback.strengths.map((strength: string, i: number) => (
+                    <li key={i} className="flex items-start gap-2 text-green-800">
+                      <span className="text-green-600 font-bold mt-0.5">✓</span>
+                      <span className="text-sm sm:text-base">{strength}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
-            
-            <p className="text-lg text-slate-600 mb-2">{motivational.subtitle}</p>
-            <p className="text-slate-500 mb-6 leading-relaxed">{motivational.message}</p>
-            
-            <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl p-6 mb-6">
-              <div className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600 mb-2">
-                {score}
-              </div>
-              <p className="text-slate-600 font-medium">Your Score</p>
-              <p className="text-sm text-slate-500 mt-1">Required: {threshold}+</p>
-            </div>
 
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 border border-purple-200">
-                <div className="text-2xl font-bold text-purple-700">{clarity}</div>
-                <div className="text-xs text-purple-600">Clarity</div>
-              </div>
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 border border-blue-200">
-                <div className="text-2xl font-bold text-blue-700">{delivery}</div>
-                <div className="text-xs text-blue-600">Delivery</div>
-              </div>
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 border border-green-200">
-                <div className="text-2xl font-bold text-green-700">{confidence}</div>
-                <div className="text-xs text-green-600">Confidence</div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <button
-                onClick={() => setShowSuccessPopup(false)}
-                className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold text-lg hover:opacity-90 transition shadow-lg"
-              >
-                View Detailed Feedback
-              </button>
-              <Link
-                href={`/category/${categoryId}/modules?tone=${session.tone}`}
-                className="block w-full px-6 py-4 bg-white text-purple-600 border-2 border-purple-200 rounded-xl font-semibold hover:border-purple-400 transition"
-              >
-                Continue Learning →
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white/80 backdrop-blur-lg border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href={`/category/${categoryId}/modules`} className="text-slate-600 hover:text-purple-600 flex items-center gap-2">
-            <ChevronLeft className="w-5 h-5" />
-            <span className="font-medium">Back</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Volume2 className="w-5 h-5 text-purple-600" />
-            <span className="font-bold text-slate-900">Lesson {lessonId} Feedback</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        <div className={`bg-gradient-to-br ${passed ? 'from-green-500 to-emerald-600' : 'from-orange-500 to-red-600'} rounded-2xl p-8 text-white text-center shadow-xl`}>
-          <div className="text-7xl font-bold mb-2">{score}</div>
-          <div className="text-xl font-semibold opacity-90 mb-1">
-            {passed ? '✅ Passed!' : `Need ${threshold}+ to Pass`}
-          </div>
-          <div className="text-sm opacity-80">
-            {passed ? 'Great job! Lesson completed.' : 'Keep practicing - you\'re improving!'}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h2 className="text-xl font-bold text-slate-900 mb-4">Performance Breakdown</h2>
-          <div className="grid grid-cols-3 gap-4">
-            <div className={`rounded-xl p-5 border-2 ${getScoreBg(clarity)}`}>
-              <div className={`text-4xl font-bold ${getScoreColor(clarity)} mb-1`}>{clarity}</div>
-              <div className="text-sm font-medium text-slate-700">Clarity</div>
-              <div className="text-xs text-slate-500 mt-1">Pronunciation</div>
-            </div>
-            <div className={`rounded-xl p-5 border-2 ${getScoreBg(delivery)}`}>
-              <div className={`text-4xl font-bold ${getScoreColor(delivery)} mb-1`}>{delivery}</div>
-              <div className="text-sm font-medium text-slate-700">Delivery</div>
-              <div className="text-xs text-slate-500 mt-1">Flow & Pace</div>
-            </div>
-            <div className={`rounded-xl p-5 border-2 ${getScoreBg(confidence)}`}>
-              <div className={`text-4xl font-bold ${getScoreColor(confidence)} mb-1`}>{confidence}</div>
-              <div className="text-sm font-medium text-slate-700">Confidence</div>
-              <div className="text-xs text-slate-500 mt-1">Energy & Voice</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h2 className="text-xl font-bold text-slate-900 mb-4">Personalized Feedback</h2>
-          <p className="text-slate-700 leading-relaxed mb-6 text-lg">
-            {feedback?.detailed_feedback || 'No detailed feedback available'}
-          </p>
-          
-          <div className="grid md:grid-cols-2 gap-5">
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 border-2 border-green-200">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-white" />
+            {/* Improvements */}
+            {feedback?.improvements && feedback.improvements.length > 0 && (
+              <div className="bg-blue-50 rounded-xl p-5 sm:p-6 border-2 border-blue-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                    <span className="text-white text-lg font-bold">↗</span>
+                  </div>
+                  <h3 className="font-bold text-lg text-blue-900">How to Improve</h3>
                 </div>
-                <h3 className="font-bold text-green-800 text-lg">What You Did Well</h3>
+                <ul className="space-y-3">
+                  {feedback.improvements.map((improvement: string, i: number) => (
+                    <li key={i} className="flex items-start gap-2 text-blue-800">
+                      <span className="text-blue-600 font-bold mt-0.5">→</span>
+                      <span className="text-sm sm:text-base">{improvement}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="space-y-3">
-                {(feedback?.strengths || []).map((strength: string, idx: number) => (
-                  <li key={idx} className="flex items-start gap-3">
-                    <span className="text-green-600 font-bold text-lg flex-shrink-0">✓</span>
-                    <span className="text-green-800 leading-relaxed">{strength}</span>
-                  </li>
-                ))}
-              </ul>
+            )}
+          </div>
+        </div>
+
+        {/* Your Response */}
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
+            Your Response
+          </h2>
+          <div className="bg-gray-50 rounded-xl p-5 sm:p-6 border border-gray-200">
+            <p className="text-gray-700 text-base sm:text-lg leading-relaxed italic">
+              &quot;{session.user_transcript}&quot;
+            </p>
+          </div>
+
+          {/* Response Metrics */}
+          {feedback?.transcript_metrics && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6">
+              <div className="bg-purple-50 rounded-lg p-3 border border-purple-200 text-center">
+                <div className="text-xs text-purple-600 font-semibold mb-1">Words</div>
+                <div className="text-2xl font-bold text-purple-700">
+                  {feedback.transcript_metrics.word_count || 0}
+                </div>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200 text-center">
+                <div className="text-xs text-blue-600 font-semibold mb-1">WPM</div>
+                <div className="text-2xl font-bold text-blue-700">
+                  {feedback.transcript_metrics.words_per_minute || 0}
+                </div>
+              </div>
+              <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200 text-center">
+                <div className="text-xs text-yellow-600 font-semibold mb-1">Fillers</div>
+                <div className="text-2xl font-bold text-yellow-700">
+                  {feedback.transcript_metrics.filler_words || 0}
+                </div>
+              </div>
+              <div className="bg-green-50 rounded-lg p-3 border border-green-200 text-center">
+                <div className="text-xs text-green-600 font-semibold mb-1">Pace</div>
+                <div className="text-sm font-bold text-green-700 mt-2">
+                  {feedback.transcript_metrics.pace_feedback || 'Good'}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* HOW AI COULD SPEAK SECTION - CRITICAL */}
+        {session.ai_example_audio && session.ai_example_text && (
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden mb-8">
+            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 sm:px-8 py-6 text-white">
+              <h2 className="text-2xl sm:text-3xl font-bold mb-2">
+                How AI Would Speak This
+              </h2>
+              <p className="text-white/90 text-sm sm:text-base">
+                Listen to an example response using the <span className="font-semibold">{session.tone}</span> coaching style
+              </p>
             </div>
             
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border-2 border-blue-200">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-white" />
+            <div className="p-6 sm:p-8">
+              {/* Audio Player */}
+              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-5 sm:p-6 border-2 border-purple-200 mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xl">🔊</span>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-slate-900 text-sm sm:text-base">
+                      AI Example Audio
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      Generated using {session.tone} coaching style
+                    </div>
+                  </div>
                 </div>
-                <h3 className="font-bold text-blue-800 text-lg">How to Improve</h3>
+                <audio
+                  controls
+                  className="w-full"
+                  src={`data:audio/mpeg;base64,${session.ai_example_audio}`}
+                  preload="metadata"
+                >
+                  Your browser does not support audio playback.
+                </audio>
               </div>
-              <ul className="space-y-3">
-                {(feedback?.improvements || []).map((tip: string, idx: number) => (
-                  <li key={idx} className="flex items-start gap-3">
-                    <span className="text-blue-600 font-bold text-lg flex-shrink-0">→</span>
-                    <span className="text-blue-800 leading-relaxed">{tip}</span>
-                  </li>
-                ))}
-              </ul>
+
+              {/* Transcript */}
+              <div className="bg-gray-50 rounded-xl p-5 sm:p-6 border border-gray-200 mb-4">
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-base sm:text-lg">
+                  <span>📝</span> Example Transcript
+                </h3>
+                <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
+                  {session.ai_example_text}
+                </p>
+              </div>
+
+              {/* Pro Tip */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong className="font-semibold">💡 Pro Tip:</strong> Listen to how the AI example handles pacing, clarity, and confidence. 
+                  Try to incorporate these elements into your next practice session!
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h2 className="text-xl font-bold text-slate-900 mb-4">Your Response</h2>
-          <div className="bg-slate-50 rounded-xl p-5 mb-5 border border-slate-200">
-            <p className="text-slate-700 italic leading-relaxed text-lg">"{session.user_transcript}"</p>
+        {/* Linguistic Analysis */}
+        {feedback?.linguistic_analysis && (
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 mb-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-6">
+              Detailed Linguistic Analysis
+            </h2>
+            
+            <div className="space-y-6">
+              {/* Grammar */}
+              {feedback.linguistic_analysis.grammar && (
+                <div className="border-l-4 border-blue-500 pl-4 sm:pl-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-lg text-slate-900">Grammar</h3>
+                    <span className="text-3xl font-bold text-blue-700">
+                      {feedback.linguistic_analysis.grammar.score}
+                    </span>
+                  </div>
+                  {feedback.linguistic_analysis.grammar.suggestions?.length > 0 && (
+                    <ul className="text-sm text-slate-600 space-y-2">
+                      {feedback.linguistic_analysis.grammar.suggestions.map((s: string, i: number) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="text-blue-600 mt-1">•</span>
+                          <span>{s}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {/* Sentence Formation */}
+              {feedback.linguistic_analysis.sentence_formation && (
+                <div className="border-l-4 border-green-500 pl-4 sm:pl-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-lg text-slate-900">Sentence Formation</h3>
+                    <span className="text-3xl font-bold text-green-700">
+                      {feedback.linguistic_analysis.sentence_formation.score}
+                    </span>
+                  </div>
+                  <div className="text-sm text-slate-600 mb-2">
+                    Complexity Level: <span className="font-semibold capitalize">
+                      {feedback.linguistic_analysis.sentence_formation.complexity_level || 'intermediate'}
+                    </span>
+                  </div>
+                  {feedback.linguistic_analysis.sentence_formation.suggestions?.length > 0 && (
+                    <ul className="text-sm text-slate-600 space-y-2">
+                      {feedback.linguistic_analysis.sentence_formation.suggestions.map((s: string, i: number) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="text-green-600 mt-1">•</span>
+                          <span>{s}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {/* Vocabulary */}
+              {feedback.linguistic_analysis.vocabulary && (
+                <div className="border-l-4 border-purple-500 pl-4 sm:pl-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-lg text-slate-900">Vocabulary</h3>
+                    <span className="text-3xl font-bold text-purple-700">
+                      {feedback.linguistic_analysis.vocabulary.score}
+                    </span>
+                  </div>
+                  {feedback.linguistic_analysis.vocabulary.advanced_words_used?.length > 0 && (
+                    <div className="text-sm text-slate-600 mb-3">
+                      <strong className="font-semibold">Strong vocabulary choices:</strong>
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        {feedback.linguistic_analysis.vocabulary.advanced_words_used.map((word: string, i: number) => (
+                          <span key={i} className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-medium">
+                            {word}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-purple-50 rounded-lg p-4 text-center border border-purple-200">
-              <div className="text-3xl font-bold text-purple-700">{feedback?.word_count || 0}</div>
-              <div className="text-sm text-purple-600 mt-1">Words</div>
-            </div>
-            <div className="bg-blue-50 rounded-lg p-4 text-center border border-blue-200">
-              <div className="text-3xl font-bold text-blue-700">{feedback?.words_per_minute || 0}</div>
-              <div className="text-sm text-blue-600 mt-1">WPM</div>
-            </div>
-            <div className="bg-yellow-50 rounded-lg p-4 text-center border border-yellow-200">
-              <div className="text-3xl font-bold text-yellow-700">{feedback?.filler_words_count || 0}</div>
-              <div className="text-sm text-yellow-600 mt-1">Fillers</div>
-            </div>
-            <div className="bg-green-50 rounded-lg p-4 text-center border border-green-200">
-              <div className="text-sm text-green-700 font-medium">{feedback?.pace_assessment || 'Good'}</div>
-            </div>
-          </div>
-        </div>
+        )}
 
-        <div className="grid sm:grid-cols-3 gap-3 pb-8">
-          <Link href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}&skipTask=true`}
-            className="px-6 py-4 bg-white text-purple-600 border-2 border-purple-300 rounded-xl font-semibold text-center hover:bg-purple-50 transition flex items-center justify-center gap-2">
-            <Mic className="w-5 h-5" />
-            Re-record
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Link
+            href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}&skipTask=true`}
+            className="px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-xl transition-all hover:scale-105 text-center text-sm sm:text-base"
+          >
+            🎤 Practice Again
           </Link>
-          <Link href={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice?tone=${session.tone}`}
-            className="px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold text-center hover:opacity-90 transition shadow-lg flex items-center justify-center gap-2">
-            <RefreshCw className="w-5 h-5" />
-            Practice Again
-          </Link>
-          <Link href={`/category/${categoryId}/modules?tone=${session.tone}`}
-            className="px-6 py-4 bg-white text-slate-700 border-2 border-slate-300 rounded-xl font-semibold text-center hover:bg-slate-50 transition flex items-center justify-center gap-2">
-            Continue
+          <Link
+            href={`/category/${categoryId}/modules?tone=${session.tone}`}
+            className="px-6 sm:px-8 py-3 sm:py-4 border-2 border-purple-600 text-purple-600 hover:bg-purple-50 rounded-xl font-bold transition-colors text-center text-sm sm:text-base"
+          >
+            ← Back to Lessons
           </Link>
         </div>
-      </div>
-
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
-      `}</style>
+      </main>
     </div>
   )
 }
