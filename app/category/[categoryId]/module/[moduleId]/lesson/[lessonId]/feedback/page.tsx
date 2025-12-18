@@ -8,7 +8,8 @@ import { ChevronLeft, Volume2, Loader2, RefreshCw, Mic, Trophy, Star, Sparkles, 
 import confetti from 'canvas-confetti'
 
 interface SessionData {
-  id: string
+  session_id: string
+  user_id: string
   user_transcript: string
   ai_example_text: string
   ai_example_audio: string
@@ -18,6 +19,7 @@ interface SessionData {
   category: string
   module_number: number
   level_number: number
+  created_at: string
 }
 
 export default function FeedbackPage() {
@@ -35,9 +37,6 @@ export default function FeedbackPage() {
   const [error, setError] = useState<string | null>(null)
   const [showSuccessPopup, setShowSuccessPopup] = useState(false)
   const [isFirstPass, setIsFirstPass] = useState(false)
-  const [aiExampleLoading, setAiExampleLoading] = useState(false)
-  const [aiExampleText, setAiExampleText] = useState('')
-  const [aiExampleAudio, setAiExampleAudio] = useState('')
 
   useEffect(() => {
     fetchSession()
@@ -45,92 +44,82 @@ export default function FeedbackPage() {
 
   const fetchSession = async () => {
     if (!sessionId) {
-      setError('No session ID')
+      setError('No session ID provided')
       setLoading(false)
       return
     }
 
-    const supabase = createClient()
-    const { data, error: fetchError } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('id', sessionId)
-      .single()
-
-    if (fetchError || !data) {
-      setError('Failed to load feedback')
-      setLoading(false)
-      return
-    }
-
-    setSession(data)
-    setAiExampleText(data.ai_example_text || '')
-    setAiExampleAudio(data.ai_example_audio || '')
-    setLoading(false)
-    
-    // Check if user passed
-    const passThreshold = data.feedback?.pass_threshold || 75
-    const passed = data.overall_score >= passThreshold
-    
-    if (passed) {
-      // Check if this is their first time passing
-      const { data: progressData } = await supabase
-        .from('user_progress')
-        .select('completed')
-        .eq('user_id', data.user_id)
-        .eq('category', data.category)
-        .eq('module_number', data.module_number)
-        .eq('lesson_number', data.level_number)
-        .single()
-      
-      const isFirst = !progressData?.completed
-      setIsFirstPass(isFirst)
-      setShowSuccessPopup(true)
-      
-      // Fire confetti if first pass!
-      if (isFirst) {
-        setTimeout(() => {
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 }
-          })
-        }, 300)
-      }
-    }
-    
-    // Generate AI example if missing
-    if (!data.ai_example_text || !data.ai_example_audio) {
-      generateAIExample(data)
-    }
-  }
-
-  const generateAIExample = async (sessionData?: SessionData) => {
-    const sess = sessionData || session
-    if (!sess) return
-    
-    setAiExampleLoading(true)
-    
     try {
-      const response = await fetch('/api/generate-example', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: sess.id,
-          tone: sess.tone,
-          level: sess.level_number
-        })
-      })
+      const supabase = createClient()
+      
+      // Get authenticated user
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !user) {
+        setError('Please sign in to view feedback')
+        setLoading(false)
+        router.push('/login')
+        return
+      }
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.text) setAiExampleText(data.text)
-        if (data.audio) setAiExampleAudio(data.audio)
+      // Query sessions table with CORRECT field: session_id (not id)
+      const { data, error: fetchError } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('session_id', sessionId)  // CRITICAL FIX: use session_id, not id
+        .eq('user_id', user.id)
+        .single()
+
+      if (fetchError) {
+        console.error('Fetch error:', fetchError)
+        setError('Failed to load feedback')
+        setLoading(false)
+        return
+      }
+
+      if (!data) {
+        setError('Feedback not found')
+        setLoading(false)
+        return
+      }
+
+      setSession(data)
+      setLoading(false)
+      
+      // Check if user passed
+      const passThreshold = data.feedback?.pass_threshold || 75
+      const passed = data.overall_score >= passThreshold
+      
+      if (passed) {
+        // Check if this is their first time passing
+        const { data: progressData } = await supabase
+          .from('user_progress')
+          .select('completed')
+          .eq('user_id', user.id)
+          .eq('category', data.category)
+          .eq('module_number', data.module_number)
+          .eq('lesson_number', data.level_number)
+          .single()
+        
+        const isFirst = !progressData?.completed
+        setIsFirstPass(isFirst)
+        setShowSuccessPopup(true)
+        
+        // Fire confetti if first pass!
+        if (isFirst) {
+          setTimeout(() => {
+            confetti({
+              particleCount: 100,
+              spread: 70,
+              origin: { y: 0.6 }
+            })
+          }, 300)
+        }
       }
     } catch (err) {
-      console.error('Failed to generate example')
-    } finally {
-      setAiExampleLoading(false)
+      console.error('Error loading feedback:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load feedback')
+      setLoading(false)
     }
   }
 
@@ -194,14 +183,14 @@ export default function FeedbackPage() {
     )
   }
 
-  const feedback = session.feedback
+  const feedback = session.feedback || {}
   const score = session.overall_score
   const threshold = feedback?.pass_threshold || 75
   const passed = score >= threshold
   
-  const clarity = feedback?.clarity_score || 0
-  const delivery = feedback?.delivery_score || 0
-  const confidence = feedback?.confidence_score || 0
+  const clarity = feedback?.clarity_score || feedback?.focus_area_scores?.Clarity || 0
+  const delivery = feedback?.delivery_score || feedback?.focus_area_scores?.Delivery || 0
+  const confidence = feedback?.confidence_score || feedback?.focus_area_scores?.Confidence || 0
   
   const motivational = getMotivationalContent(score, threshold, isFirstPass)
 
@@ -211,10 +200,8 @@ export default function FeedbackPage() {
       {showSuccessPopup && passed && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 text-center relative overflow-hidden">
-            {/* Decorative elements */}
             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 via-blue-500 to-green-500"></div>
             
-            {/* Trophy animation */}
             <div className="mb-6 relative">
               <div className={`w-28 h-28 mx-auto bg-gradient-to-br ${motivational.color} rounded-full flex items-center justify-center animate-bounce shadow-2xl`}>
                 <Trophy className="w-14 h-14 text-white" />
@@ -228,7 +215,6 @@ export default function FeedbackPage() {
               )}
             </div>
 
-            {/* Content */}
             <h2 className="text-4xl font-bold text-slate-900 mb-2">
               {motivational.title}
             </h2>
@@ -243,7 +229,6 @@ export default function FeedbackPage() {
             <p className="text-lg text-slate-600 mb-2">{motivational.subtitle}</p>
             <p className="text-slate-500 mb-6 leading-relaxed">{motivational.message}</p>
             
-            {/* Score display */}
             <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl p-6 mb-6">
               <div className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600 mb-2">
                 {score}
@@ -252,7 +237,6 @@ export default function FeedbackPage() {
               <p className="text-sm text-slate-500 mt-1">Required: {threshold}+</p>
             </div>
 
-            {/* Quick stats */}
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 border border-purple-200">
                 <div className="text-2xl font-bold text-purple-700">{clarity}</div>
@@ -268,7 +252,6 @@ export default function FeedbackPage() {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="space-y-3">
               <button
                 onClick={() => setShowSuccessPopup(false)}
@@ -339,7 +322,7 @@ export default function FeedbackPage() {
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h2 className="text-xl font-bold text-slate-900 mb-4">Personalized Feedback</h2>
           <p className="text-slate-700 leading-relaxed mb-6 text-lg">
-            {feedback?.detailed_feedback}
+            {feedback?.detailed_feedback || 'No detailed feedback available'}
           </p>
           
           <div className="grid md:grid-cols-2 gap-5">

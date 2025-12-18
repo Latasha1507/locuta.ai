@@ -5,17 +5,15 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mic, Square, Play, Pause, SkipBack, SkipForward, RotateCcw, ThumbsUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion, trackError } from '@/lib/analytics/helpers';
-import Mixpanel from '@/lib/mixpanel';
+import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion, trackError } from '@/lib/analytics/helpers'
+import Mixpanel from '@/lib/mixpanel'
 
-// Extend Window type for Web Audio API
 declare global {
   interface Window {
     webkitAudioContext: typeof AudioContext;
   }
 }
 
-// Loader messages for LESSON INTRO
 const INTRO_LOADER_MESSAGES = [
   'Personalizing your lesson...',
   'Preparing your AI coach...',
@@ -23,29 +21,24 @@ const INTRO_LOADER_MESSAGES = [
   'Getting everything ready...',
 ]
 
-// Loader messages for FEEDBACK ANALYSIS
 const FEEDBACK_LOADER_MESSAGES = [
   'Transcribing your audio...',
-  'Analyzing task completion...',
-  'Evaluating grammar and vocabulary...',
-  'Checking for filler words...',
+  'Analyzing your performance...',
+  'Evaluating clarity and delivery...',
   'Calculating your scores...',
   'Generating personalized feedback...',
-  'Creating example response...',
-  'Preparing your results...',
+  'Almost ready...',
 ]
 
 export default function PracticePage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
-  
   const categoryId = params?.categoryId as string
   const moduleId = params?.moduleId as string
   const lessonId = params?.lessonId as string
   const tone = searchParams?.get('tone') || 'Normal'
   
-  // NEW: Check if we should skip showing the task
   const skipTask = searchParams?.get('skipTask') === 'true'
 
   const [step, setStep] = useState<'start' | 'intro' | 'recording'>('start')
@@ -59,8 +52,6 @@ export default function PracticePage() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingIntro, setIsLoadingIntro] = useState(false)
-  
-  // NEW: Control task visibility - ALWAYS show by default
   const [showInstructions, setShowInstructions] = useState(true)
   
   const [error, setError] = useState<string | null>(null)
@@ -70,14 +61,12 @@ export default function PracticePage() {
   const [recordingStartTime, setRecordingStartTime] = useState<number>(0)
   const [isIntroLiked, setIsIntroLiked] = useState(false)
   
-  // Audio player states
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
 
-  // Real-time voice metrics
   const [voiceMetrics, setVoiceMetrics] = useState({
     volume: 0,
-    pace: 0, // words per minute estimate
+    pace: 0,
     pauseCount: 0,
     currentPauseLength: 0,
     confidence: 0,
@@ -96,20 +85,15 @@ export default function PracticePage() {
   const lastSoundTimeRef = useRef<number>(0)
   const wordCountRef = useRef<number>(0)
 
-  // NEW: If skipTask=true, fetch task directly from Supabase (FAST)
   useEffect(() => {
     if (skipTask) {
-      // Go to recording IMMEDIATELY
       setStep('recording')
       setPracticePrompt('Loading task...')
       setLessonTitle(`Lesson ${lessonId}`)
-      
-      // Fetch task directly from Supabase (FAST - no AI generation)
       fetchTaskFromDatabase()
     }
   }, [])
 
-  // Fetch lesson task directly from Supabase database (INSTANT)
   const fetchTaskFromDatabase = async () => {
     try {
       const supabase = createClient()
@@ -144,7 +128,7 @@ export default function PracticePage() {
         lesson_id: lessonId,
         category: categoryId,
         coaching_style: tone
-      });
+      })
       
     } catch (error) {
       console.error('Error loading lesson:', error)
@@ -152,7 +136,6 @@ export default function PracticePage() {
     }
   }
 
-  // Animated loader effect
   useEffect(() => {
     if (isLoadingIntro) {
       setCurrentLoaderMessage(0)
@@ -178,7 +161,6 @@ export default function PracticePage() {
     }
   }, [isLoadingIntro, isSubmitting])
 
-  // Update audio time
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
@@ -197,38 +179,37 @@ export default function PracticePage() {
     }
   }, [introAudio])
 
-  // Track page abandonment
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (step === 'intro' && !hasStartedRecording && introStartTime > 0) {
-        const timeSpent = Math.round((Date.now() - introStartTime) / 1000);
+        const timeSpent = Math.round((Date.now() - introStartTime) / 1000)
         Mixpanel.track('Lesson Abandoned', {
           lesson_id: lessonId,
           category: categoryId,
           stage: 'intro_viewed',
           time_spent_seconds: timeSpent,
           coaching_style: tone
-        });
+        })
       }
       
       if (step === 'recording' && isRecording && recordingStartTime > 0) {
-        const timeSpent = Math.round((Date.now() - recordingStartTime) / 1000);
+        const timeSpent = Math.round((Date.now() - recordingStartTime) / 1000)
         Mixpanel.track('Recording Abandoned', {
           lesson_id: lessonId,
           category: categoryId,
           duration_seconds: recordingTime,
           time_spent_seconds: timeSpent,
           coaching_style: tone
-        });
+        })
       }
-    };
+    }
     
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('beforeunload', handleBeforeUnload)
     
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [step, hasStartedRecording, introStartTime, isRecording, recordingTime, recordingStartTime, lessonId, categoryId, tone]);
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [step, hasStartedRecording, introStartTime, isRecording, recordingTime, recordingStartTime, lessonId, categoryId, tone])
 
   const loadIntro = async () => {
     setError(null)
@@ -253,7 +234,7 @@ export default function PracticePage() {
       setLessonTitle(data.lessonTitle || 'Lesson')
       setIsLoadingIntro(false)
       setStep('intro')
-      setIntroStartTime(Date.now());
+      setIntroStartTime(Date.now())
       
       trackLessonStart({
         lessonId: lessonId,
@@ -263,7 +244,7 @@ export default function PracticePage() {
         lessonNumber: parseInt(lessonId),
         coachingStyle: tone,
         isFirstLesson: false
-      });
+      })
       
     } catch (error) {
       console.error('Error loading intro:', error)
@@ -320,8 +301,8 @@ export default function PracticePage() {
     }
     setIsPlaying(false)
     
-    const timeSpent = Math.round((Date.now() - introStartTime) / 1000);
-    const listenedFully = audioRef.current ? audioRef.current.currentTime >= duration * 0.9 : false;
+    const timeSpent = Math.round((Date.now() - introStartTime) / 1000)
+    const listenedFully = audioRef.current ? audioRef.current.currentTime >= duration * 0.9 : false
     
     Mixpanel.track('Intro Skipped', {
       lesson_id: lessonId,
@@ -330,7 +311,7 @@ export default function PracticePage() {
       listened_fully: listenedFully,
       listen_percentage: audioRef.current ? Math.round((audioRef.current.currentTime / duration) * 100) : 0,
       coaching_style: tone
-    });
+    })
     
     setStep('recording')
   }
@@ -341,16 +322,27 @@ export default function PracticePage() {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: false
+        } 
+      })
+      
       const mediaRecorder = new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
 
-      // Set up audio analysis for real-time metrics
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
       const source = audioContext.createMediaStreamSource(stream)
       const analyser = audioContext.createAnalyser()
+      
       analyser.fftSize = 2048
+      analyser.smoothingTimeConstant = 0.3
+      analyser.minDecibels = -90
+      analyser.maxDecibels = -10
+      
       source.connect(analyser)
       
       audioContextRef.current = audioContext
@@ -358,7 +350,6 @@ export default function PracticePage() {
       lastSoundTimeRef.current = Date.now()
       wordCountRef.current = 0
 
-      // Start real-time analysis
       analyzeAudio()
 
       mediaRecorder.ondataavailable = (e) => {
@@ -370,7 +361,6 @@ export default function PracticePage() {
         setAudioBlob(blob)
         stream.getTracks().forEach(track => track.stop())
         
-        // Clean up audio analysis
         if (animationFrameRef.current) {
           cancelAnimationFrame(animationFrameRef.current)
           animationFrameRef.current = null
@@ -384,14 +374,14 @@ export default function PracticePage() {
       mediaRecorder.start(100)
       setIsRecording(true)
       setRecordingTime(0)
-      setHasStartedRecording(true);
-      setRecordingStartTime(Date.now());
+      setHasStartedRecording(true)
+      setRecordingStartTime(Date.now())
       
       trackRecordingStart({
         lessonId: lessonId,
         attemptNumber: 1,
         coachingStyle: tone
-      });
+      })
 
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1)
@@ -399,15 +389,15 @@ export default function PracticePage() {
     } catch (error) {
       console.error('Error starting recording:', error)
       
-      let errorType = 'recording_failed';
-      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      let errorType = 'recording_failed'
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error'
       
       if (errorMessage.includes('Permission denied') || errorMessage.includes('NotAllowedError')) {
-        errorType = 'microphone_permission_denied';
+        errorType = 'microphone_permission_denied'
       } else if (errorMessage.includes('NotFoundError')) {
-        errorType = 'microphone_not_found';
+        errorType = 'microphone_not_found'
       } else if (errorMessage.includes('NotReadableError')) {
-        errorType = 'microphone_already_in_use';
+        errorType = 'microphone_already_in_use'
       }
       
       trackError({
@@ -419,71 +409,74 @@ export default function PracticePage() {
           browser: navigator.userAgent,
           has_microphone: navigator.mediaDevices ? 'yes' : 'no'
         }
-      });
+      })
       
       setError('Failed to access microphone. Please check your permissions.')
     }
   }
 
-  // Real-time audio analysis
   const analyzeAudio = () => {
     if (!analyserRef.current) return
 
     const analyser = analyserRef.current
-    const dataArray = new Uint8Array(analyser.frequencyBinCount)
-    analyser.getByteTimeDomainData(dataArray)
+    const bufferLength = analyser.frequencyBinCount
+    const dataArray = new Uint8Array(bufferLength)
+    
+    analyser.getByteFrequencyData(dataArray)
 
-    // Calculate volume (0-100)
     let sum = 0
-    for (let i = 0; i < dataArray.length; i++) {
-      const normalized = (dataArray[i] - 128) / 128
-      sum += normalized * normalized
+    for (let i = 0; i < bufferLength; i++) {
+      sum += dataArray[i]
     }
-    const rms = Math.sqrt(sum / dataArray.length)
-    const volume = Math.min(100, Math.round(rms * 200))
+    const average = sum / bufferLength
+    
+    let volume = Math.round((average / 128) * 100)
+    if (volume > 10) {
+      volume = Math.min(100, Math.round(volume * 1.5))
+    }
+    volume = Math.max(0, Math.min(100, volume))
 
-    // Detect speech (volume threshold)
     const isSpeaking = volume > 15
     const now = Date.now()
-
     let pauseCount = voiceMetrics.pauseCount
     let currentPauseLength = 0
 
     if (isSpeaking) {
       const pauseDuration = (now - lastSoundTimeRef.current) / 1000
-      if (pauseDuration > 1) {
+      if (pauseDuration > 1.5) {
         pauseCount++
-        // Estimate word count (rough approximation)
-        wordCountRef.current += Math.floor(pauseDuration * 2.5)
+        wordCountRef.current += Math.floor(pauseDuration * 2)
       }
       lastSoundTimeRef.current = now
     } else {
       currentPauseLength = (now - lastSoundTimeRef.current) / 1000
     }
 
-    // Calculate pace (words per minute estimate)
-    const estimatedWords = wordCountRef.current + Math.floor(volume / 10)
+    const estimatedWords = wordCountRef.current + Math.floor(volume / 20)
     const pace = recordingTime > 0 ? Math.round((estimatedWords / recordingTime) * 60) : 0
 
-    // Calculate confidence (based on volume consistency and minimal pauses)
-    // If not speaking (volume very low), confidence should be 0
     let confidence = 0
-    if (volume > 10) {
-      const volumeConfidence = Math.min(100, volume * 1.5)
-      const pauseConfidence = Math.max(0, 100 - (pauseCount * 5))
-      confidence = Math.round((volumeConfidence * 0.6 + pauseConfidence * 0.4))
+    if (volume > 15) {
+      const volumeConf = Math.min(100, volume * 1.2)
+      const pauseConf = Math.max(20, 100 - (pauseCount * 8))
+      const consistencyBonus = volume > 30 ? 10 : 0
+      
+      confidence = Math.round(
+        volumeConf * 0.5 +
+        pauseConf * 0.4 +
+        consistencyBonus
+      )
     }
 
     setVoiceMetrics({
-      volume,
-      pace: Math.min(200, pace),
-      pauseCount,
+      volume: volume,
+      pace: Math.min(200, Math.max(0, pace)),
+      pauseCount: pauseCount,
       currentPauseLength: Math.round(currentPauseLength * 10) / 10,
-      confidence: Math.min(100, confidence),
+      confidence: Math.min(100, Math.max(0, confidence)),
       energy: volume
     })
 
-    // Continue animation loop - will be stopped by stopRecording
     animationFrameRef.current = requestAnimationFrame(analyzeAudio)
   }
 
@@ -493,7 +486,6 @@ export default function PracticePage() {
       setIsRecording(false)
       if (timerRef.current) clearInterval(timerRef.current)
       
-      // Stop audio analysis
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
         animationFrameRef.current = null
@@ -504,7 +496,7 @@ export default function PracticePage() {
         duration: recordingTime,
         tooShort: recordingTime < 30,
         tooLong: recordingTime > 120
-      });
+      })
     }
   }
 
@@ -537,7 +529,7 @@ export default function PracticePage() {
     setIsSubmitting(true)
     setError(null)
     
-    const apiStartTime = Date.now();
+    const apiStartTime = Date.now()
 
     try {
       const formData = new FormData()
@@ -554,14 +546,14 @@ export default function PracticePage() {
         duration: recordingTime,
         attemptNumber: 1,
         fileSize: audioBlob.size
-      });
+      })
 
       const response = await fetch('/api/feedback', {
         method: 'POST',
         body: formData,
       })
 
-      const apiDuration = Date.now() - apiStartTime;
+      const apiDuration = Date.now() - apiStartTime
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
@@ -574,7 +566,7 @@ export default function PracticePage() {
             status_code: response.status,
             duration_ms: apiDuration
           }
-        });
+        })
         
         throw new Error(errorData.error || `Failed to submit (${response.status})`)
       }
@@ -587,7 +579,7 @@ export default function PracticePage() {
           duration_ms: apiDuration,
           lesson_id: lessonId,
           file_size: audioBlob.size
-        });
+        })
       }
       
       trackLessonCompletion({
@@ -597,13 +589,13 @@ export default function PracticePage() {
         moduleNumber: parseInt(moduleId),
         lessonNumber: parseInt(lessonId),
         coachingStyle: tone,
-        overallScore: 0,
-        passed: false,
+        overallScore: data.score || 0,
+        passed: data.passed || false,
         attempts: 1,
         totalTime: recordingTime,
         transcriptWordCount: 0,
         fillerWordsCount: 0
-      });
+      })
 
       router.push(`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/feedback?session=${data.sessionId}`)
     } catch (error) {
@@ -617,7 +609,7 @@ export default function PracticePage() {
           file_size: audioBlob.size,
           recording_duration: recordingTime
         }
-      });
+      })
       
       setError(error instanceof Error ? error.message : 'Failed to submit recording')
       setIsSubmitting(false)
@@ -662,7 +654,6 @@ export default function PracticePage() {
           </div>
         )}
 
-        {/* START SCREEN */}
         {step === 'start' && !isLoadingIntro && (
           <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 lg:p-12 text-center text-white">
             <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white/30 mx-auto mb-4 sm:mb-6 animate-pulse" />
@@ -674,7 +665,6 @@ export default function PracticePage() {
           </div>
         )}
 
-        {/* LOADING INTRO */}
         {isLoadingIntro && (
           <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 lg:p-12 text-center">
             <div className="py-4 sm:py-6 lg:py-8">
@@ -709,7 +699,6 @@ export default function PracticePage() {
           </div>
         )}
 
-        {/* INTRO SCREEN */}
         {step === 'intro' && (
           <div className="space-y-4 sm:space-y-6">
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8">
@@ -728,7 +717,7 @@ export default function PracticePage() {
                       max={duration || 0}
                       value={currentTime}
                       onChange={handleSeek}
-                      className="w-full h-1.5 sm:h-2 rounded-full appearance-none cursor-pointer bg-white/60 accent-purple-600 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-600 [&::-webkit-slider-thumb]:shadow-lg [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-purple-600"
+                      className="w-full h-1.5 sm:h-2 rounded-full appearance-none cursor-pointer bg-white/60 accent-purple-600"
                     />
                   </div>
 
@@ -741,7 +730,6 @@ export default function PracticePage() {
                           ? 'bg-purple-600 text-white hover:bg-purple-500'
                           : 'bg-white text-slate-700 hover:bg-white/80'
                       } disabled:opacity-40 disabled:cursor-not-allowed`}
-                      aria-label={isIntroLiked ? 'Unlike intro' : 'Like intro'}
                     >
                       <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
@@ -750,16 +738,13 @@ export default function PracticePage() {
                       onClick={skipBackward}
                       disabled={!introAudio}
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-slate-700 flex items-center justify-center shadow-md hover:bg-white/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                      aria-label="Skip backward 10 seconds"
                     >
                       <SkipBack className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
-
                     <button
                       onClick={isPlaying ? pauseAudio : playAudio}
                       disabled={!introAudio}
                       className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center shadow-lg hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                      aria-label={isPlaying ? 'Pause audio' : 'Play audio'}
                     >
                       {isPlaying ? (
                         <Pause className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -772,7 +757,6 @@ export default function PracticePage() {
                       onClick={skipForward}
                       disabled={!introAudio}
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-slate-700 flex items-center justify-center shadow-md hover:bg-white/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                      aria-label="Skip forward 10 seconds"
                     >
                       <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
@@ -781,7 +765,6 @@ export default function PracticePage() {
                       onClick={replayAudio}
                       disabled={!introAudio}
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-slate-700 flex items-center justify-center shadow-md hover:bg-white/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                      aria-label="Replay"
                     >
                       <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
@@ -805,10 +788,8 @@ export default function PracticePage() {
           </div>
         )}
 
-        {/* RECORDING SCREEN */}
         {step === 'recording' && (
           <div className="space-y-4 sm:space-y-6">
-            {/* UPDATED: Conditionally show task section */}
             {showInstructions && (
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border-2 border-blue-200">
                 <div className="flex items-start justify-between mb-3 sm:mb-4">
@@ -829,7 +810,6 @@ export default function PracticePage() {
               </div>
             )}
 
-            {/* UPDATED: Show task button when hidden */}
             {!showInstructions && (
               <button
                 onClick={() => setShowInstructions(true)}
@@ -861,9 +841,7 @@ export default function PracticePage() {
                   <h2 className="text-2xl sm:text-3xl font-bold text-red-600 mb-3 sm:mb-4">Recording...</h2>
                   <div className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6 sm:mb-8">{formatTime(recordingTime)}</div>
                   
-                  {/* Real-time Voice Metrics */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 max-w-2xl mx-auto">
-                    {/* Volume */}
                     <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-3 border border-purple-200">
                       <div className="text-xs text-purple-600 font-semibold mb-1">Volume</div>
                       <div className="text-2xl font-bold text-purple-700">{voiceMetrics.volume}%</div>
@@ -875,14 +853,12 @@ export default function PracticePage() {
                       </div>
                     </div>
 
-                    {/* Pace */}
                     <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200">
                       <div className="text-xs text-blue-600 font-semibold mb-1">Pace</div>
                       <div className="text-2xl font-bold text-blue-700">{voiceMetrics.pace}</div>
                       <div className="text-xs text-blue-500 mt-1">WPM</div>
                     </div>
 
-                    {/* Confidence */}
                     <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3 border border-green-200">
                       <div className="text-xs text-green-600 font-semibold mb-1">Confidence</div>
                       <div className="text-2xl font-bold text-green-700">{voiceMetrics.confidence}%</div>
@@ -894,7 +870,6 @@ export default function PracticePage() {
                       </div>
                     </div>
 
-                    {/* Pauses */}
                     <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-3 border border-yellow-200">
                       <div className="text-xs text-yellow-600 font-semibold mb-1">Pauses</div>
                       <div className="text-2xl font-bold text-yellow-700">{voiceMetrics.pauseCount}</div>
