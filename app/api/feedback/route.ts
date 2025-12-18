@@ -228,7 +228,7 @@ IMPORTANT:
     // Get current best score
     const { data: progress } = await supabase
       .from('user_progress')
-      .select('best_score')
+      .select('best_score, completed')
       .eq('user_id', user.id)
       .eq('category', categoryName)
       .eq('module_number', moduleNumber)
@@ -238,7 +238,7 @@ IMPORTANT:
     const bestScore = Math.max(progress?.best_score || 0, overallScore)
 
     // Save session and update progress in parallel
-    await Promise.all([
+    const [sessionResult, progressResult] = await Promise.all([
       supabase.from('sessions').insert({
         id: sessionId,
         user_id: user.id,
@@ -251,13 +251,13 @@ IMPORTANT:
         overall_score: overallScore,
         status: 'completed',
         completed_at: new Date().toISOString(),
-        ai_example_text: '',  // ✅ ADD THIS LINE
-        ai_example_audio: '', // ✅ ADD THIS LINE
-        browser_type: null,   // ✅ ADD THIS LINE (optional metadata)
-        device_type: null,    // ✅ ADD THIS LINE (optional metadata)
-        country: null,        // ✅ ADD THIS LINE (optional metadata)
-        city: null,           // ✅ ADD THIS LINE (optional metadata)
-        ip_address: null      // ✅ ADD THIS LINE (optional metadata)
+        ai_example_text: '',
+        ai_example_audio: '',
+        browser_type: null,
+        device_type: null,
+        country: null,
+        city: null,
+        ip_address: null
       }),
       
       supabase.from('user_progress').upsert({
@@ -271,39 +271,14 @@ IMPORTANT:
       }, { onConflict: 'user_id,category,module_number,lesson_number' })
     ])
 
-    // Check for errors on session insert and progress upsert
-    const [{ error: sessionInsertError }, { error: progressUpsertError }] = await Promise.all([
-      supabase.from('sessions').insert({
-        id: sessionId,
-        user_id: user.id,
-        category: categoryName,
-        module_number: moduleNumber,
-        level_number: levelNumber,
-        tone: tone,
-        user_transcript: transcript,
-        feedback: feedback,
-        overall_score: overallScore,
-        status: 'completed',
-        completed_at: new Date().toISOString()
-      }),
-      supabase.from('user_progress').upsert({
-        user_id: user.id,
-        category: categoryName,
-        module_number: moduleNumber,
-        lesson_number: levelNumber,
-        completed: passed,
-        best_score: bestScore,
-        last_practiced: new Date().toISOString()
-      }, { onConflict: 'user_id,category,module_number,lesson_number' })
-    ]);
-
-    if (sessionInsertError) {
-      console.error('❌ Session insert failed:', sessionInsertError)
+    // Check for errors
+    if (sessionResult.error) {
+      console.error('❌ Session insert failed:', sessionResult.error)
       return NextResponse.json({ error: 'Failed to save session' }, { status: 500 })
     }
 
-    if (progressUpsertError) {
-      console.error('❌ Progress upsert failed:', progressUpsertError)
+    if (progressResult.error) {
+      console.error('❌ Progress upsert failed:', progressResult.error)
     }
 
     const totalTime = Date.now() - startTime
@@ -314,7 +289,7 @@ IMPORTANT:
       sessionId,
       processingTime: totalTime,
       passed: passed,
-      isFirstPass: passed && !('completed' in (progress ?? {})) ? true : passed && !(progress as any)?.completed, // New achievement!
+      isFirstPass: passed && !progress?.completed,
       score: overallScore,
       threshold: passThreshold
     })
