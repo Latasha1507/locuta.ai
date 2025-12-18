@@ -66,7 +66,7 @@ export default function FeedbackPage() {
       const { data, error: fetchError } = await supabase
         .from('sessions')
         .select('*')
-        .eq('session_id', sessionId)  // CRITICAL FIX: use session_id, not id
+        .eq('id', sessionId)
         .eq('user_id', user.id)
         .single()
 
