@@ -264,6 +264,41 @@ IMPORTANT:
       }, { onConflict: 'user_id,category,module_number,lesson_number' })
     ])
 
+    // Check for errors on session insert and progress upsert
+    const [{ error: sessionInsertError }, { error: progressUpsertError }] = await Promise.all([
+      supabase.from('sessions').insert({
+        id: sessionId,
+        user_id: user.id,
+        category: categoryName,
+        module_number: moduleNumber,
+        level_number: levelNumber,
+        tone: tone,
+        user_transcript: transcript,
+        feedback: feedback,
+        overall_score: overallScore,
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      }),
+      supabase.from('user_progress').upsert({
+        user_id: user.id,
+        category: categoryName,
+        module_number: moduleNumber,
+        lesson_number: levelNumber,
+        completed: passed,
+        best_score: bestScore,
+        last_practiced: new Date().toISOString()
+      }, { onConflict: 'user_id,category,module_number,lesson_number' })
+    ]);
+
+    if (sessionInsertError) {
+      console.error('❌ Session insert failed:', sessionInsertError)
+      return NextResponse.json({ error: 'Failed to save session' }, { status: 500 })
+    }
+
+    if (progressUpsertError) {
+      console.error('❌ Progress upsert failed:', progressUpsertError)
+    }
+
     const totalTime = Date.now() - startTime
     console.log(`✅ Feedback complete in ${totalTime}ms | Score: ${overallScore} | Passed: ${passed}`)
     
