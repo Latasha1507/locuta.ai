@@ -250,7 +250,14 @@ IMPORTANT:
         feedback: feedback,
         overall_score: overallScore,
         status: 'completed',
-        completed_at: new Date().toISOString()
+        completed_at: new Date().toISOString(),
+        ai_example_text: '',  // ✅ ADD THIS LINE
+        ai_example_audio: '', // ✅ ADD THIS LINE
+        browser_type: null,   // ✅ ADD THIS LINE (optional metadata)
+        device_type: null,    // ✅ ADD THIS LINE (optional metadata)
+        country: null,        // ✅ ADD THIS LINE (optional metadata)
+        city: null,           // ✅ ADD THIS LINE (optional metadata)
+        ip_address: null      // ✅ ADD THIS LINE (optional metadata)
       }),
       
       supabase.from('user_progress').upsert({
