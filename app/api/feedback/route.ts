@@ -430,8 +430,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
         user_id: user.id,
         category: categoryName,
         module_number: parseInt(moduleId),
-        lesson_number: levelNumber,
-        level_number: levelNumber,
+        level_number: levelNumber,  // sessions table uses level_number, not lesson_number
         tone: tone,
         user_transcript: userTranscript,
         ai_example_text: aiExampleText,
