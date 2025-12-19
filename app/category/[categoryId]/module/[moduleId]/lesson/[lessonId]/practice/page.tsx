@@ -7,6 +7,8 @@ import { Mic, Square, Play, Pause, SkipBack, SkipForward, RotateCcw, ThumbsUp } 
 import { createClient } from '@/lib/supabase/client'
 import { trackLessonStart, trackRecordingStart, trackRecordingStop, trackAudioSubmission, trackLessonCompletion, trackError } from '@/lib/analytics/helpers'
 import Mixpanel from '@/lib/mixpanel'
+import { checkSessionLimit } from '@/lib/check-session-limit'
+import UpgradeModal from '@/components/UpgradeModal'
 
 declare global {
   interface Window {
@@ -84,6 +86,9 @@ export default function PracticePage() {
   const animationFrameRef = useRef<number | null>(null)
   const lastSoundTimeRef = useRef<number>(0)
   const wordCountRef = useRef<number>(0)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [upgradeReason, setUpgradeReason] = useState<'trial_expired' | 'session_limit'>('session_limit')
+  const [sessionsRemaining, setSessionsRemaining] = useState<number | null>(null)
 
   useEffect(() => {
     if (skipTask) {
@@ -210,8 +215,32 @@ export default function PracticePage() {
       window.removeEventListener('beforeunload', handleBeforeUnload)
     }
   }, [step, hasStartedRecording, introStartTime, isRecording, recordingTime, recordingStartTime, lessonId, categoryId, tone])
+   
+  const checkLimitBeforeStart = async () => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) return false
+    
+    const limitCheck = await checkSessionLimit(user.id)
+    
+    setSessionsRemaining(limitCheck.sessionsRemaining)
+    
+    if (!limitCheck.allowed) {
+      setShowUpgradeModal(true)
+      setUpgradeReason(limitCheck.reason as 'trial_expired' | 'session_limit')
+      return false
+    }
+    
+    return true
+  }
 
   const loadIntro = async () => {
+    // Check session limit BEFORE loading intro
+  const canProceed = await checkLimitBeforeStart()
+  if (!canProceed) {
+    return // Show upgrade modal, don't load intro
+  }
     setError(null)
     setIsLoadingIntro(true)
     
@@ -635,20 +664,31 @@ export default function PracticePage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
+    <>
       <div className="bg-white/70 backdrop-blur-xl border-b border-slate-200 shadow-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between">
-          <Link href={`/category/${categoryId}/modules?tone=${tone}`} className="text-slate-700 hover:text-indigo-600 font-medium text-sm sm:text-base">
+          <Link
+            href={`/category/${categoryId}/modules?tone=${tone}`}
+            className="text-slate-700 hover:text-indigo-600 font-medium text-sm sm:text-base"
+          >
             ← Back to Lessons
           </Link>
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0">
-            <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
+          <div className="flex items-center gap-3">
+            {sessionsRemaining !== null && sessionsRemaining < 10 && (
+              <div className="text-xs sm:text-sm text-slate-600 bg-purple-100 px-3 py-1 rounded-full font-semibold">
+                {sessionsRemaining} session{sessionsRemaining !== 1 ? 's' : ''} left
+              </div>
+            )}
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0">
+              {/* Use next/image if possible, otherwise fallback to img */}
+              <img src="/Icon.png" alt="Locuta.ai" className="w-full h-full object-contain" />
+            </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        {error && (
+        {!!error && (
           <div className="mb-4 sm:mb-6 bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-sm sm:text-base">
             {error}
           </div>
@@ -658,8 +698,13 @@ export default function PracticePage() {
           <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 lg:p-12 text-center text-white">
             <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white/30 mx-auto mb-4 sm:mb-6 animate-pulse" />
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">Ready to Begin?</h1>
-            <p className="text-base sm:text-lg lg:text-xl text-purple-100 mb-6 sm:mb-8">Your AI coach will guide you through this lesson</p>
-            <button onClick={loadIntro} className="bg-white text-purple-600 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg hover:shadow-2xl hover:scale-105 transition-all w-full sm:w-auto">
+            <p className="text-base sm:text-lg lg:text-xl text-purple-100 mb-6 sm:mb-8">
+              Your AI coach will guide you through this lesson
+            </p>
+            <button
+              onClick={loadIntro}
+              className="bg-white text-purple-600 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg hover:shadow-2xl hover:scale-105 transition-all w-full sm:w-auto"
+            >
               Start Lesson
             </button>
           </div>
@@ -672,26 +717,21 @@ export default function PracticePage() {
                 <div className="text-4xl sm:text-5xl lg:text-6xl mb-4 sm:mb-6 inline-block animate-pulse">
                   🎵
                 </div>
-                
                 <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-20 animate-ping"></div>
               </div>
-              
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600 mb-2">
                 {skipTask ? 'Preparing to Re-record' : 'Preparing Your Lesson'}
               </h2>
-              
               <div className="h-6 sm:h-8 overflow-hidden">
                 <p className="text-slate-600 text-sm sm:text-base lg:text-lg animate-pulse transition-all duration-500">
-                  {INTRO_LOADER_MESSAGES[currentLoaderMessage]}
+                  {INTRO_LOADER_MESSAGES?.[currentLoaderMessage]}
                 </p>
               </div>
-              
               <div className="mt-6 sm:mt-8 max-w-md mx-auto">
                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                   <div className="h-full bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500 rounded-full animate-shimmer"></div>
                 </div>
               </div>
-              
               <p className="text-slate-500 text-xs sm:text-sm mt-4 sm:mt-6">
                 This usually takes 3-5 seconds
               </p>
@@ -703,7 +743,6 @@ export default function PracticePage() {
           <div className="space-y-4 sm:space-y-6">
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8">
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 mb-4 sm:mb-6">{lessonTitle}</h2>
-
               <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg sm:rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
                 <div className="mb-3 sm:mb-4 space-y-3">
                   <div>
@@ -713,14 +752,13 @@ export default function PracticePage() {
                     </div>
                     <input
                       type="range"
-                      min="0"
+                      min={0}
                       max={duration || 0}
                       value={currentTime}
                       onChange={handleSeek}
                       className="w-full h-1.5 sm:h-2 rounded-full appearance-none cursor-pointer bg-white/60 accent-purple-600"
                     />
                   </div>
-
                   <div className="flex items-center justify-center gap-2 sm:gap-3">
                     <button
                       onClick={toggleIntroLike}
@@ -730,14 +768,15 @@ export default function PracticePage() {
                           ? 'bg-purple-600 text-white hover:bg-purple-500'
                           : 'bg-white text-slate-700 hover:bg-white/80'
                       } disabled:opacity-40 disabled:cursor-not-allowed`}
+                      type="button"
                     >
                       <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
-
                     <button
                       onClick={skipBackward}
                       disabled={!introAudio}
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-slate-700 flex items-center justify-center shadow-md hover:bg-white/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      type="button"
                     >
                       <SkipBack className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
@@ -745,6 +784,7 @@ export default function PracticePage() {
                       onClick={isPlaying ? pauseAudio : playAudio}
                       disabled={!introAudio}
                       className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center shadow-lg hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      type="button"
                     >
                       {isPlaying ? (
                         <Pause className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -752,36 +792,38 @@ export default function PracticePage() {
                         <Play className="w-5 h-5 sm:w-6 sm:h-6 ml-1" />
                       )}
                     </button>
-
                     <button
                       onClick={skipForward}
                       disabled={!introAudio}
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-slate-700 flex items-center justify-center shadow-md hover:bg-white/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      type="button"
                     >
                       <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
-
                     <button
                       onClick={replayAudio}
                       disabled={!introAudio}
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-slate-700 flex items-center justify-center shadow-md hover:bg-white/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      type="button"
                     >
                       <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                   </div>
                 </div>
-
-                {introAudio && (
+                {!!introAudio && (
                   <audio ref={audioRef} src={`data:audio/mpeg;base64,${introAudio}`} className="hidden" />
                 )}
-
                 <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-white rounded-lg">
-                  <p className="text-sm sm:text-base text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{introTranscript}</p>
+                  <p className="text-sm sm:text-base text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                    {introTranscript}
+                  </p>
                 </div>
               </div>
-
-              <button onClick={skipToRecording}
-                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg hover:shadow-xl transition-all">
+              <button
+                onClick={skipToRecording}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg hover:shadow-xl transition-all"
+                type="button"
+              >
                 Continue to Recording →
               </button>
             </div>
@@ -790,30 +832,31 @@ export default function PracticePage() {
 
         {step === 'recording' && (
           <div className="space-y-4 sm:space-y-6">
-            {showInstructions && (
+            {showInstructions ? (
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border-2 border-blue-200">
                 <div className="flex items-start justify-between mb-3 sm:mb-4">
                   <h3 className="text-lg sm:text-xl font-bold text-blue-900 flex items-center gap-2">
                     📝 Your Task
                   </h3>
-                  <button onClick={() => setShowInstructions(false)}
-                    className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex-shrink-0">
+                  <button
+                    onClick={() => setShowInstructions(false)}
+                    className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex-shrink-0"
+                    type="button"
+                  >
                     Hide
                   </button>
                 </div>
-                
                 <div className="bg-white rounded-lg p-3 sm:p-4">
                   <p className="text-slate-800 text-sm sm:text-base lg:text-lg leading-relaxed whitespace-pre-wrap break-words">
                     {practice_prompt || 'Loading task...'}
                   </p>
                 </div>
               </div>
-            )}
-
-            {!showInstructions && (
+            ) : (
               <button
                 onClick={() => setShowInstructions(true)}
                 className="text-purple-600 hover:text-purple-700 font-medium text-sm flex items-center gap-2"
+                type="button"
               >
                 <span>📝</span>
                 Show Task Instructions
@@ -828,8 +871,11 @@ export default function PracticePage() {
                   </h2>
                   <div className="relative inline-block">
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full animate-pulse opacity-30 scale-110"></div>
-                    <button onClick={startRecording}
-                      className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-full flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all">
+                    <button
+                      onClick={startRecording}
+                      className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-full flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all"
+                      type="button"
+                    >
                       <Mic className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16" strokeWidth={2} />
                     </button>
                   </div>
@@ -839,72 +885,78 @@ export default function PracticePage() {
               {isRecording && (
                 <>
                   <h2 className="text-2xl sm:text-3xl font-bold text-red-600 mb-3 sm:mb-4">Recording...</h2>
-                  <div className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6 sm:mb-8">{formatTime(recordingTime)}</div>
-                  
+                  <div className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6 sm:mb-8">
+                    {formatTime(recordingTime)}
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 max-w-2xl mx-auto">
                     <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-3 border border-purple-200">
                       <div className="text-xs text-purple-600 font-semibold mb-1">Volume</div>
                       <div className="text-2xl font-bold text-purple-700">{voiceMetrics.volume}%</div>
                       <div className="w-full bg-purple-200 rounded-full h-1.5 mt-2">
-                        <div 
+                        <div
                           className="bg-purple-600 h-1.5 rounded-full transition-all duration-100"
                           style={{ width: `${voiceMetrics.volume}%` }}
                         ></div>
                       </div>
                     </div>
-
                     <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200">
                       <div className="text-xs text-blue-600 font-semibold mb-1">Pace</div>
                       <div className="text-2xl font-bold text-blue-700">{voiceMetrics.pace}</div>
                       <div className="text-xs text-blue-500 mt-1">WPM</div>
                     </div>
-
                     <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3 border border-green-200">
                       <div className="text-xs text-green-600 font-semibold mb-1">Confidence</div>
                       <div className="text-2xl font-bold text-green-700">{voiceMetrics.confidence}%</div>
                       <div className="w-full bg-green-200 rounded-full h-1.5 mt-2">
-                        <div 
+                        <div
                           className="bg-green-600 h-1.5 rounded-full transition-all duration-100"
                           style={{ width: `${voiceMetrics.confidence}%` }}
                         ></div>
                       </div>
                     </div>
-
                     <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-3 border border-yellow-200">
                       <div className="text-xs text-yellow-600 font-semibold mb-1">Pauses</div>
                       <div className="text-2xl font-bold text-yellow-700">{voiceMetrics.pauseCount}</div>
-                      {voiceMetrics.currentPauseLength > 0 && (
+                      {!!voiceMetrics.currentPauseLength && (
                         <div className="text-xs text-yellow-500 mt-1">{voiceMetrics.currentPauseLength}s</div>
                       )}
                     </div>
                   </div>
-
                   <div className="relative inline-block">
                     <div className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-40"></div>
-                    <button onClick={stopRecording}
-                      className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-gradient-to-br from-red-500 to-pink-600 text-white rounded-full flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all">
+                    <button
+                      onClick={stopRecording}
+                      className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-gradient-to-br from-red-500 to-pink-600 text-white rounded-full flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all"
+                      type="button"
+                    >
                       <Square className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12" strokeWidth={2} fill="white" />
                     </button>
                   </div>
                 </>
               )}
 
-              {audioBlob && !isSubmitting && (
+              {!!audioBlob && !isSubmitting && (
                 <>
                   <div className="text-5xl sm:text-6xl mb-4 sm:mb-6">✅</div>
                   <h2 className="text-2xl sm:text-3xl font-bold text-green-600 mb-3 sm:mb-4">Recording Complete!</h2>
-                  <p className="text-slate-600 mb-6 sm:mb-8 text-base sm:text-lg">Duration: {formatTime(recordingTime)}</p>
+                  <p className="text-slate-600 mb-6 sm:mb-8 text-base sm:text-lg">
+                    Duration: {formatTime(recordingTime)}
+                  </p>
                   <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-                    <button 
-                      onClick={reRecord} 
+                    <button
+                      onClick={reRecord}
                       disabled={isSubmitting}
-                      className="px-6 sm:px-8 py-2.5 sm:py-3 bg-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base">
+                      className="px-6 sm:px-8 py-2.5 sm:py-3 bg-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                      type="button"
+                    >
                       Re-record
                     </button>
-                    <button 
+                    <button
                       onClick={submitRecording}
                       disabled={isSubmitting}
-                      className="px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-semibold hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base">
+                      className="px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-semibold hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                      type="button"
+                    >
                       Submit for Feedback →
                     </button>
                   </div>
@@ -917,26 +969,21 @@ export default function PracticePage() {
                     <div className="text-5xl sm:text-6xl mb-4 sm:mb-6 inline-block animate-bounce">
                       🤔
                     </div>
-                    
                     <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-20 animate-ping"></div>
                   </div>
-                  
                   <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600 mb-2">
                     Analyzing Your Response
                   </h2>
-                  
                   <div className="h-6 sm:h-8 overflow-hidden">
                     <p className="text-slate-600 text-sm sm:text-base lg:text-lg animate-pulse transition-all duration-500">
-                      {FEEDBACK_LOADER_MESSAGES[currentLoaderMessage]}
+                      {FEEDBACK_LOADER_MESSAGES?.[currentLoaderMessage]}
                     </p>
                   </div>
-                  
                   <div className="mt-6 sm:mt-8 max-w-md mx-auto">
                     <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500 rounded-full animate-shimmer"></div>
                     </div>
                   </div>
-                  
                   <p className="text-slate-500 text-xs sm:text-sm mt-4 sm:mt-6">
                     This usually takes 5-10 seconds
                   </p>
@@ -960,6 +1007,12 @@ export default function PracticePage() {
           animation: shimmer 2s ease-in-out infinite;
         }
       `}</style>
-    </div>
-  )
-}
+
+      {showUpgradeModal && (
+        <UpgradeModal
+          reason={upgradeReason}
+          onClose={() => setShowUpgradeModal(false)}
+        />
+      )}
+    </>
+  )}

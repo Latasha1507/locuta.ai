@@ -201,7 +201,7 @@ export default function OnboardingForm({ userId, onComplete }: OnboardingFormPro
                 type="text"
                 value={formData.use_case}
                 onChange={(e) => setFormData({ ...formData, use_case: e.target.value })}
-                placeholder="E.g., Job interviews, YouTube videos, presentations"
+                placeholder="E.g., To build confidence while speaking, YouTube videos, to learn frameworks for public speaking"
                 className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
               />
             </div>

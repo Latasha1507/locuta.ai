@@ -451,7 +451,42 @@ Be encouraging but honest. If non-English content detected, reduce overall score
     }
 
     console.log('✅ Session saved:', sessionId)
-
+    
+    if (insertError) {
+      console.error('❌ Database error:', insertError)
+      return NextResponse.json({ 
+        error: 'Failed to save session', 
+        details: typeof insertError === 'object' && insertError && 'message' in insertError
+          ? (insertError as { message?: string }).message
+          : String(insertError)
+      }, { status: 500 })
+    }
+    
+    console.log('✅ Session saved:', sessionId)
+    
+    // ⭐ NEW: Increment trial session counter
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('trial_sessions_used, plan_type')
+        .eq('id', user.id)
+        .single()
+      
+      // Only increment if user is on trial
+      if (profile && profile.plan_type === 'trial') {
+        await supabase
+          .from('profiles')
+          .update({ 
+            trial_sessions_used: (profile.trial_sessions_used || 0) + 1 
+          })
+          .eq('id', user.id)
+        
+        console.log('✅ Trial session counted:', (profile.trial_sessions_used || 0) + 1)
+      }
+    } catch (error) {
+      console.error('⚠️ Failed to update session count (non-critical):', error)
+      // Don't fail the request if this fails
+    }
     // Step 6: Update progress
     const { data: existingProgress } = await supabase
       .from('user_progress')
