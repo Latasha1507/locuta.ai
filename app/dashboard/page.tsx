@@ -1,55 +1,13 @@
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Mixpanel from '@/lib/mixpanel';
 import { useEffect, useState } from 'react';
 import CategoryCardTracking from '@/components/CategoryCardTracking';
-import { isAdminClient } from '@/lib/admin-client'; 
-import TrialWelcomeModal from '@/components/TrialWelcomeModal'
-
-// Add this state with your other useState declarations
-const [showWelcomeModal, setShowWelcomeModal] = useState(false)
-export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState<any[]>([]);
-  const [lessons, setLessons] = useState<any[]>([]);
-  const [allSessions, setAllSessions] = useState<any[]>([]);
-  const [recentSessions, setRecentSessions] = useState<any[]>([]);
-  const [isUserAdmin, setIsUserAdmin] = useState(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-// Add this NEW useEffect BEFORE your existing loadData useEffect
-useEffect(() => {
-  const checkFirstLogin = async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) return
-    
-    // Check if this is their first time on dashboard
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('trial_started_at, trial_sessions_used')
-      .eq('id', user.id)
-      .single()
-    
-    // Show modal if trial just started (within last 30 seconds) and no sessions yet
-    if (profile?.trial_started_at && profile?.trial_sessions_used === 0) {
-      const trialStartTime = new Date(profile.trial_started_at).getTime()
-      const now = Date.now()
-      const timeSinceTrialStart = now - trialStartTime
-      
-      // Show modal if trial started less than 30 seconds ago
-      if (timeSinceTrialStart < 30000) {
-        setShowWelcomeModal(true)
-      }
-    }
-  }
-  
-  checkFirstLogin()
-}, [])
+import { isAdminClient } from '@/lib/admin-client';
+import TrialWelcomeModal from '@/components/TrialWelcomeModal';
+import OnboardingForm from '@/components/OnboardingForm';
 
 function AnimatedRadialProgress({ percentage, size = 72, color = "#8b5cf6", bg = "#e9e9f3" }: { percentage: number, size?: number, color?: string, bg?: string }) {
   const radius = (size - 8) / 2
@@ -121,16 +79,25 @@ const sidebarLinks = [
   },
 ]
 
+export default function DashboardPage() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState<any[]>([]);
+  const [lessons, setLessons] = useState<any[]>([]);
+  const [allSessions, setAllSessions] = useState<any[]>([]);
+  const [recentSessions, setRecentSessions] = useState<any[]>([]);
+  const [isUserAdmin, setIsUserAdmin] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
       const startTime = Date.now();
       
       try {
-        console.log('🔄 [1/6] Starting dashboard load...');
+        console.log('🔄 [1/7] Starting dashboard load...');
         const supabase = createClient();
 
-        // Step 1: Auth check
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
@@ -141,13 +108,40 @@ const sidebarLinks = [
         console.log(`✅ [${Date.now() - startTime}ms] User authenticated`);
         setUser(user);
         
-        // Step 2: Admin check (non-blocking)
+        // Check onboarding status FIRST
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('onboarding_completed, trial_started_at, trial_sessions_used')
+          .eq('id', user.id)
+          .single()
+        
+        // If onboarding not complete, show onboarding form
+        if (profile && !profile.onboarding_completed) {
+          console.log('📝 User needs onboarding');
+          setNeedsOnboarding(true);
+          setLoading(false);
+          return;
+        }
+        
+        // Check if we should show welcome modal (after onboarding)
+        if (profile?.trial_started_at && profile?.trial_sessions_used === 0) {
+          const trialStartTime = new Date(profile.trial_started_at).getTime();
+          const now = Date.now();
+          const timeSinceTrialStart = now - trialStartTime;
+          
+          // Show welcome modal if trial started in last 5 minutes
+          if (timeSinceTrialStart < 300000) {
+            setShowWelcomeModal(true);
+          }
+        }
+        
+        // Admin check (non-blocking)
         isAdminClient().then(adminStatus => {
           setIsUserAdmin(adminStatus);
           console.log(`✅ Admin status: ${adminStatus}`);
         }).catch(() => setIsUserAdmin(false));
         
-        // Step 3: Mixpanel (non-blocking - don't wait for it)
+        // Mixpanel (non-blocking)
         try {
           Mixpanel.identify(user.id);
           Mixpanel.people.set({
@@ -161,22 +155,18 @@ const sidebarLinks = [
           console.warn('⚠️ Mixpanel tracking failed (non-critical)');
         }
 
-        // Step 4: Parallel optimized queries
         console.log(`🔄 [${Date.now() - startTime}ms] Fetching data in parallel...`);
         
         const [progressResult, lessonsResult, recentSessionsResult] = await Promise.all([
-          // ⚡ Optimized: Only fetch needed columns
           supabase
             .from('user_progress')
             .select('category, module_number, lesson_number, completed, best_score')
             .eq('user_id', user.id),
           
-          // ⚡ Optimized: Only fetch needed columns (lessons are static)
           supabase
             .from('lessons')
             .select('category, module_number, level_number'),
           
-          // ⚡ CRITICAL FIX: Fetch only 50 sessions with specific columns
           supabase
             .from('sessions')
             .select('id, overall_score, created_at, category')
@@ -193,13 +183,9 @@ const sidebarLinks = [
 
         setProgress(progressData);
         setLessons(lessonsData);
-        
-        // Use the same 50 sessions for both allSessions and recentSessions
-        // This is enough for all dashboard calculations
         setAllSessions(sessionsData);
-        setRecentSessions(sessionsData.slice(0, 10)); // Keep only top 10 for "recent"
+        setRecentSessions(sessionsData.slice(0, 10));
 
-        // Step 5: First-time user tracking (non-blocking)
         const completedCount = progressData.filter((p: any) => p.completed).length;
         const isFirstTime = completedCount === 0;
         
@@ -244,6 +230,20 @@ const sidebarLinks = [
     loadData();
   }, []);
 
+  // Show onboarding if needed
+  if (needsOnboarding && user) {
+    return (
+      <OnboardingForm 
+        userId={user.id} 
+        onComplete={() => {
+          setNeedsOnboarding(false);
+          setShowWelcomeModal(true); // Show welcome modal after onboarding
+          window.location.reload();
+        }} 
+      />
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen w-full bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb] flex items-center justify-center">
@@ -256,7 +256,6 @@ const sidebarLinks = [
     );
   }
 
-  // Calculate progress per category
   const categories = [
     {
       id: 'public-speaking',
@@ -296,7 +295,6 @@ const sidebarLinks = [
     }
   ]
 
-  // Calculate stats for each category
   const categoryStats = categories.map(category => {
     const categoryLessons = lessons?.filter((l: any) => 
       l.category.toLowerCase().replace(/\s+/g, '-') === category.id
@@ -329,14 +327,12 @@ const sidebarLinks = [
     }
   })
 
-  // Calculate overall stats
   const totalCompleted = progress?.filter((p: any) => p.completed).length || 0
   const totalAvailable = lessons?.length || 0
   const overallPercentage = totalAvailable > 0 
     ? Math.round((totalCompleted / totalAvailable) * 100) 
     : 0
 
-  // Calculate Current Streak
   const calculateStreak = () => {
     if (!allSessions || allSessions.length === 0) return 0
     
@@ -362,7 +358,6 @@ const sidebarLinks = [
     return streak
   }
 
-  // Calculate This Week's Activity
   const calculateWeeklyActivity = () => {
     if (!allSessions) return { completed: 0, goal: 7, percentage: 0 }
     
@@ -383,7 +378,6 @@ const sidebarLinks = [
     return { completed, goal, percentage }
   }
 
-  // Calculate Score Trend
   const calculateScoreTrend = () => {
     if (!recentSessions || recentSessions.length < 2) return { trend: 0, avgRecent: 0, avgPrevious: 0 }
     
@@ -401,7 +395,6 @@ const sidebarLinks = [
     }
   }
 
-  // Calculate Study Time
   const calculateStudyTime = () => {
     if (!allSessions) return { weekly: 0, monthly: 0 }
     
@@ -444,7 +437,6 @@ const sidebarLinks = [
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb] flex">
-      {/* Sidebar Navigation */}
       <aside className="hidden md:flex flex-col justify-between h-screen w-[82px] lg:w-64 sticky top-0 left-0 bg-white/40 dark:bg-slate-900/50 backdrop-blur-xl border-r border-slate-200 z-20 transition-all shadow-lg pb-4">
         <div>
           <div className="px-0 py-7 flex flex-col items-center lg:flex-row lg:items-center lg:space-x-3">
@@ -497,7 +489,6 @@ const sidebarLinks = [
         </div>
       </aside>
 
-      {/* Main Content */}
       <div className="flex-1 min-h-screen flex flex-col">
         <header className="md:hidden flex items-center justify-between bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border-b border-slate-200/70 px-4 py-4 shadow-lg z-10 sticky top-0">
           <div className="flex items-center gap-3">
@@ -546,7 +537,6 @@ const sidebarLinks = [
               <p className="text-slate-600 text-lg">Ready to improve your speaking skills today?</p>
             </div>
 
-            {/* Analytics Cards - Row 1 */}
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
               <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
                 <AnimatedRadialProgress percentage={overallPercentage} size={88} color="#8b5cf6" />
@@ -589,7 +579,6 @@ const sidebarLinks = [
               </div>
             </section>
 
-            {/* Analytics Cards - Row 2 */}
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
               <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-100 to-red-100 flex items-center justify-center">
@@ -624,6 +613,7 @@ const sidebarLinks = [
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
                     </svg>
                   ) : scoreTrend.trend === -1 ? (
+        
                     <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                     </svg>
@@ -651,8 +641,6 @@ const sidebarLinks = [
                 </div>
               </div>
             </section>
-
-            {/* Categories Grid */}
             <section>
               <h3 className="text-2xl font-bold text-slate-900 mb-6">
                 Choose Your Practice Category
@@ -772,6 +760,8 @@ const sidebarLinks = [
           </div>
         </footer>
       </div>
+
+      {/* Welcome Modal */}
       {showWelcomeModal && (
         <TrialWelcomeModal onClose={() => setShowWelcomeModal(false)} />
       )}
