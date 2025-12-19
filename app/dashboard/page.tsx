@@ -8,6 +8,7 @@ import CategoryCardTracking from '@/components/CategoryCardTracking';
 import { isAdminClient } from '@/lib/admin-client';
 import TrialWelcomeModal from '@/components/TrialWelcomeModal';
 import OnboardingForm from '@/components/OnboardingForm';
+import TrialStatusBadge from '@/components/TrialStatusBadge';
 
 function AnimatedRadialProgress({ percentage, size = 72, color = "#8b5cf6", bg = "#e9e9f3" }: { percentage: number, size?: number, color?: string, bg?: string }) {
   const radius = (size - 8) / 2
@@ -528,6 +529,26 @@ export default function DashboardPage() {
             <div className="mb-8">
               <h2 className="text-4xl md:text-3xl font-bold text-slate-900/90 mb-2 flex items-center gap-2">
                 Welcome back! <span className="">👋</span>
+                <div className="mb-8">
+  <div className="flex items-center justify-between flex-wrap gap-4">
+    <div>
+      <h2 className="text-4xl md:text-3xl font-bold text-slate-900/90 mb-2 flex items-center gap-2">
+        Welcome back! <span className="">👋</span>
+        {isUserAdmin && (
+          <span className="px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold rounded-full animate-pulse">
+            ADMIN
+          </span>
+        )}
+      </h2>
+      <p className="text-slate-600 text-lg">Ready to improve your speaking skills today?</p>
+    </div>
+    
+    {/* ⭐ NEW: Trial Status Badge */}
+    {user && (
+      <TrialStatusBadge userId={user.id} />
+    )}
+  </div>
+</div>
                 {isUserAdmin && (
                   <span className="px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold rounded-full animate-pulse">
                     ADMIN

@@ -7,7 +7,18 @@ interface TrialWelcomeModalProps {
 export default function TrialWelcomeModal({ onClose }: TrialWelcomeModalProps) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-      <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl animate-in fade-in zoom-in duration-300">
+      <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl relative">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+          aria-label="Close"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
         {/* Celebration Icon */}
         <div className="relative mb-6">
           <div className="text-6xl animate-bounce">🎉</div>
@@ -26,15 +37,22 @@ export default function TrialWelcomeModal({ onClose }: TrialWelcomeModalProps) {
 
         {/* Trial Details Box */}
         <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 mb-6 border-2 border-purple-200">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <span className="text-2xl">🎤</span>
-            <p className="text-xl font-bold text-purple-700">
-              10 Free Sessions
-            </p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-center gap-3">
+              <span className="text-3xl">🎤</span>
+              <div className="text-left">
+                <p className="text-xl font-bold text-purple-700">10 Free Sessions</p>
+                <p className="text-sm text-slate-600">Try any category</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <span className="text-3xl">📅</span>
+              <div className="text-left">
+                <p className="text-xl font-bold text-indigo-700">14 Days</p>
+                <p className="text-sm text-slate-600">Full access</p>
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-slate-600 leading-relaxed">
-            Practice speaking skills with AI-powered feedback across 6 different categories
-          </p>
         </div>
 
         {/* Features List */}

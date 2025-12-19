@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import SessionRemainingNotice from '@/components/SessionRemainingNotice'
 
 export default async function FeedbackPage({
   params,
@@ -50,7 +51,8 @@ export default async function FeedbackPage({
   const scoreColor = passed 
     ? 'from-green-500 to-emerald-600' 
     : 'from-orange-500 to-red-600'
-
+  {/* Add this after showing the feedback results */}
+  {user && <SessionRemainingNotice userId={user.id} />}
   return (
     <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
       {/* Header */}
