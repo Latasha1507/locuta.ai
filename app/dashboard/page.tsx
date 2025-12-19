@@ -8,6 +8,47 @@ import { useEffect, useState } from 'react';
 import CategoryCardTracking from '@/components/CategoryCardTracking';
 import { isAdminClient } from '@/lib/admin-client';
 
+import TrialWelcomeModal from '@/components/TrialWelcomeModal'
+
+// Add this state with your other useState declarations
+const [showWelcomeModal, setShowWelcomeModal] = useState(false)
+
+// Add this NEW useEffect BEFORE your existing loadData useEffect
+useEffect(() => {
+  const checkFirstLogin = async () => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) return
+    
+    // Check if this is their first time on dashboard
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('trial_started_at, trial_sessions_used')
+      .eq('id', user.id)
+      .single()
+    
+    // Show modal if trial just started (within last 30 seconds) and no sessions yet
+    if (profile?.trial_started_at && profile?.trial_sessions_used === 0) {
+      const trialStartTime = new Date(profile.trial_started_at).getTime()
+      const now = Date.now()
+      const timeSinceTrialStart = now - trialStartTime
+      
+      // Show modal if trial started less than 30 seconds ago
+      if (timeSinceTrialStart < 30000) {
+        setShowWelcomeModal(true)
+      }
+    }
+  }
+  
+  checkFirstLogin()
+}, [])
+
+// Then at the END of your return statement, add the modal (before the final closing </div>):
+{showWelcomeModal && (
+  <TrialWelcomeModal onClose={() => setShowWelcomeModal(false)} />
+)}
+
 function AnimatedRadialProgress({ percentage, size = 72, color = "#8b5cf6", bg = "#e9e9f3" }: { percentage: number, size?: number, color?: string, bg?: string }) {
   const radius = (size - 8) / 2
   const circ = 2 * Math.PI * radius
