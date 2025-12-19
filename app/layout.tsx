@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import MixpanelProvider from "@/components/MixpanelProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Locuta AI - Master Your Speaking Skills",
-  description: "Practice real-world speaking scenarios with AI-powered feedback",
+  title: "Locuta.ai - Master Your Speaking Skills with AI",
+  description: "Practice real-world speaking scenarios with personalized AI-powered feedback. Build confidence in public speaking, storytelling, workplace communication, and more.",
+  icons: {
+    icon: '/Icon.png',
+    shortcut: '/Icon.png',
+    apple: '/Icon.png',
+  },
 };
 
 export default function RootLayout({
@@ -25,10 +29,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/Icon.png" type="image/png" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <MixpanelProvider />
         {children}
       </body>
     </html>
