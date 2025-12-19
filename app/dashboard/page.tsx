@@ -527,12 +527,10 @@ export default function DashboardPage() {
         <main className="w-full flex-1 md:px-0 px-1 py-8 bg-transparent flex flex-col items-center">
           <div className="w-full max-w-7xl mx-auto rounded-3xl bg-white/70 dark:bg-slate-900/60 backdrop-blur-2xl shadow-2xl px-4 sm:px-8 py-10 mt-2 mb-8 border border-slate-100">
             <div className="mb-8">
-              <h2 className="text-4xl md:text-3xl font-bold text-slate-900/90 mb-2 flex items-center gap-2">
-              <div className="mb-8">
-              <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-4">
     {/* Left side: Welcome text */}
-               <div className="flex-1">
-               <h2 className="text-4xl md:text-3xl font-bold text-slate-900/90 mb-2 flex items-center gap-2 flex-wrap">
+    <div>
+      <h2 className="text-4xl md:text-3xl font-bold text-slate-900/90 mb-2 flex items-center gap-2 flex-wrap">
         Welcome back! <span className="">👋</span>
         {isUserAdmin && (
           <span className="px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold rounded-full animate-pulse">
@@ -543,22 +541,12 @@ export default function DashboardPage() {
       <p className="text-slate-600 text-lg">Ready to improve your speaking skills today?</p>
     </div>
     
-    {/* Right side: Trial badge */}
+    {/* Right side: Trial badge - positioned top right */}
     {user && (
-      <div className="flex-shrink-0">
-        <TrialStatusBadge userId={user.id} />
-      </div>
+      <TrialStatusBadge userId={user.id} />
     )}
   </div>
 </div>
-                {isUserAdmin && (
-                  <span className="px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold rounded-full animate-pulse">
-                    ADMIN
-                  </span>
-                )}
-              </h2>
-              <p className="text-slate-600 text-lg">Ready to improve your speaking skills today?</p>
-            </div>
 
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
               <div className="p-4 md:p-5 rounded-xl md:rounded-2xl glass-card bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl flex items-center gap-4 hover:scale-[1.01] transition-transform duration-200">
