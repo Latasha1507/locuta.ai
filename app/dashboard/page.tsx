@@ -6,13 +6,20 @@ import Link from 'next/link';
 import Mixpanel from '@/lib/mixpanel';
 import { useEffect, useState } from 'react';
 import CategoryCardTracking from '@/components/CategoryCardTracking';
-import { isAdminClient } from '@/lib/admin-client';
-
+import { isAdminClient } from '@/lib/admin-client'; 
 import TrialWelcomeModal from '@/components/TrialWelcomeModal'
 
 // Add this state with your other useState declarations
 const [showWelcomeModal, setShowWelcomeModal] = useState(false)
-
+export default function DashboardPage() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState<any[]>([]);
+  const [lessons, setLessons] = useState<any[]>([]);
+  const [allSessions, setAllSessions] = useState<any[]>([]);
+  const [recentSessions, setRecentSessions] = useState<any[]>([]);
+  const [isUserAdmin, setIsUserAdmin] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 // Add this NEW useEffect BEFORE your existing loadData useEffect
 useEffect(() => {
   const checkFirstLogin = async () => {
@@ -43,11 +50,6 @@ useEffect(() => {
   
   checkFirstLogin()
 }, [])
-
-// Then at the END of your return statement, add the modal (before the final closing </div>):
-{showWelcomeModal && (
-  <TrialWelcomeModal onClose={() => setShowWelcomeModal(false)} />
-)}
 
 function AnimatedRadialProgress({ percentage, size = 72, color = "#8b5cf6", bg = "#e9e9f3" }: { percentage: number, size?: number, color?: string, bg?: string }) {
   const radius = (size - 8) / 2
@@ -119,14 +121,6 @@ const sidebarLinks = [
   },
 ]
 
-export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState<any[]>([]);
-  const [lessons, setLessons] = useState<any[]>([]);
-  const [allSessions, setAllSessions] = useState<any[]>([]);
-  const [recentSessions, setRecentSessions] = useState<any[]>([]);
-  const [isUserAdmin, setIsUserAdmin] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -778,6 +772,9 @@ export default function DashboardPage() {
           </div>
         </footer>
       </div>
+      {showWelcomeModal && (
+        <TrialWelcomeModal onClose={() => setShowWelcomeModal(false)} />
+      )}
     </div>
   )
 }
