@@ -78,40 +78,73 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
     }
 
-    // Use SERVICE ROLE for lesson query (bypasses RLS)
-const supabaseAdmin = createServiceClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+    // Use SERVICE ROLE for database queries (bypasses RLS)
+    const supabaseAdmin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-const { data: lessons, error: lessonError } = await supabaseAdmin
-  .from('lessons')
-  .select('*')
-  .eq('category', categoryName)
-  .eq('module_number', parseInt(moduleId))
-  .eq('level_number', parseInt(lessonId))
+    // ⭐ NEW: STEP 1 - Check cache first
+    const { data: cachedIntro } = await supabaseAdmin
+      .from('cached_lesson_intros')
+      .select('*')
+      .eq('category', categoryName)
+      .eq('module_number', parseInt(moduleId))
+      .eq('lesson_number', parseInt(lessonId))
+      .eq('tone', tone)
+      .single()
 
-if (lessonError || !lessons || lessons.length === 0) {
-  console.error('Lesson error:', lessonError)
-  return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
-}
-const lesson = lessons[0]
-// Extract fields explicitly with fallbacks
-const levelTitle = lesson.level_title || 'Lesson'
-const moduleTitle = lesson.module_title || 'Module'
-const lessonExplanation = lesson.lesson_explanation || 'Practice your speaking skills'
-const practicePrompt = lesson.practice_prompt || 'Speak clearly and confidently'
-const practiceExample = lesson.practice_example || ''
+    // ⭐ NEW: STEP 2 - If cached and used 5+ times, return cached version
+    if (cachedIntro && cachedIntro.generation_count >= 5) {
+      console.log(`✅ Serving cached intro (${cachedIntro.generation_count} uses, saved API cost!)`)
+      
+      return NextResponse.json({
+        audioBase64: cachedIntro.intro_audio_base64,
+        transcript: cachedIntro.intro_text,
+        lessonTitle: cachedIntro.lesson_title,
+        practice_prompt: cachedIntro.practice_prompt,
+        practice_example: ''
+      })
+    }
 
-// Get user's first name
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('first_name')
-  .eq('id', user.id)
-  .single()
-const userName = profile?.first_name || null
-const toneChar = TONE_CHARACTERISTICS[tone] || TONE_CHARACTERISTICS['Normal']
-const systemPrompt = `You are a speaking coach with a specific personality. Your coaching style is defined as:
+    // ⭐ NEW: STEP 3 - Not cached enough, generate fresh
+    console.log(cachedIntro 
+      ? `🔄 Generating fresh intro (${cachedIntro.generation_count}/5)...` 
+      : '🔄 Generating fresh intro (first time)...'
+    )
+
+    // Fetch lesson data (your existing code)
+    const { data: lessons, error: lessonError } = await supabaseAdmin
+      .from('lessons')
+      .select('*')
+      .eq('category', categoryName)
+      .eq('module_number', parseInt(moduleId))
+      .eq('level_number', parseInt(lessonId))
+
+    if (lessonError || !lessons || lessons.length === 0) {
+      console.error('Lesson error:', lessonError)
+      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
+    }
+
+    const lesson = lessons[0]
+    // Extract fields explicitly with fallbacks
+    const levelTitle = lesson.level_title || 'Lesson'
+    const moduleTitle = lesson.module_title || 'Module'
+    const lessonExplanation = lesson.lesson_explanation || 'Practice your speaking skills'
+    const practicePrompt = lesson.practice_prompt || 'Speak clearly and confidently'
+    const practiceExample = lesson.practice_example || ''
+
+    // Get user's first name
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .single()
+
+    const userName = profile?.full_name?.split(' ')[0] || null
+    const toneChar = TONE_CHARACTERISTICS[tone] || TONE_CHARACTERISTICS['Normal']
+
+    const systemPrompt = `You are a speaking coach with a specific personality. Your coaching style is defined as:
 
 **Goal**: ${toneChar.goal}
 **Communication Style**: ${toneChar.style}
@@ -127,6 +160,7 @@ Structure your introduction as follows:
 
 CRITICAL: Embody the ${tone} coaching style throughout. ${toneChar.style} ${toneChar.delivery}
 Make it conversational and engaging, not robotic. Let your ${tone} personality shine through!`
+
     const userPrompt = `Create an engaging introduction for this speaking lesson in your ${tone} coaching style:
 Lesson Title: ${lesson.level_title || 'Speaking Practice'}
 Module: ${lesson.module_title || 'Practice Module'}
@@ -142,26 +176,64 @@ Remember: You're a ${tone} coach. ${toneChar.goal}. ${toneChar.style}`
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      temperature: 0.85, // Slightly higher for more personality
+      temperature: 0.85,
       max_tokens: 300
     })
+
     const enhancedIntro = completion.choices[0].message.content || ''
     const voice = VOICE_MAP[tone] || 'shimmer'
+
     const mp3Response = await openai.audio.speech.create({
-      model: 'tts-1-hd', // Using HD for better quality with personality
+      model: 'tts-1-hd',
       voice: voice,
       input: enhancedIntro,
       speed: tone === 'Inspiring' ? 1.05 : tone === 'Bossy' ? 1.1 : tone === 'Supportive' ? 0.95 : 1.0
     })
+
     const buffer = Buffer.from(await mp3Response.arrayBuffer())
     const audioBase64 = buffer.toString('base64')
+
+    // ⭐ NEW: STEP 4 - Save to cache or increment count
+    if (cachedIntro) {
+      // Already exists, increment count
+      await supabaseAdmin
+        .from('cached_lesson_intros')
+        .update({ 
+          generation_count: cachedIntro.generation_count + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', cachedIntro.id)
+      
+      console.log(`📊 Cache count updated: ${cachedIntro.generation_count + 1}/5`)
+    } else {
+      // First time, create cache entry
+      const { error: cacheError } = await supabaseAdmin
+        .from('cached_lesson_intros')
+        .insert({
+          category: categoryName,
+          module_number: parseInt(moduleId),
+          lesson_number: parseInt(lessonId),
+          tone: tone,
+          intro_text: enhancedIntro,
+          intro_audio_base64: audioBase64,
+          practice_prompt: practicePrompt,
+          lesson_title: levelTitle,
+          generation_count: 1
+        })
+      
+      if (cacheError) {
+        console.error('⚠️ Cache save failed (non-critical):', cacheError)
+      } else {
+        console.log('💾 Created cache entry (1/5)')
+      }
+    }
 
     return NextResponse.json({
       audioBase64: audioBase64,
       transcript: enhancedIntro,
       lessonTitle: lesson.level_title || 'Lesson',
       moduleTitle: lesson.module_title || 'Module',
-      practice_prompt: lesson.practice_prompt || 'Practice speaking clearly and confidently.', // ✅ Correct key
+      practice_prompt: lesson.practice_prompt || 'Practice speaking clearly and confidently.',
       practice_example: lesson.practice_example || ''
     })
 
