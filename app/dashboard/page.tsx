@@ -9,6 +9,7 @@ import { isAdminClient } from '@/lib/admin-client';
 import TrialWelcomeModal from '@/components/TrialWelcomeModal';
 import OnboardingForm from '@/components/OnboardingForm';
 import TrialStatusBadge from '@/components/TrialStatusBadge';
+import FounderCallButton from '@/components/FounderCallButton'
 
 function AnimatedRadialProgress({ percentage, size = 72, color = "#8b5cf6", bg = "#e9e9f3" }: { percentage: number, size?: number, color?: string, bg?: string }) {
   const radius = (size - 8) / 2
@@ -776,6 +777,8 @@ export default function DashboardPage() {
       {showWelcomeModal && (
         <TrialWelcomeModal onClose={() => setShowWelcomeModal(false)} />
       )}
+      {/* Founder Call Button */}
+      <FounderCallButton />
     </div>
   )
 }
