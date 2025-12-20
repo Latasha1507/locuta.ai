@@ -41,7 +41,7 @@ export default function TrialWelcomeModal({ onClose }: TrialWelcomeModalProps) {
             <div className="flex items-center justify-center gap-3">
               <span className="text-3xl">🎤</span>
               <div className="text-left">
-                <p className="text-xl font-bold text-purple-700">10 Free Sessions</p>
+                <p className="text-xl font-bold text-purple-700">10 Sessions per day</p>
                 <p className="text-sm text-slate-600">Try any category</p>
               </div>
             </div>

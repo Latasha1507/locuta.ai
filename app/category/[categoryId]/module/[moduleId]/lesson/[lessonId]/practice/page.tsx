@@ -224,11 +224,15 @@ export default function PracticePage() {
     
     const limitCheck = await checkSessionLimit(user.id)
     
-    setSessionsRemaining(limitCheck.sessionsRemaining)
+    setSessionsRemaining(limitCheck.sessionsRemainingToday)
     
     if (!limitCheck.allowed) {
       setShowUpgradeModal(true)
       setUpgradeReason(limitCheck.reason as 'trial_expired' | 'session_limit')
+      // Pass days remaining for daily limit message
+      if (limitCheck.reason === 'daily_limit') {
+        // Store days remaining in state if needed
+      }
       return false
     }
     
@@ -1008,11 +1012,16 @@ export default function PracticePage() {
         }
       `}</style>
 
-      {showUpgradeModal && (
-        <UpgradeModal
-          reason={upgradeReason}
-          onClose={() => setShowUpgradeModal(false)}
-        />
-      )}
+        {showUpgradeModal && (
+          <UpgradeModal
+            reason={
+              upgradeReason === "session_limit"
+                ? "daily_limit"
+                : upgradeReason
+            }
+            daysRemaining={sessionsRemaining !== null ? 14 : undefined}
+            onClose={() => setShowUpgradeModal(false)}
+          />
+        )}
     </>
   )}

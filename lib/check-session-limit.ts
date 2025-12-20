@@ -2,9 +2,9 @@ import { createClient } from '@/lib/supabase/client'
 
 export interface SessionLimitCheck {
   allowed: boolean
-  reason?: 'trial_expired' | 'session_limit' | 'ok'
+  reason?: 'trial_expired' | 'daily_limit' | 'ok'
   daysRemaining: number
-  sessionsRemaining: number
+  sessionsRemainingToday: number
   planType: string
 }
 
@@ -13,7 +13,7 @@ export async function checkSessionLimit(userId: string): Promise<SessionLimitChe
   
   const { data: profile } = await supabase
     .from('profiles')
-    .select('trial_sessions_used, plan_type, trial_started_at')
+    .select('plan_type, trial_started_at, last_session_date, daily_sessions_used')
     .eq('id', userId)
     .single()
   
@@ -22,7 +22,7 @@ export async function checkSessionLimit(userId: string): Promise<SessionLimitChe
       allowed: false,
       reason: 'trial_expired',
       daysRemaining: 0,
-      sessionsRemaining: 0,
+      sessionsRemainingToday: 0,
       planType: 'unknown'
     }
   }
@@ -33,7 +33,7 @@ export async function checkSessionLimit(userId: string): Promise<SessionLimitChe
       allowed: true,
       reason: 'ok',
       daysRemaining: 999,
-      sessionsRemaining: 999,
+      sessionsRemainingToday: 999,
       planType: profile.plan_type
     }
   }
@@ -49,21 +49,31 @@ export async function checkSessionLimit(userId: string): Promise<SessionLimitChe
       allowed: false,
       reason: 'trial_expired',
       daysRemaining: 0,
-      sessionsRemaining: 0,
+      sessionsRemainingToday: 0,
       planType: profile.plan_type
     }
   }
   
-  // Check session limit (10 sessions)
-  const sessionsUsed = profile.trial_sessions_used || 0
-  const sessionsRemaining = Math.max(0, 10 - sessionsUsed)
+  // Check daily session limit (10 per day)
+  const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+  const lastSessionDate = profile.last_session_date
   
-  if (sessionsUsed >= 10) {
+  let dailySessionsUsed = 0
+  
+  if (lastSessionDate === today) {
+    // Same day, check count
+    dailySessionsUsed = profile.daily_sessions_used || 0
+  }
+  // If different day, dailySessionsUsed stays 0 (resets automatically)
+  
+  const sessionsRemainingToday = Math.max(0, 10 - dailySessionsUsed)
+  
+  if (dailySessionsUsed >= 10) {
     return {
       allowed: false,
-      reason: 'session_limit',
+      reason: 'daily_limit',
       daysRemaining,
-      sessionsRemaining: 0,
+      sessionsRemainingToday: 0,
       planType: profile.plan_type
     }
   }
@@ -72,7 +82,7 @@ export async function checkSessionLimit(userId: string): Promise<SessionLimitChe
     allowed: true,
     reason: 'ok',
     daysRemaining,
-    sessionsRemaining,
+    sessionsRemainingToday,
     planType: profile.plan_type
   }
 }

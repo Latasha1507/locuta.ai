@@ -20,7 +20,7 @@ export default function TrialStatusBadge({ userId }: TrialStatusBadgeProps) {
       
       const { data: profile } = await supabase
         .from('profiles')
-        .select('plan_type, trial_started_at, trial_sessions_used')
+        .select('plan_type, trial_started_at, last_session_date, daily_sessions_used')
         .eq('id', userId)
         .single()
       
@@ -36,9 +36,18 @@ export default function TrialStatusBadge({ userId }: TrialStatusBadgeProps) {
       const daysSinceStart = Math.floor((Date.now() - trialStarted.getTime()) / (1000 * 60 * 60 * 24))
       const daysRemaining = Math.max(0, 14 - daysSinceStart)
       
-      // Calculate sessions remaining
-      const sessionsUsed = profile.trial_sessions_used || 0
-      const sessionsRemaining = Math.max(0, 10 - sessionsUsed)
+      // Calculate daily sessions remaining
+      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+      const lastSessionDate = profile.last_session_date
+      
+      let dailySessionsUsed = 0
+      if (lastSessionDate === today) {
+        // Same day, use the count
+        dailySessionsUsed = profile.daily_sessions_used || 0
+      }
+      // If different day or no last session, dailySessionsUsed = 0 (fresh day)
+      
+      const sessionsRemaining = Math.max(0, 10 - dailySessionsUsed)
       
       setTrialInfo({
         planType: profile.plan_type,
@@ -63,11 +72,11 @@ export default function TrialStatusBadge({ userId }: TrialStatusBadgeProps) {
           <div className="font-bold text-slate-900 text-sm">Free Trial Active</div>
           <div className="flex items-center gap-3 text-xs text-slate-600 mt-1">
             <span className={`font-semibold ${isLowOnSessions ? 'text-orange-600' : ''}`}>
-              {trialInfo.sessionsRemaining} session{trialInfo.sessionsRemaining !== 1 ? 's' : ''} left
+              {trialInfo.sessionsRemaining}/10 today
             </span>
             <span className="text-slate-400">•</span>
             <span className={`font-semibold ${isLowOnTime ? 'text-orange-600' : ''}`}>
-              {trialInfo.daysRemaining} day{trialInfo.daysRemaining !== 1 ? 's' : ''} remaining
+              {trialInfo.daysRemaining} day{trialInfo.daysRemaining !== 1 ? 's' : ''} left
             </span>
           </div>
         </div>

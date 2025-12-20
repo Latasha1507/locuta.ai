@@ -463,30 +463,47 @@ Be encouraging but honest. If non-English content detected, reduce overall score
     }
     
     console.log('✅ Session saved:', sessionId)
+
+// ⭐ NEW: Increment daily session counter for trial users
+try {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan_type, last_session_date, daily_sessions_used')
+    .eq('id', user.id)
+    .single()
+  
+  // Only track for trial users
+  if (profile && profile.plan_type === 'trial') {
+    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+    const lastSessionDate = profile.last_session_date
     
-    // ⭐ NEW: Increment trial session counter
-    try {
-      const { data: profile } = await supabase
+    if (lastSessionDate === today) {
+      // Same day, increment count
+      await supabase
         .from('profiles')
-        .select('trial_sessions_used, plan_type')
+        .update({ 
+          daily_sessions_used: (profile.daily_sessions_used || 0) + 1 
+        })
         .eq('id', user.id)
-        .single()
       
-      // Only increment if user is on trial
-      if (profile && profile.plan_type === 'trial') {
-        await supabase
-          .from('profiles')
-          .update({ 
-            trial_sessions_used: (profile.trial_sessions_used || 0) + 1 
-          })
-          .eq('id', user.id)
-        
-        console.log('✅ Trial session counted:', (profile.trial_sessions_used || 0) + 1)
-      }
-    } catch (error) {
-      console.error('⚠️ Failed to update session count (non-critical):', error)
-      // Don't fail the request if this fails
+      console.log('✅ Daily session counted:', (profile.daily_sessions_used || 0) + 1)
+    } else {
+      // New day, reset to 1
+      await supabase
+        .from('profiles')
+        .update({ 
+          last_session_date: today,
+          daily_sessions_used: 1 
+        })
+        .eq('id', user.id)
+      
+      console.log('✅ New day, session count reset to 1')
     }
+  }
+} catch (error) {
+  console.error('⚠️ Failed to update session count (non-critical):', error)
+}
+
     // Step 6: Update progress
     const { data: existingProgress } = await supabase
       .from('user_progress')
