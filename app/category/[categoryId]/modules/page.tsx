@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { isAdmin } from '@/lib/admin'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import AchievementBadge from '@/components/AchievementBadge'
 
 const categoryMap: { [key: string]: string } = {
   'public-speaking': 'Public Speaking',
@@ -22,7 +23,6 @@ const categoryColors: { [key: string]: string } = {
   'pitch-anything': 'from-teal-500 to-cyan-600',
 }
 
-// Make page dynamic to avoid caching issues
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -53,7 +53,6 @@ export default async function CategoryModulesPage({
     notFound()
   }
 
-  // Get lessons for this category
   const { data: lessons } = await supabase
     .from('lessons')
     .select('*')
@@ -61,7 +60,6 @@ export default async function CategoryModulesPage({
     .order('module_number')
     .order('level_number')
 
-  // Group lessons by module
   const modules: { [key: number]: any[] } = {}
   lessons?.forEach((lesson) => {
     if (!modules[lesson.module_number]) {
@@ -70,7 +68,6 @@ export default async function CategoryModulesPage({
     modules[lesson.module_number].push(lesson)
   })
 
-  // Get user's progress
   const { data: progress } = await supabase
     .from('user_progress')
     .select('*')
@@ -132,7 +129,6 @@ export default async function CategoryModulesPage({
     ['pro', 'paid', 'premium', 'founder', 'lifetime'].includes(normalizedPlanType) ||
     ['active', 'trialing'].includes(normalizedSubscriptionStatus)
 
-  // Check if module is unlocked
   const isModuleUnlocked = (moduleNum: number): boolean => {
     if (isUserAdmin) return true
     if (moduleNum === 1) return true
@@ -160,7 +156,6 @@ export default async function CategoryModulesPage({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
@@ -187,7 +182,6 @@ export default async function CategoryModulesPage({
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6">
         {isUserAdmin && (
           <div className="mb-4 sm:mb-6 bg-purple-50 border-2 border-purple-200 rounded-xl p-3 sm:p-4 shadow-lg">
@@ -232,7 +226,6 @@ export default async function CategoryModulesPage({
           </div>
         ) : (
           <>
-            {/* Current Module Display */}
             {moduleNumbers.map((moduleNumber) => {
               if (moduleNumber !== currentModule) return null
 
@@ -246,7 +239,6 @@ export default async function CategoryModulesPage({
 
               return (
                 <div key={moduleNumber} className="space-y-4">
-                  {/* Module Navigation */}
                   <div className="flex items-center justify-between mb-2 sm:mb-3">
                     <Link
                       href={hasPrevModule ? `?tone=${tone}&module=${moduleNumbers[currentModuleIndex - 1]}` : '#'}
@@ -275,7 +267,6 @@ export default async function CategoryModulesPage({
                     </Link>
                   </div>
 
-                  {/* Module Card */}
                   <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
                     <div className={`bg-gradient-to-r ${gradientColor} px-5 py-5 text-white relative`}>
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -304,33 +295,20 @@ export default async function CategoryModulesPage({
                             const isCompleted = lessonProgress?.completed || false
                             const bestScore = lessonProgress?.best_score || null
                             
-                            // FIXED UNLOCK LOGIC
                             const isLessonUnlocked = (() => {
-                              // Admin can access everything
                               if (isUserAdmin) return true
-                              
-                              // Module 1: All lessons unlocked for everyone (free access)
                               if (moduleNumber === 1) return true
-                              
-                              // Modules 2+: Only for paid/trial users
                               if (moduleNumber > 1) {
-                                // Check if user has paid access
                                 if (!hasFullAccess) {
-                                  return false // Free users cannot access modules 2+
+                                  return false
                                 }
-                                
-                                // For paid users, check if previous module is completed
                                 const previousModule = modules[moduleNumber - 1]
                                 if (!previousModule) return true
-                                
                                 const allPreviousCompleted = previousModule.every(
                                   (prevLesson) => progressMap[`${moduleNumber - 1}-${prevLesson.level_number}`]?.completed
                                 )
-                                
-                                // All lessons in current module unlock when previous module is 100% complete
                                 return allPreviousCompleted
                               }
-                              
                               return false
                             })()
 
@@ -343,7 +321,6 @@ export default async function CategoryModulesPage({
                                     : 'border-gray-200 cursor-not-allowed opacity-60'
                                 }`}
                               >
-                                {/* Lock indicator for locked lessons */}
                                 {!isLessonUnlocked && (
                                   <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
                                     <div className="bg-gray-200 text-gray-600 px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
@@ -352,14 +329,9 @@ export default async function CategoryModulesPage({
                                   </div>
                                 )}
 
-                                {isCompleted && isLessonUnlocked && (
+                                {isCompleted && isLessonUnlocked && bestScore && (
                                   <div className="absolute top-3 right-3 flex items-center gap-2">
-                                    <div className="bg-gradient-to-r from-green-400 to-emerald-500 text-white px-2 py-0.5 rounded-full text-[11px] font-bold shadow flex items-center gap-1">
-                                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                      </svg>
-                                      <span className="hidden sm:inline">Done</span>
-                                    </div>
+                                    <AchievementBadge score={bestScore} />
                                   </div>
                                 )}
 
@@ -376,9 +348,9 @@ export default async function CategoryModulesPage({
                                     ) : (
                                       lesson.level_number
                                     )}
-                                    {isCompleted && isLessonUnlocked && (
+                                    {isCompleted && isLessonUnlocked && bestScore && bestScore >= 80 && (
                                       <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 bg-yellow-400 rounded-full flex items-center justify-center animate-bounce">
-                                        <span className="text-xs sm:text-lg">🌟</span>
+                                        <span className="text-xs sm:text-lg">{bestScore >= 90 ? '⭐' : '🏆'}</span>
                                       </div>
                                     )}
                                   </div>
@@ -412,8 +384,8 @@ export default async function CategoryModulesPage({
 
                                         {bestScore && isLessonUnlocked && (
                                           <div className="inline-flex items-center gap-1 bg-gradient-to-r from-purple-50 to-indigo-100 text-purple-700 px-2 py-0.5 rounded-lg text-[11px] font-semibold">
-                                            <span>🏆</span>
-                                            <span>{bestScore}/100</span>
+                                            <span>Best:</span>
+                                            <span className="font-bold">{bestScore}/100</span>
                                           </div>
                                         )}
                                       </div>

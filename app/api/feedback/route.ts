@@ -503,44 +503,98 @@ try {
 } catch (error) {
   console.error('⚠️ Failed to update session count (non-critical):', error)
 }
+// ⭐ Increment daily session counter for trial users
+try {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan_type, last_session_date, daily_sessions_used')
+    .eq('id', user.id)
+    .single()
+  
+  // Only track for trial users
+  if (profile && profile.plan_type === 'trial') {
+    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+    const lastSessionDate = profile.last_session_date
+    
+    if (lastSessionDate === today) {
+      // Same day, increment count
+      await supabase
+        .from('profiles')
+        .update({ 
+          daily_sessions_used: (profile.daily_sessions_used || 0) + 1 
+        })
+        .eq('id', user.id)
+      
+      console.log('✅ Daily session counted:', (profile.daily_sessions_used || 0) + 1)
+    } else {
+      // New day, reset to 1
+      await supabase
+        .from('profiles')
+        .update({ 
+          last_session_date: today,
+          daily_sessions_used: 1 
+        })
+        .eq('id', user.id)
+      
+      console.log('✅ New day, session count reset to 1')
+    }
+  }
+} catch (error) {
+  console.error('⚠️ Failed to update session count (non-critical):', error)
+}
 
-    // Step 6: Update progress
-    const { data: existingProgress } = await supabase
-      .from('user_progress')
-      .select('best_score')
-      .eq('user_id', user.id)
-      .eq('category', categoryName)
-      .eq('module_number', parseInt(moduleId))
-      .eq('lesson_number', levelNumber)
-      .single()
+// Step 6: Update progress with correct completion logic
+const moduleNumber = parseInt(moduleId)
+const passThreshold = moduleNumber === 1 ? 70 : 75
 
-    const isNewBest = !existingProgress || 
-                      feedback.overall_score > (existingProgress.best_score || 0)
+const { data: existingProgress } = await supabase
+  .from('user_progress')
+  .select('best_score, completed')
+  .eq('user_id', user.id)
+  .eq('category', categoryName)
+  .eq('module_number', moduleNumber)
+  .eq('lesson_number', levelNumber)
+  .single()
 
-    await supabase
-      .from('user_progress')
-      .upsert({
-        user_id: user.id,
-        category: categoryName,
-        module_number: parseInt(moduleId),
-        lesson_number: levelNumber,
-        completed: feedback.passed,
-        best_score: isNewBest ? feedback.overall_score : existingProgress?.best_score,
-        last_practiced: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id,category,module_number,lesson_number'
-      })
+const isNewBest = !existingProgress || 
+                  feedback.overall_score > (existingProgress.best_score || 0)
 
-    console.log('✅ Progress updated')
-    console.log('🎉 Feedback generation complete!')
+// Mark as completed if score meets threshold
+const isCompleted = feedback.overall_score >= passThreshold
 
-    return NextResponse.json({
-      success: true,
-      sessionId: sessionId,
-      feedback: feedback,
-      score: feedback.overall_score,
-      passed: feedback.passed,
-    })
+// Keep completed status true if it was already completed (don't un-complete)
+const finalCompletedStatus = existingProgress?.completed || isCompleted
+
+await supabase
+  .from('user_progress')
+  .upsert({
+    user_id: user.id,
+    category: categoryName,
+    module_number: moduleNumber,
+    lesson_number: levelNumber,
+    completed: finalCompletedStatus,
+    best_score: isNewBest ? feedback.overall_score : existingProgress?.best_score,
+    last_practiced: new Date().toISOString(),
+  }, {
+    onConflict: 'user_id,category,module_number,lesson_number'
+  })
+
+console.log('✅ Progress updated:', {
+  completed: finalCompletedStatus,
+  score: feedback.overall_score,
+  threshold: passThreshold,
+  isNewBest
+})
+
+console.log('🎉 Feedback generation complete!')
+
+return NextResponse.json({
+  success: true,
+  sessionId: sessionId,
+  feedback: feedback,
+  score: feedback.overall_score,
+  passed: feedback.passed,
+})
 
   } catch (error) {
     console.error('❌ Feedback API error:', error)

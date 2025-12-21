@@ -1,9 +1,9 @@
-// app/category/[categoryId]/module/[moduleId]/lesson/[lessonId]/feedback/page.tsx
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import SessionRemainingNotice from '@/components/SessionRemainingNotice'
+import FeedbackWithPopup from '@/components/FeedbackWithPopup'
 
 export default async function FeedbackPage({
   params,
@@ -44,17 +44,19 @@ export default async function FeedbackPage({
   const score = feedback?.overall_score || 0
   const passed = feedback?.passed || score >= 70
   
-  // Calculate pass threshold based on level
-  const levelNumber = session.level_number || parseInt(lessonId)
-  const passThreshold = levelNumber <= 10 ? 60 : levelNumber <= 30 ? 65 : 70
+  // Calculate pass threshold based on module
+  const moduleNumber = session.module_number || parseInt(moduleId)
+  const passThreshold = moduleNumber === 1 ? 70 : 75
   
   const scoreColor = passed 
     ? 'from-green-500 to-emerald-600' 
     : 'from-orange-500 to-red-600'
-  {/* Add this after showing the feedback results */}
-  {user && <SessionRemainingNotice userId={user.id} />}
+
   return (
     <div className="min-h-screen bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
+      {/* Achievement Popup */}
+      <FeedbackWithPopup score={score} moduleNumber={moduleNumber} />
+      
       {/* Header */}
       <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
@@ -223,7 +225,7 @@ export default async function FeedbackPage({
           )}
         </div>
 
-        {/* HOW AI COULD SPEAK SECTION - CRITICAL */}
+        {/* HOW AI COULD SPEAK SECTION */}
         {session.ai_example_audio && session.ai_example_text && (
           <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden mb-8">
             <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 sm:px-8 py-6 text-white">
@@ -365,6 +367,9 @@ export default async function FeedbackPage({
             </div>
           </div>
         )}
+
+        {/* Session Remaining Notice */}
+        {user && <SessionRemainingNotice userId={user.id} />}
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
