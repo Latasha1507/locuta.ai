@@ -69,7 +69,7 @@ export default async function CategoryPage({
 
   const progressMap: { [key: string]: any } = {}
   progress?.forEach((p) => {
-    progressMap[`${p.module_number}-${p.lesson_number}`] = p
+    progressMap[`${p.module_number}-${p.level_number}`] = p
   })
 
   const totalLessons = lessons?.length || 0

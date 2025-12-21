@@ -322,7 +322,7 @@ export default async function DashboardPage() {
                     >
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-slate-900 truncate">
-                          {session.category} - Module {session.module_number}, Lesson {session.lesson_number}
+                          {session.category} - Module {session.module_number}, Lesson {session.level_number}
                         </div>
                         <div className="text-xs text-slate-400">
                           {new Date(session.created_at).toLocaleDateString('en-US', {

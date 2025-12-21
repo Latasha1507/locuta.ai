@@ -162,7 +162,7 @@ export default function DashboardPage() {
         const [progressResult, lessonsResult, recentSessionsResult] = await Promise.all([
           supabase
             .from('user_progress')
-            .select('category, module_number, lesson_number, completed, best_score')
+            .select('category, module_number, level_number, completed, best_score')
             .eq('user_id', user.id),
           
           supabase

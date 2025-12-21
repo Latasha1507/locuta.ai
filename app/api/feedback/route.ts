@@ -430,7 +430,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
         user_id: user.id,
         category: categoryName,
         module_number: parseInt(moduleId),
-        level_number: levelNumber,  // sessions table uses level_number, not lesson_number
+        level_number: levelNumber,  // sessions table uses level_number, not level_number
         tone: tone,
         user_transcript: userTranscript,
         ai_example_text: aiExampleText,
@@ -553,7 +553,7 @@ const { data: existingProgress } = await supabase
   .eq('user_id', user.id)
   .eq('category', categoryName)
   .eq('module_number', moduleNumber)
-  .eq('lesson_number', levelNumber)
+  .eq('level_number', levelNumber)  // ✅ Changed to level_number
   .single()
 
 const isNewBest = !existingProgress || 
@@ -571,13 +571,22 @@ await supabase
     user_id: user.id,
     category: categoryName,
     module_number: moduleNumber,
-    lesson_number: levelNumber,
+    level_number: levelNumber,  // ✅ Changed to level_number
     completed: finalCompletedStatus,
     best_score: isNewBest ? feedback.overall_score : existingProgress?.best_score,
     last_practiced: new Date().toISOString(),
   }, {
-    onConflict: 'user_id,category,module_number,lesson_number'
+    onConflict: 'user_id,category,module_number,level_number'  // ✅ Changed to level_number
   })
+
+console.log('✅ Progress updated:', {
+  completed: finalCompletedStatus,
+  score: feedback.overall_score,
+  threshold: passThreshold,
+  isNewBest,
+  moduleNumber,
+  levelNumber
+})
 
 console.log('✅ Progress updated:', {
   completed: finalCompletedStatus,

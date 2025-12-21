@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       .select('*')
       .eq('category', categoryName)
       .eq('module_number', parseInt(moduleId))
-      .eq('lesson_number', parseInt(lessonId))
+      .eq('level_number', parseInt(lessonId))
       .eq('tone', tone)
       .single()
 
@@ -212,7 +212,7 @@ Remember: You're a ${tone} coach. ${toneChar.goal}. ${toneChar.style}`
         .insert({
           category: categoryName,
           module_number: parseInt(moduleId),
-          lesson_number: parseInt(lessonId),
+          level_number: parseInt(lessonId),
           tone: tone,
           intro_text: enhancedIntro,
           intro_audio_base64: audioBase64,

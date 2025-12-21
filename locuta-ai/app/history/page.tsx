@@ -179,7 +179,7 @@ export default async function HistoryPage({
                           </span>
                         </div>
                         <div className="text-slate-600">
-                          Module {session.module_number}, Lesson {session.lesson_number}
+                          Module {session.module_number}, Lesson {session.level_number}
                         </div>
                         <div className="text-sm text-slate-500 mt-1">
                           {new Date(session.created_at).toLocaleDateString('en-US', {

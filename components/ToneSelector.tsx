@@ -69,7 +69,7 @@ export default function ToneSelector({
       lesson_title: lesson.level_title,
       category: categoryName,
       module_number: moduleId,
-      lesson_number: lessonId,
+      level_number: lessonId,
       coaching_style: tone.id,
       coaching_style_name: tone.name,
       isFirstLesson: false

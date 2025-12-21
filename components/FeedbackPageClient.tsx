@@ -80,7 +80,7 @@ export default function FeedbackPageClient({
       lesson_title: session.category, // Add more context
       category: categoryId,
       module_number: parseInt(moduleId),
-      lesson_number: parseInt(lessonId),
+      level_number: parseInt(lessonId),
       previous_score: score,
       attempt_number: attemptCount, // THIS IS KEY - shows which attempt they're on
       reason: score >= 80 ? 'want_better_score' : 'failed',

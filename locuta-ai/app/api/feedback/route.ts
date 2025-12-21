@@ -408,12 +408,12 @@ Respond with ONLY the speech text - no explanations, no markdown, just the natur
         user_id: user.id,
         category: categoryName,
         module_number: parseInt(moduleId),
-        lesson_number: levelNumber,
+        level_number: levelNumber,
         completed: true,
         best_score: feedback.overall_score,
         last_practiced: new Date().toISOString(),
       }, {
-        onConflict: 'user_id,category,module_number,lesson_number'
+        onConflict: 'user_id,category,module_number,level_number'
       })
 
     console.log('✅ Progress updated')
