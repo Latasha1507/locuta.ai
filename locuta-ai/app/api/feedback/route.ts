@@ -411,7 +411,7 @@ Respond with ONLY the speech text - no explanations, no markdown, just the natur
         level_number: levelNumber,
         completed: true,
         best_score: feedback.overall_score,
-        last_practiced: new Date().toISOString(),
+        last_attempted_at: new Date().toISOString(),
       }, {
         onConflict: 'user_id,category,module_number,level_number'
       })
