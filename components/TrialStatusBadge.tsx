@@ -37,11 +37,11 @@ export default function TrialStatusBadge({ userId }: TrialStatusBadgeProps) {
       const daysRemaining = Math.max(0, 14 - daysSinceStart)
       
       // Calculate daily sessions remaining
-      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+      const session = new Date().toISOString().split('T')[0] // YYYY-MM-DD
       const lastSessionDate = profile.last_session_date
       
       let dailySessionsUsed = 0
-      if (lastSessionDate === today) {
+      if (lastSessionDate === session) {
         // Same day, use the count
         dailySessionsUsed = profile.daily_sessions_used || 0
       }
