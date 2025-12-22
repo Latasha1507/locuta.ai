@@ -534,7 +534,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
         level_number: levelNumber,
         completed: finalCompletedStatus,
         best_score: isNewBest ? feedback.overall_score : existingProgress?.best_score,
-        last_practiced: new Date().toISOString(),
+        last_attempted_at: new Date().toISOString(),
       }
 
       console.log('💾 About to upsert progress:', progressData)
