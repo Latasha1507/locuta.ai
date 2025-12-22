@@ -161,19 +161,18 @@ export async function POST(request: NextRequest) {
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
       model: 'whisper-1',
-      language: 'en', // FORCE ENGLISH ONLY - Critical fix
-      prompt: 'This is an English speaking practice recording. Transcribe only in English.', // Additional hint
+      language: 'en',
+      prompt: 'This is an English speaking practice recording. Transcribe only in English.',
     })
 
     const userTranscript = transcription.text
     console.log('✅ Transcription:', userTranscript.substring(0, 100) + '...')
 
-    // Validate that transcription is primarily English
     if (!isEnglishText(userTranscript)) {
       console.warn('⚠️ Non-English content detected, but proceeding with transcription')
     }
 
-    // Step 2: Generate AI example FIRST (before feedback)
+    // Step 2: Generate AI example
     console.log('🎯 Generating AI example response...')
     const aiExamplePrompt = `You are demonstrating how to complete this speaking task perfectly for a Level ${levelNumber} learner.
 
@@ -348,7 +347,6 @@ Be encouraging but honest. If non-English content detected, reduce overall score
       const feedbackText = feedbackResponse.choices[0].message.content || '{}'
       feedback = JSON.parse(feedbackText)
       
-      // Calculate scores if missing
       if (!feedback.content_score && feedback.focus_area_scores) {
         const scores = Object.values(feedback.focus_area_scores) as number[]
         feedback.content_score = scores.reduce((a, b) => a + b, 0) / scores.length
@@ -375,7 +373,6 @@ Be encouraging but honest. If non-English content detected, reduce overall score
       
       feedback.overall_score = Math.round(feedback.weighted_overall_score)
       
-      // Determine pass/fail based on level-appropriate threshold
       const passThreshold = levelNumber <= 10 ? 60 : levelNumber <= 30 ? 65 : 70
       feedback.passed = feedback.overall_score >= passThreshold
       
@@ -419,18 +416,18 @@ Be encouraging but honest. If non-English content detected, reduce overall score
       }
     }
 
-    // Step 5: Save to database
-    console.log('💾 Saving to database...')
+    // Step 5: Save session to database
+    console.log('💾 Attempting to save session...')
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-    const { error: insertError } = await supabase
+    const { data: sessionData, error: insertError } = await supabase
       .from('sessions')
       .insert({
         id: sessionId,
         user_id: user.id,
         category: categoryName,
         module_number: parseInt(moduleId),
-        level_number: levelNumber,  // sessions table uses level_number, not level_number
+        level_number: levelNumber,
         tone: tone,
         user_transcript: userTranscript,
         ai_example_text: aiExampleText,
@@ -441,169 +438,139 @@ Be encouraging but honest. If non-English content detected, reduce overall score
         completed_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
       })
+      .select()
 
     if (insertError) {
-      console.error('❌ Database error:', insertError)
+      console.error('❌ SESSION INSERT FAILED:', {
+        error: insertError,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint
+      })
       return NextResponse.json({ 
         error: 'Failed to save session', 
         details: insertError.message 
       }, { status: 500 })
     }
 
-    console.log('✅ Session saved:', sessionId)
-    
-    if (insertError) {
-      console.error('❌ Database error:', insertError)
-      return NextResponse.json({ 
-        error: 'Failed to save session', 
-        details: typeof insertError === 'object' && insertError && 'message' in insertError
-          ? (insertError as { message?: string }).message
-          : String(insertError)
-      }, { status: 500 })
+    console.log('✅ Session saved successfully:', sessionId)
+
+    // Step 6: Increment daily session counter for trial users
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('plan_type, last_session_date, daily_sessions_used')
+        .eq('id', user.id)
+        .single()
+      
+      if (profile && profile.plan_type === 'trial') {
+        const today = new Date().toISOString().split('T')[0]
+        const lastSessionDate = profile.last_session_date
+        
+        if (lastSessionDate === today) {
+          await supabase
+            .from('profiles')
+            .update({ 
+              daily_sessions_used: (profile.daily_sessions_used || 0) + 1 
+            })
+            .eq('id', user.id)
+          
+          console.log('✅ Daily session counted:', (profile.daily_sessions_used || 0) + 1)
+        } else {
+          await supabase
+            .from('profiles')
+            .update({ 
+              last_session_date: today,
+              daily_sessions_used: 1 
+            })
+            .eq('id', user.id)
+          
+          console.log('✅ New day, session count reset to 1')
+        }
+      }
+    } catch (error) {
+      console.error('⚠️ Failed to update session count (non-critical):', error)
     }
-    
-    console.log('✅ Session saved:', sessionId)
 
-// ⭐ NEW: Increment daily session counter for trial users
-try {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('plan_type, last_session_date, daily_sessions_used')
-    .eq('id', user.id)
-    .single()
-  
-  // Only track for trial users
-  if (profile && profile.plan_type === 'trial') {
-    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-    const lastSessionDate = profile.last_session_date
-    
-    if (lastSessionDate === today) {
-      // Same day, increment count
-      await supabase
-        .from('profiles')
-        .update({ 
-          daily_sessions_used: (profile.daily_sessions_used || 0) + 1 
+    // Step 7: Update progress with correct completion logic
+    try {
+      const moduleNumber = parseInt(moduleId)
+      const passThreshold = moduleNumber === 1 ? 70 : 75
+
+      console.log('🔍 Step 7: Starting progress update...', {
+        moduleNumber,
+        passThreshold,
+        userId: user.id,
+        categoryName,
+        levelNumber,
+        score: feedback.overall_score
+      })
+
+      const { data: existingProgress, error: fetchError } = await supabase
+        .from('user_progress')
+        .select('best_score, completed')
+        .eq('user_id', user.id)
+        .eq('category', categoryName)
+        .eq('module_number', moduleNumber)
+        .eq('level_number', levelNumber)
+        .single()
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('❌ Error fetching existing progress:', fetchError)
+      } else {
+        console.log('✅ Existing progress:', existingProgress || 'No existing progress')
+      }
+
+      const isNewBest = !existingProgress || 
+                        feedback.overall_score > (existingProgress.best_score || 0)
+
+      const isCompleted = feedback.overall_score >= passThreshold
+      const finalCompletedStatus = existingProgress?.completed || isCompleted
+
+      const progressData = {
+        user_id: user.id,
+        category: categoryName,
+        module_number: moduleNumber,
+        level_number: levelNumber,
+        completed: finalCompletedStatus,
+        best_score: isNewBest ? feedback.overall_score : existingProgress?.best_score,
+        last_practiced: new Date().toISOString(),
+      }
+
+      console.log('💾 About to upsert progress:', progressData)
+
+      const { data: upsertedData, error: upsertError } = await supabase
+        .from('user_progress')
+        .upsert(progressData, {
+          onConflict: 'user_id,category,module_number,level_number'
         })
-        .eq('id', user.id)
-      
-      console.log('✅ Daily session counted:', (profile.daily_sessions_used || 0) + 1)
-    } else {
-      // New day, reset to 1
-      await supabase
-        .from('profiles')
-        .update({ 
-          last_session_date: today,
-          daily_sessions_used: 1 
+        .select()
+
+      if (upsertError) {
+        console.error('❌ UPSERT FAILED:', {
+          error: upsertError,
+          message: upsertError.message,
+          details: upsertError.details,
+          hint: upsertError.hint,
+          code: upsertError.code
         })
-        .eq('id', user.id)
-      
-      console.log('✅ New day, session count reset to 1')
+      } else {
+        console.log('✅ Progress saved successfully!', upsertedData)
+      }
+
+    } catch (progressError) {
+      console.error('❌ EXCEPTION in progress update:', progressError)
     }
-  }
-} catch (error) {
-  console.error('⚠️ Failed to update session count (non-critical):', error)
-}
-// ⭐ Increment daily session counter for trial users
-try {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('plan_type, last_session_date, daily_sessions_used')
-    .eq('id', user.id)
-    .single()
-  
-  // Only track for trial users
-  if (profile && profile.plan_type === 'trial') {
-    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-    const lastSessionDate = profile.last_session_date
-    
-    if (lastSessionDate === today) {
-      // Same day, increment count
-      await supabase
-        .from('profiles')
-        .update({ 
-          daily_sessions_used: (profile.daily_sessions_used || 0) + 1 
-        })
-        .eq('id', user.id)
-      
-      console.log('✅ Daily session counted:', (profile.daily_sessions_used || 0) + 1)
-    } else {
-      // New day, reset to 1
-      await supabase
-        .from('profiles')
-        .update({ 
-          last_session_date: today,
-          daily_sessions_used: 1 
-        })
-        .eq('id', user.id)
-      
-      console.log('✅ New day, session count reset to 1')
-    }
-  }
-} catch (error) {
-  console.error('⚠️ Failed to update session count (non-critical):', error)
-}
 
-// Step 6: Update progress with correct completion logic
-const moduleNumber = parseInt(moduleId)
-const passThreshold = moduleNumber === 1 ? 70 : 75
+    console.log('🎉 Feedback generation complete!')
 
-const { data: existingProgress } = await supabase
-  .from('user_progress')
-  .select('best_score, completed')
-  .eq('user_id', user.id)
-  .eq('category', categoryName)
-  .eq('module_number', moduleNumber)
-  .eq('level_number', levelNumber)  // ✅ Changed to level_number
-  .single()
-
-const isNewBest = !existingProgress || 
-                  feedback.overall_score > (existingProgress.best_score || 0)
-
-// Mark as completed if score meets threshold
-const isCompleted = feedback.overall_score >= passThreshold
-
-// Keep completed status true if it was already completed (don't un-complete)
-const finalCompletedStatus = existingProgress?.completed || isCompleted
-
-await supabase
-  .from('user_progress')
-  .upsert({
-    user_id: user.id,
-    category: categoryName,
-    module_number: moduleNumber,
-    level_number: levelNumber,  // ✅ Changed to level_number
-    completed: finalCompletedStatus,
-    best_score: isNewBest ? feedback.overall_score : existingProgress?.best_score,
-    last_practiced: new Date().toISOString(),
-  }, {
-    onConflict: 'user_id,category,module_number,level_number'  // ✅ Changed to level_number
-  })
-
-console.log('✅ Progress updated:', {
-  completed: finalCompletedStatus,
-  score: feedback.overall_score,
-  threshold: passThreshold,
-  isNewBest,
-  moduleNumber,
-  levelNumber
-})
-
-console.log('✅ Progress updated:', {
-  completed: finalCompletedStatus,
-  score: feedback.overall_score,
-  threshold: passThreshold,
-  isNewBest
-})
-
-console.log('🎉 Feedback generation complete!')
-
-return NextResponse.json({
-  success: true,
-  sessionId: sessionId,
-  feedback: feedback,
-  score: feedback.overall_score,
-  passed: feedback.passed,
-})
+    return NextResponse.json({
+      success: true,
+      sessionId: sessionId,
+      feedback: feedback,
+      score: feedback.overall_score,
+      passed: feedback.passed,
+    })
 
   } catch (error) {
     console.error('❌ Feedback API error:', error)
@@ -621,12 +588,11 @@ return NextResponse.json({
 
 // Helper function to validate English text
 function isEnglishText(text: string): boolean {
-  // Simple heuristic: check if text contains mostly Latin characters
   const latinChars = text.match(/[a-zA-Z\s]/g) || []
   const totalChars = text.replace(/\s/g, '').length
   
   if (totalChars === 0) return false
   
   const latinRatio = latinChars.length / totalChars
-  return latinRatio > 0.7 // At least 70% Latin characters
+  return latinRatio > 0.7
 }

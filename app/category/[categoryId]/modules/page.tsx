@@ -85,10 +85,23 @@ export default async function CategoryModulesPage({
     progressMap[`${p.module_number}-${p.level_number}`] = p
   })
 
+  // 🔍 ADD THIS DEBUG
+console.log('📚 Module Page Progress Debug:', {
+  categoryName,
+  totalProgressRecords: progress?.length || 0,
+  progressMap,
+  completedCount: progress?.filter(p => p.completed).length || 0,
+  allProgress: progress
+})
   const totalLessons = lessons?.length || 0
   const completedLessons = progress?.filter(p => p.completed).length || 0
   const overallProgress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
-
+  // 🔍 MORE DEBUG
+console.log('📊 Calculated Progress:', {
+  totalLessons,
+  completedLessons,
+  overallProgress
+})
   const gradientColor = categoryColors[categoryId] || 'from-purple-500 to-indigo-600'
 
   const normalizeString = (value?: string | null) =>

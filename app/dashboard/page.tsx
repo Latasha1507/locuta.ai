@@ -309,6 +309,16 @@ export default function DashboardPage() {
     ) || []
     
     const completedLessons = categoryProgress.filter((p: any) => p.completed).length
+    // 🔍 ADD THIS DEBUG LOG
+    if (category.id === 'creator-speaking') {
+      console.log('🎥 Creator Speaking Debug:', {
+        totalLessons,
+        categoryProgress: categoryProgress.length,
+        completedLessons,
+        progressItems: categoryProgress,
+        completedItems: categoryProgress.filter((p: any) => p.completed)
+      })
+    }
     const completionPercentage = totalLessons > 0 
       ? Math.round((completedLessons / totalLessons) * 100) 
       : 0
@@ -331,6 +341,14 @@ export default function DashboardPage() {
 
   const totalCompleted = progress?.filter((p: any) => p.completed).length || 0
   const totalAvailable = lessons?.length || 0
+  // 🔍 DEBUG: Check what data we're getting
+console.log('📊 Dashboard Progress Debug:', {
+  totalProgress: progress?.length || 0,
+  completedProgress: totalCompleted,
+  totalLessons: totalAvailable,
+  sampleProgress: progress?.slice(0, 3), // Show first 3 progress records
+  completedItems: progress?.filter((p: any) => p.completed)
+})
   const overallPercentage = totalAvailable > 0 
     ? Math.round((totalCompleted / totalAvailable) * 100) 
     : 0
