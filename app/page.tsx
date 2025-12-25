@@ -179,7 +179,7 @@ export default async function HomePage() {
               href="/auth/signup"
               className="ml-2 px-5 py-2 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-lg font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-400"
             >
-              Try Locuta Free
+              Try 14 Days Free 🎁
             </Link>
             </div>
             
@@ -212,7 +212,7 @@ export default async function HomePage() {
                   href="/auth/signup"
                   className="px-5 py-2 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-lg font-bold shadow-lg hover:shadow-xl transition-all duration-400 text-center"
                 >
-                  Try Locuta Free
+                  Try 14 Days Free 🎁
                 </Link>
               </div>
             </nav>
@@ -237,13 +237,13 @@ export default async function HomePage() {
             Locuta.ai helps you master communication through personalized, real-time AI coaching. Practice real scenarios, get instant feedback, and build lasting confidence at your own pace.
           </p>
           <div className="flex flex-col md:flex-row gap-4 w-full max-w-2xl animate-fade-in-del2">
-            <Link
-              href="/auth/signup"
-              className="flex-1 text-center bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-400 relative min-h-[56px] flex items-center justify-center"
-            >
-              Start Practicing Free <span aria-hidden>🚀</span>
-              <span className="absolute inset-0 rounded-xl bg-white/10 pointer-events-none opacity-0 hover:opacity-100 transition-opacity duration-500" />
-            </Link>
+          <Link
+  href="/auth/signup"
+  className="flex-1 text-center bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-400 relative min-h-[56px] flex items-center justify-center"
+>
+  Start Your 14-Day Free Trial <span aria-hidden>🚀</span>
+  <span className="absolute inset-0 rounded-xl bg-white/10 pointer-events-none opacity-0 hover:opacity-100 transition-opacity duration-500" />
+</Link>
             <Link
               href="#why"
               className="flex-1 text-center border border-indigo-100 bg-white/50 text-indigo-800 px-8 py-4 rounded-xl font-semibold hover:scale-105 hover:bg-indigo-50/80 transition-all duration-400 shadow-md hover:shadow-lg min-h-[56px] flex items-center justify-center"
@@ -620,14 +620,14 @@ export default async function HomePage() {
               Start your journey today - completely free!
             </p>
             <Link
-              href="/auth/signup"
-              className="inline-block bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-12 py-5 rounded-xl font-bold text-xl hover:shadow-2xl hover:scale-105 transition-all"
-            >
-              Get Started Free
-            </Link>
-            <p className="text-gray-500 mt-4 text-sm">
-              No credit card required • Start practicing in 30 seconds
-            </p>
+  href="/auth/signup"
+  className="inline-block bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-12 py-5 rounded-xl font-bold text-xl hover:shadow-2xl hover:scale-105 transition-all"
+>
+  Try 14 Days Free - No Card Required 🚀
+</Link>
+<p className="text-gray-500 mt-4 text-sm">
+  14-day free trial • 10 sessions per day • Cancel anytime
+</p>
           </div>
         </div>
       </div>
