@@ -95,8 +95,10 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
         })
       })
 
+      // Move to booking step
       setStep('booking')
       onBooked()
+      
     } catch (error) {
       console.error('Error:', error)
       alert('Failed to save. Please try again.')
@@ -263,7 +265,7 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
             </div>
 
             <p className="text-xs text-slate-500 text-center mt-4">
-              After booking, you'll receive a confirmation email with the meeting link.
+              After booking on Cal.com, you'll receive a confirmation email with the meeting link.
             </p>
 
             <button
