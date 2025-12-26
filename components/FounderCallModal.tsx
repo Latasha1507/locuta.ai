@@ -45,7 +45,6 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
     try {
       const supabase = createClient()
       
-      // Check if user already booked
       const { data: existingBooking } = await supabase
         .from('founder_call_bookings')
         .select('id')
@@ -59,7 +58,6 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
         return
       }
 
-      // Save pre-booking info
       await supabase
         .from('founder_call_bookings')
         .insert({
@@ -70,7 +68,6 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
           status: 'pending'
         })
 
-      // Update slots used
       const { data: settings } = await supabase
         .from('founder_call_settings')
         .select('slots_used')
@@ -84,7 +81,6 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
           .eq('id', 1)
       }
 
-      // Send notification email
       await fetch('/api/founder-call-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -95,7 +91,6 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
         })
       })
 
-      // Move to booking step
       setStep('booking')
       onBooked()
       
@@ -107,17 +102,21 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
     }
   }
 
-  // Success state
+  const handleBookingClick = () => {
+    const calUrl = `https://cal.com/latasha-ukey/founder-feedback?name=${encodeURIComponent(formData.name)}&email=${encodeURIComponent(formData.email)}&note=${encodeURIComponent(formData.speaking_challenge)}`
+    window.open(calUrl, '_blank')
+  }
+
   if (step === 'success') {
     return (
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
         <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl">
           <div className="text-6xl mb-4 animate-bounce">🎉</div>
           <h2 className="text-3xl font-bold text-slate-900 mb-3">
-            You're All Set!
+            You are All Set!
           </h2>
           <p className="text-slate-600 mb-4">
-            Check your email for confirmation and meeting details.
+            Check your email for the meeting confirmation and link.
           </p>
           <p className="text-sm text-purple-600 font-semibold mb-6">
             Looking forward to speaking with you!
@@ -135,8 +134,7 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
-      <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-4xl w-full shadow-2xl relative my-auto max-h-[90vh] overflow-y-auto">
-        {/* Close button */}
+      <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl relative my-auto max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition z-10"
@@ -146,7 +144,6 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
           </svg>
         </button>
 
-        {/* Header */}
         <div className="text-center mb-6">
           <div className="text-5xl mb-3">🎁</div>
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
@@ -160,7 +157,6 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
           </div>
         </div>
 
-        {/* Step indicator */}
         <div className="flex items-center justify-center gap-2 mb-6">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
             step === 'form' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-600'
@@ -175,7 +171,6 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
           </div>
         </div>
 
-        {/* STEP 1: Form */}
         {step === 'form' && (
           <>
             <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
@@ -232,48 +227,57 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50"
               >
-                {loading ? 'Saving...' : 'Next: Pick Your Time →'}
+                {loading ? 'Saving...' : 'Next: Pick Your Time'}
               </button>
             </form>
           </>
         )}
 
-        {/* STEP 2: Cal.com Embedded Booking */}
         {step === 'booking' && (
           <>
-            <button
-              onClick={() => setStep('form')}
-              className="mb-4 text-purple-600 hover:text-purple-700 font-semibold text-sm flex items-center gap-1"
-            >
-              ← Back
-            </button>
+            <div className="text-center">
+              <div className="text-6xl mb-4">📅</div>
+              <h3 className="text-2xl font-bold text-slate-900 mb-3">
+                Almost Done!
+              </h3>
+              <p className="text-slate-600 mb-6">
+                Click below to open Cal.com and pick your preferred time slot.
+              </p>
 
-            <h3 className="text-xl font-bold text-slate-900 mb-4">
-              Pick Your Time Slot
-            </h3>
+              <button
+                onClick={handleBookingClick}
+                className="inline-block bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+              >
+                Book Your Time Slot
+              </button>
 
-            {/* Cal.com Embed */}
-            <div className="border-2 border-slate-200 rounded-xl overflow-hidden bg-white">
-              <iframe
-                src={`https://cal.com/latasha-ukey/founder-feedback?embed=true&name=${encodeURIComponent(formData.name)}&email=${encodeURIComponent(formData.email)}`}
-                width="100%"
-                height="700"
-                frameBorder="0"
-                className="w-full"
-                allow="payment"
-              />
+              <div className="mt-8 bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                <p className="text-sm text-slate-700 mb-4">
+                  <strong>What happens next:</strong>
+                </p>
+                <ol className="text-left text-sm text-slate-600 space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">1.</span>
+                    <span>Pick your preferred time slot on Cal.com</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">2.</span>
+                    <span>You will receive a confirmation email with meeting link</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">3.</span>
+                    <span>After our call, get your 1 year free access!</span>
+                  </li>
+                </ol>
+              </div>
+
+              <button
+                onClick={() => setStep('success')}
+                className="mt-6 text-purple-600 hover:text-purple-700 font-semibold text-sm"
+              >
+                I have already booked
+              </button>
             </div>
-
-            <p className="text-xs text-slate-500 text-center mt-4">
-              After booking on Cal.com, you'll receive a confirmation email with the meeting link.
-            </p>
-
-            <button
-              onClick={() => setStep('success')}
-              className="w-full mt-4 bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition"
-            >
-              ✓ I've booked my slot
-            </button>
           </>
         )}
       </div>
