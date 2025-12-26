@@ -9,18 +9,9 @@ interface FounderCallModalProps {
   onBooked: () => void
 }
 
-interface TimeSlot {
-  time: string
-  date: string
-  displayTime: string
-}
-
 export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: FounderCallModalProps) {
-  const [step, setStep] = useState<'form' | 'slots' | 'success'>('form')
+  const [step, setStep] = useState<'form' | 'booking' | 'success'>('form')
   const [loading, setLoading] = useState(false)
-  const [loadingSlots, setLoadingSlots] = useState(false)
-  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
   const [userId, setUserId] = useState<string>('')
   
   const [formData, setFormData] = useState({
@@ -35,7 +26,6 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUserId(user.id)
-        // Pre-fill email if available
         if (user.email) {
           setFormData(prev => ({ ...prev, email: user.email! }))
         }
@@ -50,81 +40,67 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
       return
     }
 
-    setLoadingSlots(true)
-    
-    try {
-      // Fetch available slots
-      const response = await fetch('/api/cal-slots')
-      const data = await response.json()
-      
-      // Transform slots into user-friendly format
-      const slots: TimeSlot[] = []
-      
-      Object.entries(data.slots || {}).forEach(([date, times]: [string, any]) => {
-        times.forEach((time: string) => {
-          const dateTime = new Date(time)
-          slots.push({
-            time: time,
-            date: date,
-            displayTime: dateTime.toLocaleString('en-US', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit'
-            })
-          })
-        })
-      })
-      
-      setAvailableSlots(slots.slice(0, 20)) // Show first 20 slots
-      setStep('slots')
-    } catch (error) {
-      console.error('Failed to load slots:', error)
-      alert('Failed to load available times. Please try again.')
-    } finally {
-      setLoadingSlots(false)
-    }
-  }
-
-  const handleBooking = async () => {
-    if (!selectedSlot) {
-      alert('Please select a time slot')
-      return
-    }
-
     setLoading(true)
 
     try {
-      const response = await fetch('/api/cal-book', {
+      const supabase = createClient()
+      
+      // Check if user already booked
+      const { data: existingBooking } = await supabase
+        .from('founder_call_bookings')
+        .select('id')
+        .eq('user_id', userId)
+        .single()
+
+      if (existingBooking) {
+        alert('You already have a call booked!')
+        setLoading(false)
+        onClose()
+        return
+      }
+
+      // Save pre-booking info
+      await supabase
+        .from('founder_call_bookings')
+        .insert({
+          user_id: userId,
+          name: formData.name,
+          email: formData.email,
+          speaking_challenge: formData.speaking_challenge,
+          status: 'pending'
+        })
+
+      // Update slots used
+      const { data: settings } = await supabase
+        .from('founder_call_settings')
+        .select('slots_used')
+        .eq('id', 1)
+        .single()
+
+      if (settings) {
+        await supabase
+          .from('founder_call_settings')
+          .update({ slots_used: (settings.slots_used || 0) + 1 })
+          .eq('id', 1)
+      }
+
+      // Send notification email
+      await fetch('/api/founder-call-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
-          speaking_challenge: formData.speaking_challenge,
-          selectedSlot: selectedSlot,
-          userId: userId
+          speaking_challenge: formData.speaking_challenge
         })
       })
 
-      if (!response.ok) {
-        throw new Error('Booking failed')
-      }
-
-      const data = await response.json()
-      
-      setStep('success')
+      setStep('booking')
       onBooked()
-      
-      // Auto-close after 5 seconds
-      setTimeout(() => {
-        onClose()
-      }, 5000)
-
     } catch (error) {
-      console.error('Booking error:', error)
-      alert('Failed to book call. Please try again.')
+      console.error('Error:', error)
+      alert('Failed to save. Please try again.')
+    } finally {
       setLoading(false)
     }
   }
@@ -138,26 +114,18 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
           <h2 className="text-3xl font-bold text-slate-900 mb-3">
             You're All Set!
           </h2>
-          <p className="text-slate-600 mb-2">
-            Check your email for:
+          <p className="text-slate-600 mb-4">
+            Check your email for confirmation and meeting details.
           </p>
-          <ul className="text-left text-slate-600 mb-6 space-y-2">
-            <li className="flex items-start gap-2">
-              <span className="text-green-600 mt-1">✓</span>
-              <span>Google Meet link</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-600 mt-1">✓</span>
-              <span>Calendar invite</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-600 mt-1">✓</span>
-              <span>Meeting details</span>
-            </li>
-          </ul>
-          <p className="text-sm text-purple-600 font-semibold">
+          <p className="text-sm text-purple-600 font-semibold mb-6">
             Looking forward to speaking with you!
           </p>
+          <button
+            onClick={onClose}
+            className="bg-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-purple-700 transition"
+          >
+            Got it!
+          </button>
         </div>
       </div>
     )
@@ -165,7 +133,7 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
-      <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl relative my-auto max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-4xl w-full shadow-2xl relative my-auto max-h-[90vh] overflow-y-auto">
         {/* Close button */}
         <button
           onClick={onClose}
@@ -199,7 +167,7 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
           </div>
           <div className="w-12 h-1 bg-gray-200"></div>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-            step === 'slots' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-600'
+            step === 'booking' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-600'
           }`}>
             2
           </div>
@@ -259,17 +227,17 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
 
               <button
                 type="submit"
-                disabled={loadingSlots}
+                disabled={loading}
                 className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50"
               >
-                {loadingSlots ? 'Loading Slots...' : 'Next: Pick Your Time →'}
+                {loading ? 'Saving...' : 'Next: Pick Your Time →'}
               </button>
             </form>
           </>
         )}
 
-        {/* STEP 2: Slots */}
-        {step === 'slots' && (
+        {/* STEP 2: Cal.com Embedded Booking */}
+        {step === 'booking' && (
           <>
             <button
               onClick={() => setStep('form')}
@@ -282,34 +250,27 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
               Pick Your Time Slot
             </h3>
 
-            <div className="space-y-2 mb-6 max-h-96 overflow-y-auto">
-              {availableSlots.length === 0 ? (
-                <p className="text-slate-600 text-center py-8">
-                  No slots available. Please contact us directly.
-                </p>
-              ) : (
-                availableSlots.map((slot, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedSlot(slot)}
-                    className={`w-full p-4 rounded-xl border-2 transition text-left ${
-                      selectedSlot?.time === slot.time
-                        ? 'border-purple-500 bg-purple-50'
-                        : 'border-slate-200 hover:border-purple-300'
-                    }`}
-                  >
-                    <span className="font-semibold">{slot.displayTime}</span>
-                  </button>
-                ))
-              )}
+            {/* Cal.com Embed */}
+            <div className="border-2 border-slate-200 rounded-xl overflow-hidden bg-white">
+              <iframe
+                src={`https://cal.com/latasha-ukey/founder-feedback?embed=true&name=${encodeURIComponent(formData.name)}&email=${encodeURIComponent(formData.email)}`}
+                width="100%"
+                height="700"
+                frameBorder="0"
+                className="w-full"
+                allow="payment"
+              />
             </div>
 
+            <p className="text-xs text-slate-500 text-center mt-4">
+              After booking, you'll receive a confirmation email with the meeting link.
+            </p>
+
             <button
-              onClick={handleBooking}
-              disabled={!selectedSlot || loading}
-              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setStep('success')}
+              className="w-full mt-4 bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition"
             >
-              {loading ? 'Booking...' : 'Confirm Booking 🎉'}
+              ✓ I've booked my slot
             </button>
           </>
         )}
