@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-// @ts-ignore
-import Resend from 'resend'
+import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY!)
 
