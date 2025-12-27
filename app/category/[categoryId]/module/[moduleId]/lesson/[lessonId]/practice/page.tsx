@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useSequentialAudio } from '@/lib/hooks/useSequentialAudio'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mic, Square, Play, Pause, SkipBack, SkipForward, RotateCcw, ThumbsUp } from 'lucide-react'
@@ -48,7 +49,8 @@ export default function PracticePage() {
   const [introTranscript, setIntroTranscript] = useState<string>('')
   const [practice_prompt, setPracticePrompt] = useState<string>('')
   const [lessonTitle, setLessonTitle] = useState<string>('')
-  const [isPlaying, setIsPlaying] = useState(false)
+  const [greetingAudio, setGreetingAudio] = useState<string>('')
+  const [greetingText, setGreetingText] = useState<string>('')
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
@@ -63,9 +65,6 @@ export default function PracticePage() {
   const [recordingStartTime, setRecordingStartTime] = useState<number>(0)
   const [isIntroLiked, setIsIntroLiked] = useState(false)
   
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-
   const [voiceMetrics, setVoiceMetrics] = useState({
     volume: 0,
     pace: 0,
@@ -75,7 +74,6 @@ export default function PracticePage() {
     energy: 0
   })
 
-  const audioRef = useRef<HTMLAudioElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -89,6 +87,18 @@ export default function PracticePage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [upgradeReason, setUpgradeReason] = useState<'trial_expired' | 'session_limit'>('session_limit')
   const [sessionsRemaining, setSessionsRemaining] = useState<number | null>(null)
+
+  const {
+    isPlaying,
+    currentTime,
+    duration,
+    play: playAudio,
+    pause: pauseAudio,
+    skipBackward,
+    skipForward,
+    replay: replayAudio,
+    seek
+  } = useSequentialAudio(greetingAudio, introAudio)
 
   useEffect(() => {
     if (skipTask) {
@@ -167,24 +177,6 @@ export default function PracticePage() {
   }, [isLoadingIntro, isSubmitting])
 
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-
-    const updateTime = () => setCurrentTime(audio.currentTime)
-    const updateDuration = () => setDuration(audio.duration)
-
-    audio.addEventListener('timeupdate', updateTime)
-    audio.addEventListener('loadedmetadata', updateDuration)
-    audio.addEventListener('ended', () => setIsPlaying(false))
-
-    return () => {
-      audio.removeEventListener('timeupdate', updateTime)
-      audio.removeEventListener('loadedmetadata', updateDuration)
-      audio.removeEventListener('ended', () => setIsPlaying(false))
-    }
-  }, [introAudio])
-
-  useEffect(() => {
     const handleBeforeUnload = () => {
       if (step === 'intro' && !hasStartedRecording && introStartTime > 0) {
         const timeSpent = Math.round((Date.now() - introStartTime) / 1000)
@@ -260,7 +252,9 @@ export default function PracticePage() {
       }
 
       const data = await response.json()
-      
+
+      setGreetingAudio(data.greetingAudio || '')
+      setGreetingText(data.greetingText || '')
       setIntroAudio(data.audioBase64 || '')
       setIntroTranscript(data.transcript || '')
       setPracticePrompt(data.practice_prompt || 'Practice speaking clearly and confidently')
@@ -286,63 +280,23 @@ export default function PracticePage() {
     }
   }
 
-  const playAudio = () => {
-    if (audioRef.current && introAudio) {
-      audioRef.current.play()
-      setIsPlaying(true)
-    }
-  }
-
-  const pauseAudio = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      setIsPlaying(false)
-    }
-  }
-
-  const skipBackward = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10)
-    }
-  }
-
-  const skipForward = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10)
-    }
-  }
-
-  const replayAudio = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0
-      audioRef.current.play()
-      setIsPlaying(true)
-    }
-  }
-
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value)
-    if (audioRef.current) {
-      audioRef.current.currentTime = time
-      setCurrentTime(time)
-    }
+    seek(time)
   }
 
   const skipToRecording = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-    }
-    setIsPlaying(false)
+    pauseAudio()
     
     const timeSpent = Math.round((Date.now() - introStartTime) / 1000)
-    const listenedFully = audioRef.current ? audioRef.current.currentTime >= duration * 0.9 : false
+    const listenedFully = currentTime >= duration * 0.9
     
     Mixpanel.track('Intro Skipped', {
       lesson_id: lessonId,
       category: categoryId,
       time_spent_seconds: timeSpent,
       listened_fully: listenedFully,
-      listen_percentage: audioRef.current ? Math.round((audioRef.current.currentTime / duration) * 100) : 0,
+      listen_percentage: Math.round((currentTime / duration) * 100),
       coaching_style: tone
     })
     
@@ -777,7 +731,7 @@ export default function PracticePage() {
                       <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                     <button
-                      onClick={skipBackward}
+                      onClick={() => skipBackward()}
                       disabled={!introAudio}
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-slate-700 flex items-center justify-center shadow-md hover:bg-white/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
                       type="button"
@@ -797,7 +751,7 @@ export default function PracticePage() {
                       )}
                     </button>
                     <button
-                      onClick={skipForward}
+                      onClick={() => skipForward()}
                       disabled={!introAudio}
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-slate-700 flex items-center justify-center shadow-md hover:bg-white/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
                       type="button"
@@ -814,12 +768,9 @@ export default function PracticePage() {
                     </button>
                   </div>
                 </div>
-                {!!introAudio && (
-                  <audio ref={audioRef} src={`data:audio/mpeg;base64,${introAudio}`} className="hidden" />
-                )}
                 <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-white rounded-lg">
                   <p className="text-sm sm:text-base text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
-                    {introTranscript}
+                    {greetingText && `${greetingText} `}{introTranscript}
                   </p>
                 </div>
               </div>
