@@ -972,41 +972,18 @@ export default function PracticePage() {
   .slider-thumb::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: white;
+    width: 0;
+    height: 0;
+    background: transparent;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    border: 3px solid #9333ea;
-    transition: transform 0.1s ease;
-  }
-  
-  .slider-thumb::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
-  }
-  
-  .slider-thumb::-webkit-slider-thumb:active {
-    transform: scale(1.1);
   }
   
   .slider-thumb::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: white;
+    width: 0;
+    height: 0;
+    background: transparent;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    border: 3px solid #9333ea;
-    transition: transform 0.1s ease;
-  }
-  
-  .slider-thumb::-moz-range-thumb:hover {
-    transform: scale(1.2);
-  }
-  
-  .slider-thumb::-moz-range-thumb:active {
-    transform: scale(1.1);
+    border: none;
   }
   
   .slider-thumb::-webkit-slider-runnable-track {
@@ -1015,6 +992,10 @@ export default function PracticePage() {
   
   .slider-thumb::-moz-range-track {
     background: transparent;
+  }
+  
+  .slider-thumb {
+    cursor: pointer;
   }
 `}</style>
 
