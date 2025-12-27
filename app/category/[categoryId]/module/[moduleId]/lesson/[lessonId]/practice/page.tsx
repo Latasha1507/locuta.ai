@@ -702,21 +702,28 @@ export default function PracticePage() {
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8">
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 mb-4 sm:mb-6">{lessonTitle}</h2>
               <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg sm:rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-                <div className="mb-3 sm:mb-4 space-y-3">
-                  <div>
-                    <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 mb-1 font-semibold">
-                      <span>{formatTime(currentTime)}</span>
-                      <span>{formatTime(duration)}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={duration || 0}
-                      value={currentTime}
-                      onChange={handleSeek}
-                      className="w-full h-1.5 sm:h-2 rounded-full appearance-none cursor-pointer bg-white/60 accent-purple-600"
-                    />
-                  </div>
+  <div className="mb-3 sm:mb-4 space-y-3">
+    <div>
+      <div className="flex items-center justify-between text-xs sm:text-sm text-slate-600 mb-2 font-medium">
+        <span className="tabular-nums">{formatTime(currentTime)}</span>
+        <span className="tabular-nums text-slate-400">{formatTime(duration)}</span>
+      </div>
+      <div className="relative w-full h-2 bg-white/60 rounded-full overflow-hidden shadow-inner">
+        <div 
+          className="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-100"
+          style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+        ></div>
+        <input
+          type="range"
+          min={0}
+          max={duration || 0}
+          value={currentTime}
+          onChange={handleSeek}
+          className="absolute top-0 left-0 w-full h-full appearance-none cursor-pointer bg-transparent slider-thumb"
+          style={{ zIndex: 10 }}
+        />
+      </div>
+    </div>
                   <div className="flex items-center justify-center gap-2 sm:gap-3">
                     <button
                       onClick={toggleIntroLike}
@@ -962,48 +969,52 @@ export default function PracticePage() {
     animation: shimmer 2s ease-in-out infinite;
   }
   
-  input[type="range"] {
+  .slider-thumb::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border: 3px solid #9333ea;
+    transition: transform 0.1s ease;
+  }
+  
+  .slider-thumb::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+  
+  .slider-thumb::-webkit-slider-thumb:active {
+    transform: scale(1.1);
+  }
+  
+  .slider-thumb::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border: 3px solid #9333ea;
+    transition: transform 0.1s ease;
+  }
+  
+  .slider-thumb::-moz-range-thumb:hover {
+    transform: scale(1.2);
+  }
+  
+  .slider-thumb::-moz-range-thumb:active {
+    transform: scale(1.1);
+  }
+  
+  .slider-thumb::-webkit-slider-runnable-track {
     background: transparent;
   }
   
-  input[type="range"]::-webkit-slider-track {
-    background: rgba(255, 255, 255, 0.6);
-    height: 0.5rem;
-    border-radius: 9999px;
-  }
-  
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 1rem;
-    height: 1rem;
-    border-radius: 50%;
-    background: #9333ea;
-    cursor: pointer;
-    margin-top: -0.25rem;
-  }
-  
-  input[type="range"]::-moz-range-track {
-    background: rgba(255, 255, 255, 0.6);
-    height: 0.5rem;
-    border-radius: 9999px;
-  }
-  
-  input[type="range"]::-moz-range-thumb {
-    width: 1rem;
-    height: 1rem;
-    border-radius: 50%;
-    background: #9333ea;
-    cursor: pointer;
-    border: none;
-  }
-  
-  input[type="range"]::-moz-range-progress {
-    background: #9333ea;
-    height: 0.5rem;
-    border-radius: 9999px;
+  .slider-thumb::-moz-range-track {
+    background: transparent;
   }
 `}</style>
 
