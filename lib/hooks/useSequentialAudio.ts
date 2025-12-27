@@ -1,4 +1,5 @@
 // lib/hooks/useSequentialAudio.ts
+
 import { useState, useRef, useEffect, useCallback } from 'react'
 
 export function useSequentialAudio(greetingBase64: string, lessonBase64: string) {
@@ -8,9 +9,8 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
   
   const greetingAudioRef = useRef<HTMLAudioElement | null>(null)
   const lessonAudioRef = useRef<HTMLAudioElement | null>(null)
-  const [currentlyPlaying, setCurrentlyPlaying] = useState<'greeting' | 'lesson' | null>(null)
-  const animationFrameRef = useRef<number | null>(null)
   const greetingDuration = useRef<number>(0)
+  const updateIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Initialize audio elements
   useEffect(() => {
@@ -20,72 +20,64 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
       
       greetingAudio.addEventListener('loadedmetadata', () => {
         greetingDuration.current = greetingAudio.duration
+        updateTotalDuration()
       })
     }
     if (lessonBase64) {
-      lessonAudioRef.current = new Audio(`data:audio/mpeg;base64,${lessonBase64}`)
+      const lessonAudio = new Audio(`data:audio/mpeg;base64,${lessonBase64}`)
+      lessonAudioRef.current = lessonAudio
+      
+      lessonAudio.addEventListener('loadedmetadata', () => {
+        updateTotalDuration()
+      })
     }
 
     return () => {
       greetingAudioRef.current?.pause()
       lessonAudioRef.current?.pause()
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current)
       }
     }
   }, [greetingBase64, lessonBase64])
 
-  // Calculate total duration
-  useEffect(() => {
+  const updateTotalDuration = () => {
     const greeting = greetingAudioRef.current
     const lesson = lessonAudioRef.current
-
-    const updateDuration = () => {
-      const greetingDur = greeting?.duration || 0
-      const lessonDur = lesson?.duration || 0
-      greetingDuration.current = greetingDur
-      setDuration(greetingDur + lessonDur)
+    
+    if (greeting && lesson) {
+      const total = (greeting.duration || 0) + (lesson.duration || 0)
+      setDuration(total)
     }
+  }
 
-    greeting?.addEventListener('loadedmetadata', updateDuration)
-    lesson?.addEventListener('loadedmetadata', updateDuration)
-
-    return () => {
-      greeting?.removeEventListener('loadedmetadata', updateDuration)
-      lesson?.removeEventListener('loadedmetadata', updateDuration)
-    }
-  }, [])
-
-  // Update current time continuously
-  const updateTime = useCallback(() => {
-    const greeting = greetingAudioRef.current
-    const lesson = lessonAudioRef.current
-
-    if (!greeting || !lesson) return
-
-    if (!greeting.paused && greeting.currentTime < greeting.duration) {
-      setCurrentTime(greeting.currentTime)
-      setCurrentlyPlaying('greeting')
-    } else if (!lesson.paused && lesson.currentTime < lesson.duration) {
-      setCurrentTime(greetingDuration.current + lesson.currentTime)
-      setCurrentlyPlaying('lesson')
-    }
-
-    if (isPlaying) {
-      animationFrameRef.current = requestAnimationFrame(updateTime)
-    }
-  }, [isPlaying])
-
+  // Continuous time update while playing
   useEffect(() => {
     if (isPlaying) {
-      animationFrameRef.current = requestAnimationFrame(updateTime)
-    }
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
+      updateIntervalRef.current = setInterval(() => {
+        const greeting = greetingAudioRef.current
+        const lesson = lessonAudioRef.current
+
+        if (!greeting || !lesson) return
+
+        if (!greeting.paused) {
+          setCurrentTime(greeting.currentTime)
+        } else if (!lesson.paused) {
+          setCurrentTime(greetingDuration.current + lesson.currentTime)
+        }
+      }, 100) // Update every 100ms for smooth progress
+    } else {
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current)
       }
     }
-  }, [isPlaying, updateTime])
+
+    return () => {
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current)
+      }
+    }
+  }, [isPlaying])
 
   const play = useCallback(async () => {
     const greeting = greetingAudioRef.current
@@ -93,22 +85,20 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
 
     if (!greeting || !lesson) return
 
-    setIsPlaying(true)
-
     const greetingDur = greetingDuration.current
 
-    // Determine where to resume playback
+    setIsPlaying(true)
+
+    // Determine where to resume playback based on currentTime
     if (currentTime < greetingDur) {
-      // Resume greeting
+      // Play greeting from current position
       greeting.currentTime = currentTime
-      setCurrentlyPlaying('greeting')
       
       try {
         await greeting.play()
         
-        // When greeting ends naturally, play lesson
+        // When greeting ends, automatically play lesson
         const onGreetingEnd = async () => {
-          setCurrentlyPlaying('lesson')
           try {
             await lesson.play()
           } catch (err) {
@@ -122,9 +112,8 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
         setIsPlaying(false)
       }
     } else {
-      // Resume lesson
+      // Play lesson from current position
       lesson.currentTime = currentTime - greetingDur
-      setCurrentlyPlaying('lesson')
       
       try {
         await lesson.play()
@@ -137,10 +126,9 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
     // Handle lesson end
     const onLessonEnd = () => {
       setIsPlaying(false)
-      setCurrentlyPlaying(null)
       setCurrentTime(0)
-      greeting.currentTime = 0
-      lesson.currentTime = 0
+      if (greeting) greeting.currentTime = 0
+      if (lesson) lesson.currentTime = 0
     }
 
     lesson.addEventListener('ended', onLessonEnd, { once: true })
@@ -164,34 +152,37 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
     const greetingDur = greetingDuration.current
     const wasPlaying = isPlaying
 
-    // Pause both first
+    // Pause both
     greeting.pause()
     lesson.pause()
-    setIsPlaying(false)
 
-    if (time <= greetingDur) {
-      // Seek within greeting
+    // Update positions based on seek time
+    if (time < greetingDur) {
+      // Seek to position in greeting
       greeting.currentTime = time
       lesson.currentTime = 0
-      setCurrentlyPlaying('greeting')
     } else {
-      // Seek within lesson
+      // Seek to position in lesson
       greeting.currentTime = greetingDur
       lesson.currentTime = time - greetingDur
-      setCurrentlyPlaying('lesson')
     }
 
     setCurrentTime(time)
 
-    // Resume playing if it was playing before
+    // Resume playing if it was playing
     if (wasPlaying) {
+      setIsPlaying(false) // Reset state first
       setTimeout(() => {
-        if (time <= greetingDur) {
-          greeting.play().catch(console.error)
+        if (time < greetingDur) {
+          greeting.play().then(() => setIsPlaying(true)).catch(console.error)
+          
+          const onGreetingEnd = () => {
+            lesson.play().catch(console.error)
+          }
+          greeting.addEventListener('ended', onGreetingEnd, { once: true })
         } else {
-          lesson.play().catch(console.error)
+          lesson.play().then(() => setIsPlaying(true)).catch(console.error)
         }
-        setIsPlaying(true)
       }, 50)
     }
   }, [isPlaying])
@@ -217,19 +208,16 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
     greeting.currentTime = 0
     lesson.currentTime = 0
     setCurrentTime(0)
-    setCurrentlyPlaying('greeting')
     setIsPlaying(true)
     
     greeting.play().catch(console.error)
 
-    const onGreetingEnd = async () => {
-      setCurrentlyPlaying('lesson')
+    const onGreetingEnd = () => {
       lesson.play().catch(console.error)
     }
 
     const onLessonEnd = () => {
       setIsPlaying(false)
-      setCurrentlyPlaying(null)
       setCurrentTime(0)
       greeting.currentTime = 0
       lesson.currentTime = 0

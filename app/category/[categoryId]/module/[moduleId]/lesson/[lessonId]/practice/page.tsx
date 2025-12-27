@@ -950,18 +950,62 @@ export default function PracticePage() {
       </div>
 
       <style jsx>{`
-        @keyframes shimmer {
-          0% {
-            transform: translateX(-100%);
-          }
-          100% {
-            transform: translateX(100%);
-          }
-        }
-        .animate-shimmer {
-          animation: shimmer 2s ease-in-out infinite;
-        }
-      `}</style>
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  .animate-shimmer {
+    animation: shimmer 2s ease-in-out infinite;
+  }
+  
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+  }
+  
+  input[type="range"]::-webkit-slider-track {
+    background: rgba(255, 255, 255, 0.6);
+    height: 0.5rem;
+    border-radius: 9999px;
+  }
+  
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: #9333ea;
+    cursor: pointer;
+    margin-top: -0.25rem;
+  }
+  
+  input[type="range"]::-moz-range-track {
+    background: rgba(255, 255, 255, 0.6);
+    height: 0.5rem;
+    border-radius: 9999px;
+  }
+  
+  input[type="range"]::-moz-range-thumb {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: #9333ea;
+    cursor: pointer;
+    border: none;
+  }
+  
+  input[type="range"]::-moz-range-progress {
+    background: #9333ea;
+    height: 0.5rem;
+    border-radius: 9999px;
+  }
+`}</style>
 
         {showUpgradeModal && (
           <UpgradeModal
