@@ -1,5 +1,4 @@
 // lib/hooks/useSequentialAudio.ts
-
 import { useState, useRef, useEffect, useCallback } from 'react'
 
 export function useSequentialAudio(greetingBase64: string, lessonBase64: string) {
