@@ -102,11 +102,6 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
     }
   }
 
-  const handleBookingClick = () => {
-    const calUrl = `https://cal.com/latasha-ukey/founder-feedback?name=${encodeURIComponent(formData.name)}&email=${encodeURIComponent(formData.email)}&note=${encodeURIComponent(formData.speaking_challenge)}`
-    window.open(calUrl, '_blank')
-  }
-
   if (step === 'success') {
     return (
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
@@ -244,12 +239,9 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
                 Click below to open Cal.com and pick your preferred time slot.
               </p>
 
-              <button
-                onClick={handleBookingClick}
-                className="inline-block bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-[1.02] transition-all"
-              >
+              <a href="https://cal.com/latasha-ukey/founder-feedback" target="_blank" rel="noopener noreferrer" className="inline-block bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-[1.02] transition-all">
                 Book Your Time Slot
-              </button>
+              </a>
 
               <div className="mt-8 bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
                 <p className="text-sm text-slate-700 mb-4">
