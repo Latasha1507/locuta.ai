@@ -238,20 +238,18 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
               <p className="text-slate-600 mb-6">
                 Click below to open Cal.com and pick your preferred time slot.
               </p>
-
-              href="https://cal.com/latasha-ukey/founder-feedback"
-                <a
-                  href="https://cal.com/latasha-ukey/founder-feedback"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e: React.MouseEvent<HTMLAnchorElement>) => {
-                    e.preventDefault();
-                    window.open('https://cal.com/latasha-ukey/founder-feedback', '_blank');
-                  }}
-                  className="inline-block bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-[1.02] transition-all cursor-pointer"
-                >
-                  Book Your Time Slot
-                </a>
+              <a
+                href="https://cal.com/latasha-ukey/founder-feedback"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e: React.MouseEvent<HTMLAnchorElement>) => {
+                  e.preventDefault();
+                  window.open('https://cal.com/latasha-ukey/founder-feedback', '_blank');
+                }}
+                className="inline-block bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-[1.02] transition-all cursor-pointer"
+              >
+                🗓️ Book Your Time Slot
+              </a>
 
               <div className="mt-8 bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
                 <p className="text-sm text-slate-700 mb-4">
