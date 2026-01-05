@@ -10,7 +10,7 @@ interface FounderCallModalProps {
 }
 
 export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: FounderCallModalProps) {
-  const [step, setStep] = useState<'form' | 'booking' | 'success'>('form')
+  const [step, setStep] = useState<'form' | 'success'>('form')
   const [loading, setLoading] = useState(false)
   const [userId, setUserId] = useState<string>('')
   
@@ -91,8 +91,13 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
         })
       })
 
-      setStep('booking')
       onBooked()
+      
+      window.open('https://cal.com/latasha-ukey/founder-feedback', '_blank')
+      
+      setTimeout(() => {
+        setStep('success')
+      }, 1000)
       
     } catch (error) {
       console.error('Error:', error)
@@ -102,24 +107,19 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
     }
   }
 
-  const openCalendarBooking = () => {
-    const calUrl = 'https://cal.com/latasha-ukey/founder-feedback'
-    window.open(calUrl, '_blank', 'noopener,noreferrer')
-  }
-
   if (step === 'success') {
     return (
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
         <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl">
-          <div className="text-6xl mb-4 animate-bounce">🎉</div>
+          <div className="text-6xl mb-4">🎉</div>
           <h2 className="text-3xl font-bold text-slate-900 mb-3">
-            You are All Set!
+            Cal.com Opened!
           </h2>
           <p className="text-slate-600 mb-4">
-            Check your email for the meeting confirmation and link.
+            Please book your time slot in the new tab that just opened.
           </p>
-          <p className="text-sm text-purple-600 font-semibold mb-6">
-            Looking forward to speaking with you!
+          <p className="text-sm text-slate-500 mb-6">
+            After booking, you will receive a confirmation email with the meeting link.
           </p>
           <button
             onClick={onClose}
@@ -157,129 +157,63 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-            step === 'form' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-600'
-          }`}>
-            1
-          </div>
-          <div className="w-12 h-1 bg-gray-200"></div>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-            step === 'booking' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-600'
-          }`}>
-            2
-          </div>
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
+          <p className="text-sm text-slate-700 leading-relaxed">
+            <strong>This is purely for feedback.</strong> Share your experience and get 1 year free unlimited access!
+          </p>
         </div>
 
-        {step === 'form' && (
-          <>
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
-              <p className="text-sm text-slate-700 leading-relaxed">
-                <strong>This is purely for feedback.</strong> Share your experience and get 1 year free unlimited access!
-              </p>
-            </div>
+        <form onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Your Name *
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition"
+              placeholder="John Doe"
+            />
+          </div>
 
-            <form onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Your Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition"
-                  placeholder="John Doe"
-                />
-              </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Email *
+            </label>
+            <input
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition"
+              placeholder="you@example.com"
+            />
+          </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition"
-                  placeholder="you@example.com"
-                />
-              </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              What speaking challenge are you facing? *
+            </label>
+            <textarea
+              required
+              value={formData.speaking_challenge}
+              onChange={(e) => setFormData({ ...formData, speaking_challenge: e.target.value })}
+              rows={3}
+              className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition resize-none"
+              placeholder="E.g., I struggle with filler words during presentations..."
+            />
+          </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  What speaking challenge are you facing? *
-                </label>
-                <textarea
-                  required
-                  value={formData.speaking_challenge}
-                  onChange={(e) => setFormData({ ...formData, speaking_challenge: e.target.value })}
-                  rows={3}
-                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition resize-none"
-                  placeholder="E.g., I struggle with filler words during presentations..."
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50"
-              >
-                {loading ? 'Saving...' : 'Next: Pick Your Time'}
-              </button>
-            </form>
-          </>
-        )}
-
-        {step === 'booking' && (
-          <>
-            <div className="text-center">
-              <div className="text-6xl mb-4">📅</div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-3">
-                Almost Done!
-              </h3>
-              <p className="text-slate-600 mb-6">
-                Click below to open Cal.com and pick your preferred time slot.
-              </p>
-
-              <button
-                onClick={openCalendarBooking}
-                className="inline-block bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-[1.02] transition-all cursor-pointer"
-              >
-                🗓️ Book Your Time Slot
-              </button>
-
-              <div className="mt-8 bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
-                <p className="text-sm text-slate-700 mb-4">
-                  <strong>What happens next:</strong>
-                </p>
-                <ol className="text-left text-sm text-slate-600 space-y-2">
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-600 font-bold">1.</span>
-                    <span>Pick your preferred time slot on Cal.com</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-600 font-bold">2.</span>
-                    <span>You will receive a confirmation email with meeting link</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-600 font-bold">3.</span>
-                    <span>After our call, get your 1 year free access!</span>
-                  </li>
-                </ol>
-              </div>
-
-              <button
-                onClick={() => setStep('success')}
-                className="mt-6 text-purple-600 hover:text-purple-700 font-semibold text-sm"
-              >
-                I have already booked
-              </button>
-            </div>
-          </>
-        )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50"
+          >
+            {loading ? 'Opening Cal.com...' : 'Book Your Call →'}
+          </button>
+        </form>
       </div>
     </div>
   )
