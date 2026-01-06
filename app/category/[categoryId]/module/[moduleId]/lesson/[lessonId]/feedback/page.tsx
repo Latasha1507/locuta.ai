@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import SessionRemainingNotice from '@/components/SessionRemainingNotice'
 import FeedbackWithPopup from '@/components/FeedbackWithPopup'
+import FeedbackPageClient from '@/components/FeedbackPageClient'
 
 export default async function FeedbackPage({
   params,
@@ -386,6 +387,18 @@ export default async function FeedbackPage({
             ← Back to Lessons
           </Link>
         </div>
+
+        {/* Rating Modal Client Component */}
+        <FeedbackPageClient
+          categoryId={categoryId}
+          moduleId={moduleId}
+          lessonId={lessonId}
+          sessionId={sessionId}
+          session={session}
+          feedback={feedback}
+          score={score}
+          userId={user.id}
+        />
       </main>
     </div>
   )
