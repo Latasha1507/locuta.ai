@@ -179,7 +179,7 @@ export default async function HomePage() {
               href="/auth/signup"
               className="ml-2 px-5 py-2 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-lg font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-400"
             >
-              Try 14 Days Free 🎁
+              Try 14 Days Free
             </Link>
             </div>
             
@@ -212,7 +212,7 @@ export default async function HomePage() {
                   href="/auth/signup"
                   className="px-5 py-2 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-lg font-bold shadow-lg hover:shadow-xl transition-all duration-400 text-center"
                 >
-                  Try 14 Days Free 🎁
+                  Try 14 Days Free
                 </Link>
               </div>
             </nav>
@@ -241,7 +241,7 @@ export default async function HomePage() {
   href="/auth/signup"
   className="flex-1 text-center bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-400 relative min-h-[56px] flex items-center justify-center"
 >
-  Start Your 14-Day Free Trial <span aria-hidden>🚀</span>
+  Start Your 14-Day Free Trial <span aria-hidden>Start</span>
   <span className="absolute inset-0 rounded-xl bg-white/10 pointer-events-none opacity-0 hover:opacity-100 transition-opacity duration-500" />
 </Link>
             <Link
@@ -623,7 +623,7 @@ export default async function HomePage() {
   href="/auth/signup"
   className="inline-block bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-12 py-5 rounded-xl font-bold text-xl hover:shadow-2xl hover:scale-105 transition-all"
 >
-  Try 14 Days Free - No Card Required 🚀
+  Try 14 Days Free - No Card Required
 </Link>
 <p className="text-gray-500 mt-4 text-sm">
   14-day free trial • 10 sessions per day • Cancel anytime
