@@ -24,7 +24,14 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setError(error.message)
+      // Provide more helpful error messages
+      if (error.message.includes('Email not confirmed')) {
+        setError('Please verify your email before logging in. Check your inbox for the confirmation link.')
+      } else if (error.message.includes('Invalid login credentials')) {
+        setError('Invalid email or password. Please check your credentials and try again.')
+      } else {
+        setError(error.message)
+      }
       setLoading(false)
     } else {
       router.push('/dashboard')
