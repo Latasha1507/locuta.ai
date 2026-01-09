@@ -19,31 +19,52 @@ export default function SignupPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-  
-    console.log('🔵 Starting signup with:', { email, fullName })
-    console.log('🔵 Redirect URL will be:', `${window.location.origin}/auth/callback`)
-  
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
+
+    console.log('🔵 Starting signup process...')
+    console.log('🔵 Email:', email)
+    console.log('🔵 Password length:', password.length)
+    console.log('🔵 Full name:', fullName)
+    console.log('🔵 Origin:', window.location.origin)
+    console.log('🔵 Redirect URL:', `${window.location.origin}/auth/callback`)
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-  
-    console.log('🔵 Signup response:', { data, error })
-  
-    if (error) {
-      console.error('❌ Signup error:', error)
-      setError(error.message)
+      })
+
+      console.log('🔵 Supabase response received')
+      console.log('🔵 Data:', JSON.stringify(data, null, 2))
+      console.log('🔵 Error:', JSON.stringify(error, null, 2))
+
+      if (error) {
+        console.error('❌ Signup error:', error.message, error.status)
+        setError(error.message)
+        setLoading(false)
+        return
+      }
+
+      if (data.user) {
+        console.log('✅ User created:', data.user.id)
+        console.log('✅ User email:', data.user.email)
+        console.log('✅ Email confirmed:', data.user.email_confirmed_at)
+        console.log('✅ Session exists:', !!data.session)
+        setSuccess(true)
+      } else {
+        console.warn('⚠️ No user in response but no error either')
+        setError('Signup failed. Please try again.')
+      }
+      
       setLoading(false)
-    } else {
-      console.log('✅ Signup successful, user:', data.user)
-      console.log('✅ Session:', data.session)
-      setSuccess(true)
+    } catch (err) {
+      console.error('❌ Caught exception during signup:', err)
+      setError('An unexpected error occurred. Please try again.')
       setLoading(false)
     }
   }
@@ -60,6 +81,21 @@ export default function SignupPage() {
     if (error) {
       setError(error.message)
       setLoading(false)
+    }
+  }
+
+  const testSupabaseConnection = async () => {
+    console.log('🧪 Testing Supabase connection...')
+    console.log('🧪 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log('🧪 Has Anon Key:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    
+    try {
+      const { data, error } = await supabase.auth.getSession()
+      console.log('🧪 Session check:', { data, error })
+      alert('Supabase connected! Check console for details.')
+    } catch (err) {
+      console.error('🧪 Connection failed:', err)
+      alert('Supabase connection failed! Check console.')
     }
   }
 
@@ -150,6 +186,14 @@ export default function SignupPage() {
               <p className="mt-1 text-xs text-gray-500">Must be at least 6 characters</p>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={testSupabaseConnection}
+            className="w-full py-2 px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition mb-2"
+          >
+            🧪 Test Supabase Connection
+          </button>
 
           <button
             type="submit"
