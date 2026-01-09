@@ -19,8 +19,11 @@ export default function SignupPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-
-    const { error } = await supabase.auth.signUp({
+  
+    console.log('🔵 Starting signup with:', { email, fullName })
+    console.log('🔵 Redirect URL will be:', `${window.location.origin}/auth/callback`)
+  
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -30,11 +33,16 @@ export default function SignupPage() {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     })
-
+  
+    console.log('🔵 Signup response:', { data, error })
+  
     if (error) {
+      console.error('❌ Signup error:', error)
       setError(error.message)
       setLoading(false)
     } else {
+      console.log('✅ Signup successful, user:', data.user)
+      console.log('✅ Session:', data.session)
       setSuccess(true)
       setLoading(false)
     }
