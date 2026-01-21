@@ -48,7 +48,7 @@ export default function TrialWelcomeModal({ onClose }: TrialWelcomeModalProps) {
             <div className="flex items-center justify-center gap-3">
               <span className="text-3xl">📅</span>
               <div className="text-left">
-                <p className="text-xl font-bold text-indigo-700">14 Days</p>
+                <p className="text-xl font-bold text-indigo-700">30 Days</p>
                 <p className="text-sm text-slate-600">Full access</p>
               </div>
             </div>

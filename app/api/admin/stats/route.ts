@@ -11,7 +11,6 @@ export async function GET() {
     if (!user || !user.user_metadata?.is_admin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
-
     // Get stats
     const { data: sessions } = await supabase
       .from('sessions')

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link";
 
 // Helper for floating 3D decorative shapes (tailwind + styles only)
-function FloatingShapes() {
+function FloatingShapes()
   // For this static SSR page, we'll just render animated elements via Tailwind's animation utilities and custom style attribute
   return (
     <>
@@ -76,7 +76,6 @@ function Feature3DShape({ type }: { type: "cube" | "sphere" | "pyramid" }) {
       );
   }
 }
-
 // 3D stepper for "How It Works"
 function Step3D({ number, title, desc, last }: { number: number; title: string; desc: string; last?: boolean }) {
   const shapeVariants = [
@@ -179,7 +178,7 @@ export default async function HomePage() {
               href="/auth/signup"
               className="ml-2 px-5 py-2 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-lg font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-400"
             >
-              Try 14 Days Free
+              Get Early Access
             </Link>
             </div>
             
@@ -212,7 +211,7 @@ export default async function HomePage() {
                   href="/auth/signup"
                   className="px-5 py-2 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-lg font-bold shadow-lg hover:shadow-xl transition-all duration-400 text-center"
                 >
-                  Try 14 Days Free
+                  Get Early Access
                 </Link>
               </div>
             </nav>
@@ -623,7 +622,7 @@ export default async function HomePage() {
   href="/auth/signup"
   className="inline-block bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-12 py-5 rounded-xl font-bold text-xl hover:shadow-2xl hover:scale-105 transition-all"
 >
-  Try 14 Days Free - No Card Required
+  Get Early Access - No Card Required
 </Link>
 <p className="text-gray-500 mt-4 text-sm">
   14-day free trial • 10 sessions per day • Cancel anytime

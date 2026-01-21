@@ -5,7 +5,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate') || new Date().toISOString()
     
-    // Calculate end date (14 days from start)
+    // Calculate end date (30 days from start)
     const start = new Date(startDate)
     const end = new Date(start)
     end.setDate(end.getDate() + 14)

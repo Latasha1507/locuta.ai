@@ -43,7 +43,7 @@ export async function checkSessionLimit(userId: string): Promise<SessionLimitChe
   const daysSinceStart = Math.floor((Date.now() - trialStarted.getTime()) / (1000 * 60 * 60 * 24))
   const daysRemaining = Math.max(0, 14 - daysSinceStart)
   
-  // Check if trial expired (14 days)
+  // Check if trial expired (30 days)
   if (daysSinceStart >= 14) {
     return {
       allowed: false,
