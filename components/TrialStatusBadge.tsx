@@ -14,11 +14,18 @@ export default function TrialStatusBadge({ userId }: TrialStatusBadgeProps) {
     isActive: boolean
   } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     const fetchTrialStatus = async () => {
       try {
         const supabase = createClient()
+
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user?.user_metadata?.is_admin === true) {
+          setIsAdmin(true)
+          return
+        }
         
         const { data: profile, error } = await supabase
           .from('profiles')
@@ -59,6 +66,8 @@ export default function TrialStatusBadge({ userId }: TrialStatusBadgeProps) {
 
     fetchTrialStatus()
   }, [userId])
+
+  if (isAdmin) return null
 
   if (loading) {
     return (

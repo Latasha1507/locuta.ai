@@ -11,10 +11,17 @@ interface SessionRemainingNoticeProps {
 export default function SessionRemainingNotice({ userId }: SessionRemainingNoticeProps) {
   const [sessionsRemaining, setSessionsRemaining] = useState<number | null>(null)
   const [planType, setPlanType] = useState<string>('trial')
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     const loadSessionInfo = async () => {
       const supabase = createClient()
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.user_metadata?.is_admin === true) {
+        setIsAdmin(true)
+        return
+      }
       
       const { data: profile } = await supabase
         .from('profiles')
@@ -36,6 +43,9 @@ export default function SessionRemainingNotice({ userId }: SessionRemainingNotic
     
     loadSessionInfo()
   }, [userId])
+
+  // Don't show for admins (admins should not see trial nags while testing)
+  if (isAdmin) return null
 
   // Don't show for paid users
   if (planType !== 'trial') return null

@@ -213,6 +213,12 @@ export default function PracticePage() {
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) return false
+
+    // Admins should never be blocked by free trial / session limits (needed for testing).
+    if (user.user_metadata?.is_admin === true) {
+      setSessionsRemaining(999)
+      return true
+    }
     
     const limitCheck = await checkSessionLimit(user.id)
     
