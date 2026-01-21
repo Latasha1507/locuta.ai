@@ -54,7 +54,7 @@ const PricingPage = () => {
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-5xl font-bold text-gray-900">$0</span>
                   </div>
-                  <p className="text-gray-600 font-medium">14 days, then choose a plan</p>
+                  <p className="text-gray-600 font-medium">, then choose a plan</p>
                 </div>
 
                 <Link
