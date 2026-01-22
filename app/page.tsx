@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link";
 
 // Helper for floating 3D decorative shapes (tailwind + styles only)
-function FloatingShapes()
+function FloatingShapes() {
   // For this static SSR page, we'll just render animated elements via Tailwind's animation utilities and custom style attribute
   return (
     <>

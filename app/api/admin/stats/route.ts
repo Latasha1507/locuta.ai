@@ -26,9 +26,9 @@ export async function GET() {
 
     const totalUsers = userCount || 0
     const totalSessions = sessions?.length || 0
-    const totalCompleted = progress?.filter(p => p.completed).length || 0
+    const totalCompleted = progress?.filter((p: { completed: boolean }) => p.completed).length || 0
     const avgScore = sessions?.length 
-      ? sessions.reduce((acc, s) => acc + (s.feedback?.overall_score || 0), 0) / sessions.length
+      ? sessions.reduce((acc: number, s: { feedback?: { overall_score?: number } }) => acc + (s.feedback?.overall_score || 0), 0) / sessions.length
       : 0
 
     return NextResponse.json({
