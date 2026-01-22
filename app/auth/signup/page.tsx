@@ -83,22 +83,6 @@ export default function SignupPage() {
       setLoading(false)
     }
   }
-
-  const testSupabaseConnection = async () => {
-    console.log('🧪 Testing Supabase connection...')
-    console.log('🧪 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-    console.log('🧪 Has Anon Key:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-    
-    try {
-      const { data, error } = await supabase.auth.getSession()
-      console.log('🧪 Session check:', { data, error })
-      alert('Supabase connected! Check console for details.')
-    } catch (err) {
-      console.error('🧪 Connection failed:', err)
-      alert('Supabase connection failed! Check console.')
-    }
-  }
-
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -186,14 +170,6 @@ export default function SignupPage() {
               <p className="mt-1 text-xs text-gray-500">Must be at least 6 characters</p>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={testSupabaseConnection}
-            className="w-full py-2 px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition mb-2"
-          >
-            🧪 Test Supabase Connection
-          </button>
 
           <button
             type="submit"
