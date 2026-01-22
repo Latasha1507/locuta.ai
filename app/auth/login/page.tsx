@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 export default function LoginPage() {
@@ -11,7 +11,20 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
+
+  // Check for error in URL query parameters (from OAuth callback)
+  useEffect(() => {
+    const errorParam = searchParams.get('error')
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam))
+      // Clean up URL by removing error parameter
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete('error')
+      router.replace(newUrl.pathname + newUrl.search)
+    }
+  }, [searchParams, router])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,15 +53,44 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     setLoading(true)
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
+    setError('')
+    
+    console.log('🔵 Starting Google OAuth login...')
+    console.log('🔵 Redirect URL:', `${window.location.origin}/auth/callback`)
 
-    if (error) {
-      setError(error.message)
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      })
+
+      if (error) {
+        console.error('❌ Google OAuth error:', error)
+        setError(error.message || 'Failed to initiate Google sign-in. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      // If we get a URL, redirect to Google OAuth
+      if (data?.url) {
+        console.log('✅ Google OAuth redirect URL received')
+        // Redirect to Google OAuth page
+        window.location.href = data.url
+        // Don't set loading to false as the page will redirect
+      } else {
+        console.warn('⚠️ No redirect URL in OAuth response')
+        setError('Failed to initiate Google sign-in. Please try again.')
+        setLoading(false)
+      }
+    } catch (err) {
+      console.error('❌ Exception during Google OAuth:', err)
+      setError('An unexpected error occurred. Please try again.')
       setLoading(false)
     }
   }

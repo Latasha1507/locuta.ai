@@ -4,12 +4,46 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const error = requestUrl.searchParams.get('error')
+  const errorDescription = requestUrl.searchParams.get('error_description')
 
-  if (code) {
+  // Handle OAuth errors
+  if (error) {
+    console.error('❌ OAuth error:', error, errorDescription)
+    return NextResponse.redirect(
+      new URL(`/auth/login?error=${encodeURIComponent(errorDescription || error)}`, request.url)
+    )
+  }
+
+  // Handle missing code
+  if (!code) {
+    console.error('❌ No code parameter in callback')
+    return NextResponse.redirect(
+      new URL('/auth/login?error=Authentication failed. Please try again.', request.url)
+    )
+  }
+
+  try {
     const supabase = await createClient()
-    await supabase.auth.exchangeCodeForSession(code)
+    const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (exchangeError) {
+      console.error('❌ Error exchanging code for session:', exchangeError)
+      return NextResponse.redirect(
+        new URL(`/auth/login?error=${encodeURIComponent(exchangeError.message)}`, request.url)
+      )
+    }
+
+    if (!data.session) {
+      console.error('❌ No session after code exchange')
+      return NextResponse.redirect(
+        new URL('/auth/login?error=Authentication failed. Please try again.', request.url)
+      )
+    }
+
+    console.log('✅ OAuth callback successful, user:', data.user?.id)
     
-    // ⭐ NEW: Initialize trial for new users
+    // ⭐ Initialize trial for new users
     const { data: { user } } = await supabase.auth.getUser()
     
     if (user) {
@@ -34,8 +68,13 @@ export async function GET(request: Request) {
         console.log('✅ Trial initialized for user:', user.id)
       }
     }
-  }
 
-  // Redirect to dashboard after successful auth
-  return NextResponse.redirect(new URL('/dashboard', request.url))
+    // Redirect to dashboard after successful auth
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  } catch (err) {
+    console.error('❌ Unexpected error in callback:', err)
+    return NextResponse.redirect(
+      new URL('/auth/login?error=An unexpected error occurred. Please try again.', request.url)
+    )
+  }
 }

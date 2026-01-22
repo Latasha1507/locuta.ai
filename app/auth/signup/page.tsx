@@ -71,15 +71,44 @@ export default function SignupPage() {
 
   const handleGoogleSignup = async () => {
     setLoading(true)
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
+    setError('')
+    
+    console.log('🔵 Starting Google OAuth signup...')
+    console.log('🔵 Redirect URL:', `${window.location.origin}/auth/callback`)
 
-    if (error) {
-      setError(error.message)
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      })
+
+      if (error) {
+        console.error('❌ Google OAuth error:', error)
+        setError(error.message || 'Failed to initiate Google sign-in. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      // If we get a URL, redirect to Google OAuth
+      if (data?.url) {
+        console.log('✅ Google OAuth redirect URL received')
+        // Redirect to Google OAuth page
+        window.location.href = data.url
+        // Don't set loading to false as the page will redirect
+      } else {
+        console.warn('⚠️ No redirect URL in OAuth response')
+        setError('Failed to initiate Google sign-in. Please try again.')
+        setLoading(false)
+      }
+    } catch (err) {
+      console.error('❌ Exception during Google OAuth:', err)
+      setError('An unexpected error occurred. Please try again.')
       setLoading(false)
     }
   }
