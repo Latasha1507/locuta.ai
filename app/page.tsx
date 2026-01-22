@@ -240,7 +240,7 @@ export default async function HomePage() {
   href="/auth/signup"
   className="flex-1 text-center bg-gradient-to-r from-violet-500 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-400 relative min-h-[56px] flex items-center justify-center"
 >
-  Start Your 14-Day Free Trial <span aria-hidden></span>
+  Start Your 30-Day Free Trial <span aria-hidden></span>
   <span className="absolute inset-0 rounded-xl bg-white/10 pointer-events-none opacity-0 hover:opacity-100 transition-opacity duration-500" />
 </Link>
             <Link
@@ -625,7 +625,7 @@ export default async function HomePage() {
   Get Early Access - No Card Required
 </Link>
 <p className="text-gray-500 mt-4 text-sm">
-  14-day free trial • 10 sessions per day • Cancel anytime
+  30-day free trial • 10 sessions per day • Cancel anytime
 </p>
           </div>
         </div>

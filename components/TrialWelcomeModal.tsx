@@ -32,7 +32,7 @@ export default function TrialWelcomeModal({ onClose }: TrialWelcomeModalProps) {
         
         {/* Subheading */}
         <p className="text-lg text-slate-600 mb-6">
-          Your 14-day free trial starts now
+          Your 30-day free trial starts now
         </p>
 
         {/* Trial Details Box */}

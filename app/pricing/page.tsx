@@ -47,7 +47,7 @@ const PricingPage = () => {
                   <div className="w-14 h-14 bg-gradient-to-br from-gray-100 to-indigo-100 rounded-2xl flex items-center justify-center shadow-md">
                     <Zap className="w-7 h-7 text-indigo-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900">14-Day Free Trial</h3>
+                  <h3 className="text-2xl font-bold text-gray-900">30-Day Free Trial</h3>
                 </div>
                 
                 <div className="mb-8">
