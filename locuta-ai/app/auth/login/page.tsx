@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Suspense } from 'react'
 
+// ✅ Inner component uses useSearchParams — must be inside Suspense
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -15,7 +15,6 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const supabase = createClient()
 
-  // Show OAuth errors passed via URL (e.g., from callback route)
   const authError = searchParams.get('error')
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -72,14 +71,12 @@ function LoginForm() {
         </div>
 
         <form onSubmit={handleEmailLogin} className="mt-8 space-y-6">
-          {/* OAuth error from callback */}
           {authError && (
             <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
               {authError}
             </div>
           )}
 
-          {/* Form error */}
           {error && (
             <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
               {error}
@@ -161,10 +158,14 @@ function LoginForm() {
   )
 }
 
-// useSearchParams requires Suspense boundary in Next.js
+// ✅ Default export wraps LoginForm in Suspense — required by Next.js for useSearchParams
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      </div>
+    }>
       <LoginForm />
     </Suspense>
   )
