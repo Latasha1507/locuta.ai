@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function PracticePage() {
+function PracticePageContent() {
   const params = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -42,9 +42,7 @@ export default function PracticePage() {
         body: JSON.stringify({ tone, categoryId, moduleId, lessonId }),
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to load intro')
-      }
+      if (!response.ok) throw new Error('Failed to load intro')
 
       const data = await response.json()
       
@@ -74,9 +72,7 @@ export default function PracticePage() {
   }
 
   const skipToRecording = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-    }
+    if (audioRef.current) audioRef.current.pause()
     setIsPlaying(false)
     setStep('recording')
   }
@@ -228,7 +224,6 @@ export default function PracticePage() {
 
         {step === 'recording' && (
           <div className="space-y-6">
-            {/* Your Task Card - Always visible at the top */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg p-6 border-2 border-blue-200">
               <div className="flex items-start justify-between mb-4">
                 <h3 className="text-xl font-bold text-blue-900 flex items-center gap-2">
@@ -249,7 +244,6 @@ export default function PracticePage() {
               )}
             </div>
 
-            {/* Recording Card */}
             <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
               {!isRecording && !audioBlob && (
                 <>
@@ -302,5 +296,17 @@ export default function PracticePage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function PracticePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-[#edf2f7] to-[#f7f9fb]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      </div>
+    }>
+      <PracticePageContent />
+    </Suspense>
   )
 }
