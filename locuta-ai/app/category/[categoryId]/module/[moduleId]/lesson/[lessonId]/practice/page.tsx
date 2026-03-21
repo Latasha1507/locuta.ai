@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 function PracticePageContent() {
   const params = useParams()
   const searchParams = useSearchParams()
