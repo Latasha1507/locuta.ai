@@ -20,7 +20,7 @@ export const lc = {
   ink: '#4b4b4b',
   muted: '#7d8a75',
   faint: '#98a690',
-  pageBg: '#f4faf0',
+  pageBg: '#fbfdfa',
   cardBorder: '#e8ece2',
   sidebarBorder: '#e6eede',
 } as const

@@ -573,7 +573,7 @@ export function LandingPage() {
       </section>
 
       {/* PRICING */}
-      <section id="pricing" className="scroll-mt-20 px-[18px] py-11 lg:px-10 lg:py-16" style={{ background: '#eef7e8' }}>
+      <section id="pricing" className="scroll-mt-20 px-[18px] py-11 lg:px-10 lg:py-16" style={{ background: '#f4f9ef' }}>
         <div className="mb-10 text-center">
           <Eyebrow>JOIN THE CLUB</Eyebrow>
           <SectionHeading>Start free. Keep improving.</SectionHeading>
@@ -727,7 +727,7 @@ export function LandingPage() {
       <footer style={{ background: lc.pageBg }} className="px-[14px] pt-6 lg:px-10 lg:pt-8">
         <div
           className="mx-auto flex max-w-[1100px] flex-col items-center justify-between gap-[18px] px-[22px] py-[26px] text-center lg:flex-row lg:gap-7 lg:px-10 lg:py-8 lg:text-left"
-          style={{ background: '#eef7e8', border: '2px solid #d9e8cd', borderRadius: 26, marginTop: 0 }}
+          style={{ background: '#f4f9ef', border: '2px solid #e0ebd6', borderRadius: 26, marginTop: 0 }}
         >
           <div>
             <div className="text-[26px] lg:text-[34px]" style={{ fontFamily: fontDisplay, fontWeight: 800, color: lc.ink, lineHeight: 1.05 }}>

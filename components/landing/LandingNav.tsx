@@ -21,7 +21,7 @@ export function LandingNav() {
         position: 'sticky',
         top: 0,
         zIndex: 40,
-        background: 'rgba(244,250,240,.92)',
+        background: 'rgba(251,253,250,.92)',
         backdropFilter: 'blur(10px)',
         borderBottom: `2px solid ${lc.sidebarBorder}`,
       }}
