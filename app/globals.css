@@ -140,3 +140,7 @@ html {
     transition-duration: 0.01ms !important;
   }
 }
+
+@keyframes lp-spin {
+  to { transform: rotate(360deg); }
+}
