@@ -68,7 +68,6 @@ export function PracticeView(d: PracticeData) {
   // file and bills us for a long Whisper transcription.
   const maxSeconds = Math.min(180, Math.max(30, d.expectedDurationSec * 2))
 
-  const [phase, setPhase] = useState<'briefing' | 'ready'>('briefing')
   const [introLoading, setIntroLoading] = useState(false)
   const [loaderIdx, setLoaderIdx] = useState(0)
   const [introAudio, setIntroAudio] = useState('')
@@ -149,8 +148,7 @@ export function PracticeView(d: PracticeData) {
     return () => window.removeEventListener('beforeunload', handler)
   }, [rec, submitting])
 
-  const loadIntro = async () => {
-    setError(null)
+  const loadIntro = useCallback(async () => {
     setIntroLoading(true)
     try {
       const res = await fetch('/api/lesson-intro', {
@@ -174,10 +172,11 @@ export function PracticeView(d: PracticeData) {
       if (!res.ok) throw new Error('Could not load your coach right now.')
 
       const data = await res.json()
-      setGreetingAudio(data.greetingAudio || '')
-      setIntroAudio(data.audioBase64 || '')
+      // Prefer the streaming URL. base64 is only there for legacy rows or if
+      // the Storage upload failed — it can't stream, so it's the slow path.
+      setGreetingAudio(data.greetingAudioUrl || data.greetingAudio || '')
+      setIntroAudio(data.audioUrl || data.audioBase64 || '')
       setIntroTranscript(data.transcript || '')
-      setPhase('ready')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Try again.')
       trackError({
@@ -188,7 +187,20 @@ export function PracticeView(d: PracticeData) {
     } finally {
       setIntroLoading(false)
     }
-  }
+  }, [d.tone, d.categoryId, d.moduleId, d.lessonId])
+
+  // Fetch the coach briefing IN THE BACKGROUND as soon as the page opens.
+  // The task and the record button are already on screen (server-rendered), so
+  // this never blocks anyone: you can read the task and start recording while
+  // the audio is still being fetched. Previously this sat behind a
+  // "PLAY MY COACH BRIEFING" button and every user paid an 8-15s wait before
+  // they could do anything.
+  const introStarted = useRef(false)
+  useEffect(() => {
+    if (introStarted.current) return
+    introStarted.current = true
+    void loadIntro()
+  }, [loadIntro])
 
   const stopRecording = useCallback(() => {
     const r = recorderRef.current
@@ -378,7 +390,7 @@ export function PracticeView(d: PracticeData) {
     <div className="min-h-screen" style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}>
       <LandingIconSprite />
 
-      <main className="mx-auto flex w-full max-w-[760px] flex-col gap-4 px-4 pb-11 pt-5 lg:gap-5 lg:px-6 lg:pb-14 lg:pt-8">
+      <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-3 px-4 pb-10 pt-4 lg:gap-4 lg:px-8 lg:pb-8 lg:pt-5">
         {/* HEADER */}
         <div
           className="flex items-center gap-4 p-4 lg:px-6 lg:py-[18px]"
@@ -470,44 +482,14 @@ export function PracticeView(d: PracticeData) {
           </div>
         )}
 
-        {/* STEP 1 — COACH BRIEFING */}
-        <section
-          className="p-[18px] lg:p-6"
-          style={{ background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 22, boxShadow: `0 5px 0 ${lc.cardBorder}` }}
-        >
-          <StepHead n={1} title="Hear your coach" subtitle={`A quick briefing in your ${d.tone} coach's voice`} />
+        {/* Two columns on desktop: everything you need (task + mic) is on one
+            screen, no scrolling. Stacks on mobile. */}
+        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-4">
 
-          {phase === 'briefing' ? (
-            <button
-              type="button"
-              onClick={loadIntro}
-              disabled={introLoading}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                background: introLoading ? '#a8ddb9' : lc.green,
-                color: '#fff',
-                border: 0,
-                padding: 15,
-                borderRadius: 15,
-                fontFamily: fontDisplay,
-                fontWeight: 800,
-                fontSize: 14.5,
-                cursor: introLoading ? 'wait' : 'pointer',
-                boxShadow: `0 5px 0 ${introLoading ? '#8fc9a1' : lc.greenDark}`,
-              }}
-            >
-              {introLoading ? INTRO_LOADING[loaderIdx] : 'PLAY MY COACH BRIEFING'}
-            </button>
-          ) : (
-            <AudioPlayer audio={audio} transcript={introTranscript} />
-          )}
-        </section>
+        {/* LEFT COLUMN — the lesson: task first, then the coach briefing */}
+        <div className="flex flex-col gap-3 lg:gap-4">
 
-        {/* STEP 2 — TASK (always visible; no waiting on the API to read it) */}
+        {/* TASK — server-rendered, on screen the instant the page paints. */}
         <section
           className="p-[18px] lg:px-6 lg:py-5"
           style={{ background: '#eef8ea', border: '2px solid #cfe9c6', borderRadius: 20, boxShadow: '0 5px 0 #d8ecd0' }}
@@ -544,6 +526,87 @@ export function PracticeView(d: PracticeData) {
             {d.practicePrompt}
           </p>
         </section>
+
+        {/* COACH BRIEFING — loads by itself in the background. */}
+        <section
+          className="p-[18px] lg:p-6"
+          style={{ background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 22, boxShadow: `0 5px 0 ${lc.cardBorder}` }}
+        >
+          <StepHead n={1} title="Hear your coach" subtitle={`A quick briefing in your ${d.tone} coach's voice`} />
+
+          {/* No gate: the audio loads by itself. While it's coming, we show a
+              quiet placeholder — never a button the user has to press first. */}
+          {introTranscript || audio.duration > 0 ? (
+            <AudioPlayer audio={audio} transcript={introTranscript} />
+          ) : introLoading ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                background: '#f6faf2',
+                border: `2px solid ${lc.cardBorder}`,
+                borderRadius: 16,
+                padding: '14px 16px',
+              }}
+            >
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  border: `3px solid ${lc.cardBorder}`,
+                  borderTopColor: lc.green,
+                  animation: 'lp-spin .8s linear infinite',
+                  flex: 'none',
+                }}
+              />
+              <span style={{ fontSize: 13, fontWeight: 700, color: lc.muted }}>
+                {INTRO_LOADING[loaderIdx]} — you can start recording without it.
+              </span>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                background: '#f6faf2',
+                border: `2px solid ${lc.cardBorder}`,
+                borderRadius: 16,
+                padding: '12px 16px',
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 700, color: lc.muted }}>
+                Coach audio didn&apos;t load. The lesson below still works.
+              </span>
+              <button
+                type="button"
+                onClick={() => void loadIntro()}
+                style={{
+                  background: '#fff',
+                  border: `2px solid ${lc.cardBorder}`,
+                  borderRadius: 10,
+                  padding: '7px 12px',
+                  fontFamily: fontDisplay,
+                  fontWeight: 800,
+                  fontSize: 12,
+                  color: lc.greenDark,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+        </section>
+
+        </div>
+
+        {/* RIGHT COLUMN — the recorder, always in view next to the task */}
+        <div className="lg:sticky lg:top-4">
 
         {/* STEP 3 — RECORD */}
         <section
@@ -788,6 +851,8 @@ export function PracticeView(d: PracticeData) {
             </p>
           )}
         </section>
+        </div>
+        </div>
       </main>
 
       {showUpgrade && <UpgradeModal reason={upgradeReason} onClose={() => setShowUpgrade(false)} />}

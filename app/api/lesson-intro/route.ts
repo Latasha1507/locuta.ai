@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { checkSessionLimitServer } from '@/lib/check-session-limit-server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { introPath, greetingPath, uploadAudio, audioExists, publicUrl } from '@/lib/audio-storage'
+import { createClient as createServiceClient, type SupabaseClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
@@ -69,34 +70,43 @@ const TONE_CHARACTERISTICS: Record<string, { goal: string; style: string; delive
 }
 
 // ⭐ NEW: Generate personalized greeting separately
-async function generatePersonalGreeting(userName: string | null, tone: string) {
+async function generatePersonalGreeting(
+  userName: string | null,
+  tone: string,
+  supabaseAdmin: SupabaseClient,
+) {
   if (!userName) {
-    return { text: '', audio: '' }
+    return { text: '', audio: '', audioUrl: '' }
   }
 
   const greetingText = `Hello, ${userName}.`
+  const path = greetingPath(userName, tone)
+
+  // Two people called "Latasha" on the Supportive coach share one object.
+  // A ~50ms existence check beats a ~700ms TTS call we've already paid for.
+  if (await audioExists(supabaseAdmin, path)) {
+    return { text: greetingText, audio: '', audioUrl: publicUrl(supabaseAdmin, path) }
+  }
+
   const voice = VOICE_MAP[tone] || 'shimmer'
-  
   const mp3Response = await getOpenAI().audio.speech.create({
-    model: 'tts-1-hd',
+    model: 'tts-1',
     voice: voice,
     input: greetingText,
-    speed: tone === 'Inspiring' ? 1.05 : tone === 'Bossy' ? 1.1 : tone === 'Supportive' ? 0.95 : 1.0
+    speed: tone === 'Inspiring' ? 1.05 : tone === 'Bossy' ? 1.1 : tone === 'Supportive' ? 0.95 : 1.0,
   })
 
   const buffer = Buffer.from(await mp3Response.arrayBuffer())
-  const audioBase64 = buffer.toString('base64')
+  const audioUrl = await uploadAudio(supabaseAdmin, path, buffer)
 
-  return { text: greetingText, audio: audioBase64 }
+  return {
+    text: greetingText,
+    // Only fall back to base64 if the upload failed.
+    audio: audioUrl ? '' : buffer.toString('base64'),
+    audioUrl: audioUrl ?? '',
+  }
 }
 
-// ⭐ NEW: Concatenate two base64 audio strings
-function concatenateAudioBase64(audio1: string, audio2: string): string {
-  // For now, we'll return them separately and handle in frontend
-  // Proper audio concatenation requires decoding, merging buffers, and re-encoding
-  // which is complex. Better to handle in frontend or return both separately
-  return JSON.stringify({ greeting: audio1, lesson: audio2 })
-}
 
 export async function POST(request: Request) {
   try {
@@ -155,21 +165,51 @@ export async function POST(request: Request) {
       .eq('tone', tone)
       .single()
 
-    // ⭐ STEP 2: If cached and used 5+ times, generate ONLY greeting in parallel
-    if (cachedIntro && cachedIntro.generation_count >= 5) {
-      console.log(`✅ Serving cached intro (${cachedIntro.generation_count} uses, saved API cost!)`)
-      
-      // Generate personalized greeting
-      const greeting = await generatePersonalGreeting(userName, tone)
-      
+    // ⭐ STEP 2: Serve from cache the moment we have one.
+    //
+    // LATENCY FIX: this used to require `generation_count >= 5`, meaning the
+    // first FIVE visitors to every (lesson x tone) combination each waited on a
+    // full GPT-4o + TTS round trip (~8-15s) — and we paid for all five — even
+    // though the audio had already been cached on the very first pass. The
+    // intro is identical for a given lesson+tone, so there is nothing to gain
+    // by regenerating it. Only the first visitor ever waits now.
+    if (cachedIntro?.intro_audio_url || cachedIntro?.intro_audio_base64) {
+      const path = introPath(categoryName, parseInt(moduleId), parseInt(lessonId), tone)
+
+      let audioUrl: string = cachedIntro.intro_audio_url ?? ''
+
+      // Legacy rows hold base64 and no URL. Migrate them to Storage the first
+      // time they're served, then never again — no separate backfill job needed.
+      if (!audioUrl && cachedIntro.intro_audio_base64) {
+        const migrated = await uploadAudio(
+          supabaseAdmin,
+          path,
+          Buffer.from(cachedIntro.intro_audio_base64, 'base64'),
+        )
+        if (migrated) {
+          audioUrl = migrated
+          await supabaseAdmin
+            .from('cached_lesson_intros')
+            .update({ intro_audio_url: migrated })
+            .eq('id', cachedIntro.id)
+          console.log('📦 Migrated cached intro to Storage:', path)
+        }
+      }
+
+      const greeting = await generatePersonalGreeting(userName, tone, supabaseAdmin)
+
       return NextResponse.json({
-        audioBase64: cachedIntro.intro_audio_base64,
+        // Preferred: a streaming URL. base64 stays only as a fallback for rows
+        // that failed to migrate.
+        audioUrl,
+        audioBase64: audioUrl ? '' : cachedIntro.intro_audio_base64,
+        greetingAudioUrl: greeting.audioUrl,
         greetingAudio: greeting.audio,
         greetingText: greeting.text,
         transcript: cachedIntro.intro_text,
         lessonTitle: cachedIntro.lesson_title,
         practice_prompt: cachedIntro.practice_prompt,
-        practice_example: ''
+        practice_example: '',
       })
     }
 
@@ -239,7 +279,7 @@ Remember: You're a ${tone} coach. Start DIRECTLY with the content (no greeting).
         temperature: 0.85,
         max_tokens: 300
       }),
-      generatePersonalGreeting(userName, tone)
+      generatePersonalGreeting(userName, tone, supabaseAdmin)
     ])
 
     const lessonContent = completion.choices[0].message.content || ''
@@ -247,21 +287,29 @@ Remember: You're a ${tone} coach. Start DIRECTLY with the content (no greeting).
 
     // Generate TTS for lesson content (without name)
     const mp3Response = await getOpenAI().audio.speech.create({
-      model: 'tts-1-hd',
+      model: 'tts-1', // was tts-1-hd: ~2x slower for no meaningful gain on a coaching voice
       voice: voice,
       input: lessonContent,
       speed: tone === 'Inspiring' ? 1.05 : tone === 'Bossy' ? 1.1 : tone === 'Supportive' ? 0.95 : 1.0
     })
 
     const buffer = Buffer.from(await mp3Response.arrayBuffer())
-    const audioBase64 = buffer.toString('base64')
+
+    // Push the mp3 to Storage so every future listener streams it from the CDN
+    // instead of pulling a base64 blob out of Postgres.
+    const path = introPath(categoryName, parseInt(moduleId), parseInt(lessonId), tone)
+    const audioUrl = await uploadAudio(supabaseAdmin, path, buffer)
+
+    // base64 is now only a fallback for when Storage isn't reachable.
+    const audioBase64 = audioUrl ? '' : buffer.toString('base64')
 
     // ⭐ STEP 4: Save to cache or increment count (NO name in cache)
     if (cachedIntro) {
       await supabaseAdmin
         .from('cached_lesson_intros')
-        .update({ 
+        .update({
           generation_count: cachedIntro.generation_count + 1,
+          intro_audio_url: audioUrl,
           updated_at: new Date().toISOString()
         })
         .eq('id', cachedIntro.id)
@@ -276,7 +324,8 @@ Remember: You're a ${tone} coach. Start DIRECTLY with the content (no greeting).
           level_number: parseInt(lessonId),
           tone: tone,
           intro_text: lessonContent, // WITHOUT name
-          intro_audio_base64: audioBase64, // WITHOUT name
+          intro_audio_url: audioUrl, // streams from the CDN
+          intro_audio_base64: audioBase64, // fallback only; '' when the upload worked
           practice_prompt: practicePrompt,
           lesson_title: levelTitle,
           generation_count: 1
@@ -285,12 +334,14 @@ Remember: You're a ${tone} coach. Start DIRECTLY with the content (no greeting).
       if (cacheError) {
         console.error('⚠️ Cache save failed (non-critical):', cacheError)
       } else {
-        console.log('💾 Created cache entry (1/5)')
+        console.log('💾 Created cache entry')
       }
     }
 
     return NextResponse.json({
+      audioUrl,
       audioBase64: audioBase64,
+      greetingAudioUrl: greeting.audioUrl,
       greetingAudio: greeting.audio,
       greetingText: greeting.text,
       transcript: lessonContent,

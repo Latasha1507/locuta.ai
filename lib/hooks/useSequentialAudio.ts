@@ -2,6 +2,18 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 
+/**
+ * Accepts either an https URL (preferred — streams, so playback starts after a
+ * few KB) or a raw base64 string (legacy fallback — cannot stream, the browser
+ * must decode the whole clip before any sound comes out).
+ */
+function toAudioSrc(value: string): string {
+  if (!value) return ''
+  return value.startsWith('http') || value.startsWith('/')
+    ? value
+    : `data:audio/mpeg;base64,${value}`
+}
+
 export function useSequentialAudio(greetingBase64: string, lessonBase64: string) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -15,7 +27,8 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
   // Initialize audio elements
   useEffect(() => {
     if (greetingBase64) {
-      const greetingAudio = new Audio(`data:audio/mpeg;base64,${greetingBase64}`)
+      const greetingAudio = new Audio(toAudioSrc(greetingBase64))
+      greetingAudio.preload = 'auto'
       greetingAudioRef.current = greetingAudio
       
       greetingAudio.addEventListener('loadedmetadata', () => {
@@ -24,7 +37,10 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
       })
     }
     if (lessonBase64) {
-      const lessonAudio = new Audio(`data:audio/mpeg;base64,${lessonBase64}`)
+      const lessonAudio = new Audio(toAudioSrc(lessonBase64))
+      // 'auto' lets the browser start buffering immediately, so hitting play
+      // is instant rather than waiting on a cold fetch.
+      lessonAudio.preload = 'auto'
       lessonAudioRef.current = lessonAudio
       
       lessonAudio.addEventListener('loadedmetadata', () => {
