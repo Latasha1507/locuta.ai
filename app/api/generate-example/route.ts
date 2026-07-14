@@ -5,9 +5,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazily constructed. Building the client at module scope throws during
+// import if OPENAI_API_KEY is missing, which turns a config problem into a
+// 500 on every request to the whole route (including the auth check).
+let _openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) throw new Error('OPENAI_API_KEY is not configured')
+    _openai = new OpenAI({ apiKey })
+  }
+  return _openai
+}
 
 const toneVoiceMap: { [key: string]: string } = {
   'Normal': 'shimmer',
@@ -71,7 +80,7 @@ export async function POST(request: NextRequest) {
     console.log(`📝 Generating example for: "${practicePrompt.substring(0, 50)}..."`)
 
     // Generate example text
-    const exampleResponse = await openai.chat.completions.create({
+    const exampleResponse = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { 
@@ -92,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     // Generate TTS audio
     const voiceToUse = toneVoiceMap[tone || session.tone || 'Normal'] || 'shimmer'
-    const audioResponse = await openai.audio.speech.create({
+    const audioResponse = await getOpenAI().audio.speech.create({
       model: 'tts-1',
       voice: voiceToUse as any,
       input: exampleText,

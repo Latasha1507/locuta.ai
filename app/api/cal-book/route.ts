@@ -2,7 +2,16 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY!)
+// Lazy for the same reason as the OpenAI client above.
+let _resend: Resend | null = null
+function getResend(): Resend {
+  if (!_resend) {
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey) throw new Error('RESEND_API_KEY is not configured')
+    _resend = new Resend(apiKey)
+  }
+  return _resend
+}
 
 export async function POST(request: Request) {
   try {
@@ -89,7 +98,7 @@ export async function POST(request: Request) {
     try {
       await Promise.all([
         // Email to founder
-        resend.emails.send({
+        getResend().emails.send({
           from: 'Locuta <onboarding@resend.dev>',
           to: process.env.FOUNDER_EMAIL!,
           subject: `🎯 New Founder Call: ${name} - ${meetingTime}`,
@@ -115,7 +124,7 @@ export async function POST(request: Request) {
         }),
 
         // Email to user
-        resend.emails.send({
+        getResend().emails.send({
           from: 'Locuta <onboarding@resend.dev>',
           to: email,
           subject: '🎉 Your Free 1-Year Access Call is Confirmed!',

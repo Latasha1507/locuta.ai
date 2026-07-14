@@ -6,5 +6,6 @@ export async function isAdminClient() {
   
   if (!user) return false
   
-  return user.user_metadata?.is_admin === true
+  // Display-only. The server (lib/admin.ts) is the actual gate.
+  return user.app_metadata?.is_admin === true
 }

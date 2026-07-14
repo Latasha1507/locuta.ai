@@ -1,11 +1,21 @@
 // app/api/feedback/route.ts
 import { createClient } from '@/lib/supabase/server'
+import { checkSessionLimitServer } from '@/lib/check-session-limit-server'
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazily constructed. Building the client at module scope throws during
+// import if OPENAI_API_KEY is missing, which turns a config problem into a
+// 500 on every request to the whole route (including the auth check).
+let _openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) throw new Error('OPENAI_API_KEY is not configured')
+    _openai = new OpenAI({ apiKey })
+  }
+  return _openai
+}
 
 const categoryMap: { [key: string]: string } = {
   'public-speaking': 'Public Speaking',
@@ -129,6 +139,29 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ User authenticated:', user.id)
 
+    // ---------------------------------------------------------------------
+    // SECURITY / COST: enforce the trial + daily limit HERE, on the server,
+    // before we spend anything on Whisper or GPT-4. The browser check in
+    // lib/check-session-limit.ts is only a UX affordance — anyone can POST
+    // straight to this route and skip it.
+    // ---------------------------------------------------------------------
+    const limit = await checkSessionLimitServer(user.id)
+    if (!limit.allowed) {
+      console.warn('⛔ Session blocked by limit:', limit.reason)
+      return NextResponse.json(
+        {
+          error:
+            limit.reason === 'trial_expired'
+              ? 'Your free trial has ended. Upgrade to keep practising.'
+              : "You've used all your practice sessions for today. Come back tomorrow, or upgrade for unlimited.",
+          reason: limit.reason,
+          daysRemaining: limit.daysRemaining,
+          sessionsRemainingToday: limit.sessionsRemainingToday,
+        },
+        { status: 429 },
+      )
+    }
+
     const categoryName = categoryMap[categoryId]
     const levelNumber = parseInt(lessonId)
 
@@ -158,7 +191,7 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Transcribe audio with FORCED ENGLISH
     console.log('🎤 Transcribing audio (English only)...')
-    const transcription = await openai.audio.transcriptions.create({
+    const transcription = await getOpenAI().audio.transcriptions.create({
       file: audioFile,
       model: 'whisper-1',
       language: 'en',
@@ -191,7 +224,7 @@ Create a natural, authentic example response that:
 
 Respond with ONLY the example speech text - no explanation, no meta-commentary.`
 
-    const aiExampleResponse = await openai.chat.completions.create({
+    const aiExampleResponse = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { 
@@ -213,7 +246,7 @@ Respond with ONLY the example speech text - no explanation, no meta-commentary.`
     // Step 3: Generate audio for AI example
     console.log('🔊 Generating AI audio...')
     const voice = toneVoiceMap[tone] || 'shimmer'
-    const aiAudioResponse = await openai.audio.speech.create({
+    const aiAudioResponse = await getOpenAI().audio.speech.create({
       model: 'tts-1',
       voice: voice as any,
       input: aiExampleText,
@@ -329,7 +362,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
 
 Be encouraging but honest. If non-English content detected, reduce overall score significantly.`
 
-    const feedbackResponse = await openai.chat.completions.create({
+    const feedbackResponse = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { 

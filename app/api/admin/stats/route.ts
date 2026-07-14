@@ -8,7 +8,8 @@ export async function GET() {
     // Get user
     const { data: { user } } = await supabase.auth.getUser()
     
-    if (!user || !user.user_metadata?.is_admin) {
+    // SECURITY: app_metadata (service-role only), NOT user_metadata (user-writable).
+    if (!user || user.app_metadata?.is_admin !== true) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
     // Get stats

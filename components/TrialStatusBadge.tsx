@@ -22,7 +22,7 @@ export default function TrialStatusBadge({ userId }: TrialStatusBadgeProps) {
         const supabase = createClient()
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (user?.user_metadata?.is_admin === true) {
+        if (user?.app_metadata?.is_admin === true) {
           setIsAdmin(true)
           return
         }

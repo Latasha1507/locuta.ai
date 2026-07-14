@@ -1,11 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
+import { checkSessionLimitServer } from '@/lib/check-session-limit-server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-})
+// Lazily constructed. Building the client at module scope throws during
+// import if OPENAI_API_KEY is missing, which turns a config problem into a
+// 500 on every request to the whole route (including the auth check).
+let _openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) throw new Error('OPENAI_API_KEY is not configured')
+    _openai = new OpenAI({ apiKey })
+  }
+  return _openai
+}
 
 const CATEGORY_MAP: Record<string, string> = {
   'public-speaking': 'Public Speaking',
@@ -67,7 +77,7 @@ async function generatePersonalGreeting(userName: string | null, tone: string) {
   const greetingText = `Hello, ${userName}.`
   const voice = VOICE_MAP[tone] || 'shimmer'
   
-  const mp3Response = await openai.audio.speech.create({
+  const mp3Response = await getOpenAI().audio.speech.create({
     model: 'tts-1-hd',
     voice: voice,
     input: greetingText,
@@ -95,6 +105,22 @@ export async function POST(request: Request) {
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // This route calls OpenAI TTS, so it costs real money on every hit — gate
+    // it with the same server-side limit as /api/feedback.
+    const limit = await checkSessionLimitServer(user.id)
+    if (!limit.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            limit.reason === 'trial_expired'
+              ? 'Your free trial has ended. Upgrade to keep practising.'
+              : "You've used all your practice sessions for today.",
+          reason: limit.reason,
+        },
+        { status: 429 },
+      )
     }
 
     const body = await request.json()
@@ -204,7 +230,7 @@ Remember: You're a ${tone} coach. Start DIRECTLY with the content (no greeting).
 
     // ⭐ Run in parallel: lesson content generation + personalized greeting
     const [completion, greeting] = await Promise.all([
-      openai.chat.completions.create({
+      getOpenAI().chat.completions.create({
         model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
@@ -220,7 +246,7 @@ Remember: You're a ${tone} coach. Start DIRECTLY with the content (no greeting).
     const voice = VOICE_MAP[tone] || 'shimmer'
 
     // Generate TTS for lesson content (without name)
-    const mp3Response = await openai.audio.speech.create({
+    const mp3Response = await getOpenAI().audio.speech.create({
       model: 'tts-1-hd',
       voice: voice,
       input: lessonContent,
