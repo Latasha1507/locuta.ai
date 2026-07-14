@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { isAdmin } from '@/lib/admin'
-import { CoachLessonView, TONES, type LessonItem, type CoachLessonData } from '@/components/practice/CoachLessonView'
+import { CoachLessonView, type LessonItem, type CoachLessonData } from '@/components/practice/CoachLessonView'
+import { resolveTone } from '@/lib/tones'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -63,8 +64,11 @@ export default async function CategoryModulesPage({
 
   // Only accept a tone we actually support — the value is used downstream to
   // prompt the model, so it must not be attacker-controlled free text.
-  const requested = sp.tone ?? ''
-  const initialTone = TONES.some((t) => t.name === requested) ? requested : 'Normal'
+  // resolveTone lives in lib/tones (a neutral module), NOT in the client
+  // component: importing a value from a 'use client' module into a server
+  // component yields a client-reference proxy, which is what caused the
+  // production crash "TONES.some is not a function".
+  const initialTone = resolveTone(sp.tone)
 
   const [lessonsRes, progressRes, profileRes, isUserAdmin] = await Promise.all([
     supabase

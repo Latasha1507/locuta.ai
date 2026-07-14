@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
 import { LandingIconSprite, Icon } from '@/components/landing/icons'
 import { Mascot, type MascotMood } from '@/components/landing/Mascot'
+import { TONES, TONE_QUIPS, DEFAULT_TONE } from '@/lib/tones'
 
 // The coach and the lesson used to be two separate page loads (/tone then
 // /modules). The design merges them into one screen with two steps, which is
@@ -41,25 +42,6 @@ export interface CoachLessonData {
   totalInCategory: number
   initialTone: string
   lockedReason: 'sequence' | 'plan' | null
-}
-
-export const TONES = [
-  { name: 'Normal', icon: 'ic-chat', color: lc.green, desc: 'Clear, simple, everyday conversational style.' },
-  { name: 'Supportive', icon: 'ic-heart', color: lc.coral, desc: 'Soft, kind and reassuring, like a good friend.' },
-  { name: 'Inspiring', icon: 'ic-bolt', color: lc.yellow, desc: 'Energizing and passionate, like a motivator.' },
-  { name: 'Funny', icon: 'ic-smile', color: lc.blue, desc: 'Entertaining, playful and casual with light humor.' },
-  { name: 'Diplomatic', icon: 'ic-crown', color: lc.purple, desc: 'Calm, professional and balanced feedback.' },
-  { name: 'Bossy', icon: 'ic-shield', color: '#f2545b', desc: 'Commanding, no-nonsense, direct leadership.' },
-] as const
-
-// What the mascot says when you pick each coach — it previews the voice.
-const QUIPS: Record<string, string> = {
-  Normal: "Let's keep it clear and easy.",
-  Supportive: "You've got this. I'm right here.",
-  Inspiring: "Today you find your voice!",
-  Funny: 'Warning: I may heckle. Kindly.',
-  Diplomatic: 'Measured, fair, straight to the point.',
-  Bossy: 'No excuses. Chin up. Speak.',
 }
 
 const DIFF_COLOR: Record<LessonItem['difficulty'], string> = {
@@ -196,7 +178,7 @@ export function CoachLessonView(d: CoachLessonData) {
               }}
               aria-live="polite"
             >
-              {QUIPS[tone] ?? QUIPS.Normal}
+              {TONE_QUIPS[tone] ?? TONE_QUIPS[DEFAULT_TONE]}
               <span
                 aria-hidden="true"
                 style={{
