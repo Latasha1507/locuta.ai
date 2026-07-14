@@ -123,8 +123,8 @@ export default async function DashboardPage() {
   // Send them back to whatever they practised last; otherwise the first path.
   const lastCategory = sessions[0]?.category as string | undefined
   const nextHref = lastCategory
-    ? `/category/${slug(lastCategory)}/tone`
-    : '/category/public-speaking/tone'
+    ? `/category/${slug(lastCategory)}/modules`
+    : '/category/public-speaking/modules'
 
   // Trial state, straight from the profile (same 14-day rule as
   // lib/check-session-limit.ts).

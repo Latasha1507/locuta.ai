@@ -307,7 +307,7 @@ export function DashboardClient(d: DashboardData) {
           {d.categories.map((c) => (
             <Link
               key={c.id}
-              href={`/category/${c.id}/tone`}
+              href={`/category/${c.id}/modules`}
               className="p-5 transition-transform duration-200 hover:-translate-y-[5px] lg:p-6"
               style={{
                 background: '#fff',
