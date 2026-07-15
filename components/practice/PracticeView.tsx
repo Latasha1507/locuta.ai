@@ -26,7 +26,9 @@ export interface PracticeData {
   lessonTitle: string
   practicePrompt: string
   lessonExplanation: string
-  practiceExample: string
+  /** Optional: a lesson row may have no example, and older callers may not pass
+      it. Defensive so a missing prop can never fail the build or the render. */
+  practiceExample?: string
   expectedDurationSec: number
   /** Server-computed. The API enforces this too — this is just the UX. */
   limit: {
