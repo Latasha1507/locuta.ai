@@ -103,3 +103,71 @@ export function weekStickers(timestamps: string[], now: Date = new Date()): Week
 export function stickersThisWeek(timestamps: string[], now: Date = new Date()): number {
   return weekStickers(timestamps, now).filter((d) => d.state === 'done').length
 }
+
+/** Longest run of consecutive practice days in the user's whole history. */
+export function longestStreak(timestamps: string[]): number {
+  const days = [...practiceDays(timestamps)].sort()
+  if (days.length === 0) return 0
+  let best = 1
+  let run = 1
+  for (let i = 1; i < days.length; i++) {
+    const prev = new Date(days[i - 1] + 'T00:00:00')
+    const cur = new Date(days[i] + 'T00:00:00')
+    const gap = Math.round((cur.getTime() - prev.getTime()) / 864e5)
+    if (gap === 1) {
+      run++
+      best = Math.max(best, run)
+    } else {
+      run = 1
+    }
+  }
+  return best
+}
+
+/** Total distinct days ever practised. */
+export function totalPracticeDays(timestamps: string[]): number {
+  return practiceDays(timestamps).size
+}
+
+export interface CalendarCell {
+  /** Day-of-month, or null for leading/trailing padding cells. */
+  day: number | null
+  key: string | null
+  practiced: boolean
+  isToday: boolean
+  isFuture: boolean
+}
+
+/**
+ * A month grid (Monday-first weeks) for the month containing `ref`, marking
+ * which days had at least one practice session.
+ */
+export function monthCalendar(timestamps: string[], ref: Date = new Date()): CalendarCell[] {
+  const days = practiceDays(timestamps)
+  const year = ref.getFullYear()
+  const month = ref.getMonth()
+  const first = new Date(year, month, 1)
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const todayKey = toDayKey(ref)
+
+  // Monday-first leading padding.
+  const lead = (first.getDay() + 6) % 7
+  const cells: CalendarCell[] = []
+  for (let i = 0; i < lead; i++) cells.push({ day: null, key: null, practiced: false, isToday: false, isFuture: false })
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d)
+    const key = toDayKey(date)
+    cells.push({
+      day: d,
+      key,
+      practiced: days.has(key),
+      isToday: key === todayKey,
+      isFuture: date.getTime() > ref.getTime() && key !== todayKey,
+    })
+  }
+
+  // Trailing padding to complete the last week row.
+  while (cells.length % 7 !== 0) cells.push({ day: null, key: null, practiced: false, isToday: false, isFuture: false })
+  return cells
+}

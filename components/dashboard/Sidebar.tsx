@@ -12,9 +12,9 @@ import { SidebarPromo, type FounderPromo } from './SidebarPromo'
 // When each page ships, delete its `soon` flag and add the real href.
 const NAV = [
   { label: 'Dashboard', href: '/dashboard', icon: 'ic-grid' },
-  { label: 'Practice', href: '/practice', icon: 'ic-mic', soon: true },
-  { label: 'Paths', href: '/paths', icon: 'ic-book', soon: true },
-  { label: 'Streak', href: '/streak', icon: 'ic-flame', soon: true },
+  { label: 'Practice', href: '/practice', icon: 'ic-mic' },
+  { label: 'Paths', href: '/paths', icon: 'ic-book' },
+  { label: 'Streak', href: '/streak', icon: 'ic-flame' },
   { label: 'History', href: '/history', icon: 'ic-clock' },
   { label: 'Settings', href: '/settings', icon: 'ic-cog', soon: true },
 ]

@@ -1,0 +1,88 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { isAdmin } from '@/lib/admin'
+import { loadCategoryMap, CATEGORY_MAP } from '@/lib/category-map'
+import { loadFounderPromo } from '@/lib/founder-promo'
+import { resolveTone } from '@/lib/tones'
+import { PathsView, type PathCategory } from '@/components/paths/PathsView'
+
+export const dynamic = 'force-dynamic'
+
+const META: Record<string, { icon: string; color: string }> = {
+  'public-speaking': { icon: 'ic-mic', color: '#3fce6f' },
+  storytelling: { icon: 'ic-book', color: '#ffc531' },
+  'creator-speaking': { icon: 'ic-camera', color: '#ff6f61' },
+  'casual-conversation': { icon: 'ic-chat', color: '#1cb0f6' },
+  'workplace-communication': { icon: 'ic-briefcase', color: '#a56cf5' },
+  'pitch-anything': { icon: 'ic-target', color: '#3fce6f' },
+}
+
+export default async function PathsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string; tone?: string }>
+}) {
+  const sp = await searchParams
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
+
+  const admin = await isAdmin().catch(() => false)
+
+  const activeCategoryId = sp.category && META[sp.category] ? sp.category : 'public-speaking'
+  const activeCategoryName = CATEGORY_MAP[activeCategoryId]
+
+  // Tone: explicit param, else last-used, else Normal.
+  let tone = resolveTone(sp.tone)
+  if (!sp.tone) {
+    const { data: last } = await supabase
+      .from('sessions')
+      .select('tone')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    tone = resolveTone(last?.tone as string | undefined)
+  }
+
+  const [activeMap, promo, ...otherMaps] = await Promise.all([
+    loadCategoryMap(supabase, user.id, activeCategoryName, admin),
+    loadFounderPromo(supabase, user.id, user.created_at),
+    // Progress counts for the tabs of the OTHER categories.
+    ...Object.values(CATEGORY_MAP)
+      .filter((n) => n !== activeCategoryName)
+      .map((n) => loadCategoryMap(supabase, user.id, n, admin)),
+  ])
+
+  // Assemble tab data in canonical order.
+  const mapByName = new Map<string, { completedInCategory: number; totalInCategory: number }>()
+  mapByName.set(activeCategoryName, activeMap)
+  for (const m of otherMaps) mapByName.set(m.categoryName, m)
+
+  const categories: PathCategory[] = Object.entries(CATEGORY_MAP).map(([id, name]) => {
+    const m = mapByName.get(name)
+    return {
+      id,
+      name,
+      icon: META[id].icon,
+      color: META[id].color,
+      completed: m?.completedInCategory ?? 0,
+      total: m?.totalInCategory ?? 0,
+    }
+  })
+
+  return (
+    <PathsView
+      isAdmin={admin}
+      promo={promo}
+      categories={categories}
+      activeCategoryId={activeCategoryId}
+      activeCategoryName={activeCategoryName}
+      tone={tone}
+      modules={activeMap.modules}
+      current={activeMap.current}
+    />
+  )
+}
