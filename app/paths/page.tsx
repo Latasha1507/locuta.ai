@@ -4,6 +4,7 @@ import { isAdmin } from '@/lib/admin'
 import { loadCategoryMap, CATEGORY_MAP } from '@/lib/category-map'
 import { loadFounderPromo } from '@/lib/founder-promo'
 import { resolveTone } from '@/lib/tones'
+import { preferredTone } from '@/lib/preferences'
 import { PathsView, type PathCategory } from '@/components/paths/PathsView'
 
 export const dynamic = 'force-dynamic'
@@ -35,16 +36,20 @@ export default async function PathsPage({
   const activeCategoryName = CATEGORY_MAP[activeCategoryId]
 
   // Tone: explicit param, else last-used, else Normal.
+  // Tone: explicit param wins, else saved default (Settings) → last-used → Normal.
   let tone = resolveTone(sp.tone)
   if (!sp.tone) {
-    const { data: last } = await supabase
-      .from('sessions')
-      .select('tone')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    tone = resolveTone(last?.tone as string | undefined)
+    const [{ data: last }, { data: prof }] = await Promise.all([
+      supabase
+        .from('sessions')
+        .select('tone')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase.from('profiles').select('preferences').eq('id', user.id).maybeSingle(),
+    ])
+    tone = preferredTone(prof?.preferences, last?.tone as string | undefined)
   }
 
   const [activeMap, promo, ...otherMaps] = await Promise.all([

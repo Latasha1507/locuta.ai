@@ -10,13 +10,13 @@ import { SidebarPromo, type FounderPromo } from './SidebarPromo'
 // Those render as visible-but-inert with a SOON pill rather than as links,
 // because a nav link that 404s is worse than one that says "not yet".
 // When each page ships, delete its `soon` flag and add the real href.
-const NAV = [
+const NAV: { label: string; href: string; icon: string; soon?: boolean }[] = [
   { label: 'Dashboard', href: '/dashboard', icon: 'ic-grid' },
   { label: 'Practice', href: '/practice', icon: 'ic-mic' },
   { label: 'Paths', href: '/paths', icon: 'ic-book' },
   { label: 'Streak', href: '/streak', icon: 'ic-flame' },
   { label: 'History', href: '/history', icon: 'ic-clock' },
-  { label: 'Settings', href: '/settings', icon: 'ic-cog', soon: true },
+  { label: 'Settings', href: '/settings', icon: 'ic-cog' },
 ]
 
 export function Sidebar({ isAdmin, promo }: { isAdmin: boolean; promo: FounderPromo | null }) {
