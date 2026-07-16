@@ -88,6 +88,8 @@ export default async function PathsPage({
       tone={tone}
       modules={activeMap.modules}
       current={activeMap.current}
+      profileName={(user.user_metadata?.full_name as string) || undefined}
+      profileEmail={user.email || undefined}
     />
   )
 }

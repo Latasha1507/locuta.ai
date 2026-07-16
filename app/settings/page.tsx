@@ -2,7 +2,9 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/admin'
 import { loadFounderPromo } from '@/lib/founder-promo'
-import { readPreferences } from '@/lib/preferences'
+import { withDefaults } from '@/lib/preferences'
+import { readProfileDetails } from '@/lib/profile-details'
+import { CATEGORY_MAP } from '@/lib/category-map'
 import { SettingsView } from '@/components/settings/SettingsView'
 
 export const dynamic = 'force-dynamic'
@@ -13,7 +15,10 @@ function planLabel(profile: Record<string, unknown> | null, admin: boolean): str
   if (['pro', 'paid', 'premium'].includes(p)) return 'Pro'
   if (['founder', 'lifetime'].includes(p)) return 'Lifetime'
   const trialEnds = (profile?.trial_ends_at ?? profile?.trial_end) as string | null
-  if (trialEnds && new Date(trialEnds).getTime() > Date.now()) return 'Trial'
+  if (trialEnds) {
+    const daysLeft = Math.ceil((new Date(trialEnds).getTime() - Date.now()) / 864e5)
+    if (daysLeft > 0) return `Free trial · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`
+  }
   return 'Free'
 }
 
@@ -32,7 +37,8 @@ export default async function SettingsPage() {
   ])
 
   const profile = profileRes.data as Record<string, unknown> | null
-  const prefs = readPreferences(profile?.preferences)
+  const prefs = withDefaults(profile?.preferences)
+  const details = readProfileDetails(profile?.onboarding_data)
 
   const fullName = (profile?.full_name as string) || (user.user_metadata?.full_name as string) || ''
   const email = user.email || ''
@@ -46,8 +52,23 @@ export default async function SettingsPage() {
       email={email}
       initial={initial}
       planLabel={planLabel(profile, admin)}
-      defaultTone={prefs.defaultTone ?? 'Normal'}
-      dailyReminder={prefs.dailyReminder === true}
+      defaultTone={prefs.defaultTone}
+      defaultPath={prefs.defaultPath}
+      dailyGoal={prefs.dailyGoal}
+      dailyReminder={prefs.dailyReminder}
+      reminderTime={prefs.reminderTime}
+      streakAtRisk={prefs.streakAtRisk}
+      newStickerAlert={prefs.newStickerAlert}
+      weeklyEmail={prefs.weeklyEmail}
+      restDays={prefs.restDays}
+      saveRecordings={prefs.saveRecordings}
+      shareData={prefs.shareData}
+      soundEffects={prefs.soundEffects}
+      dateOfBirth={details.dateOfBirth ?? ''}
+      gender={details.gender ?? ''}
+      primaryGoal={details.primaryGoal ?? ''}
+      currentProficiency={details.currentProficiency ?? ''}
+      paths={Object.values(CATEGORY_MAP)}
     />
   )
 }

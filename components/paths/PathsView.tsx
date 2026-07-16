@@ -7,6 +7,7 @@ import { LandingIconSprite, Icon } from '@/components/landing/icons'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import type { FounderPromo } from '@/components/dashboard/SidebarPromo'
 import type { ModuleNode } from '@/lib/category-map'
+import { ProfileButton } from '@/components/common/ProfileButton'
 
 export interface PathCategory {
   id: string
@@ -26,6 +27,8 @@ export interface PathsData {
   tone: string
   modules: ModuleNode[]
   current: { moduleNumber: number; levelNumber: number } | null
+  profileName?: string
+  profileEmail?: string
 }
 
 // A rotating palette so each chapter on the map reads as its own "belt".
@@ -46,16 +49,19 @@ export function PathsView(d: PathsData) {
 
       <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-12 pt-5 lg:gap-6 lg:px-10 lg:pb-16 lg:pt-8">
         {/* HEADER */}
-        <div>
-          <h1
-            className="text-[26px] lg:text-[32px]"
-            style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-0.5px', lineHeight: 1.05, margin: 0 }}
-          >
-            Your learning map
-          </h1>
-          <p style={{ fontSize: 14.5, color: lc.muted, fontWeight: 600, margin: '5px 0 0' }}>
-            Every lesson in a path, in order. Pick up wherever you left off.
-          </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <h1
+              className="text-[26px] lg:text-[32px]"
+              style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-0.5px', lineHeight: 1.05, margin: 0 }}
+            >
+              Your learning map
+            </h1>
+            <p style={{ fontSize: 14.5, color: lc.muted, fontWeight: 600, margin: '5px 0 0' }}>
+              Every lesson in a path, in order. Pick up wherever you left off.
+            </p>
+          </div>
+          <ProfileButton name={d.profileName} email={d.profileEmail} />
         </div>
 
         {/* CATEGORY TABS */}
@@ -154,6 +160,8 @@ function ChapterRow({
   categoryId: string
   tone: string
   current: { moduleNumber: number; levelNumber: number } | null
+  profileName?: string
+  profileEmail?: string
 }) {
   const pct = mod.totalCount > 0 ? Math.round((mod.completedCount / mod.totalCount) * 100) : 0
   const chapterDone = mod.completedCount === mod.totalCount && mod.totalCount > 0
