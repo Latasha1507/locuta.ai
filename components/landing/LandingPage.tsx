@@ -237,6 +237,12 @@ export function LandingPage() {
                 SEE HOW IT WORKS
               </a>
             </div>
+            <p
+              className="text-center lg:text-left"
+              style={{ fontSize: 13, color: lc.faint, fontWeight: 700, margin: '14px 0 0' }}
+            >
+              14 days free · no card required · start with one 60-second rep
+            </p>
             <div className="mt-[34px] flex flex-wrap justify-center gap-4 lg:flex-nowrap lg:justify-start lg:gap-[22px]">
               {HERO_PROOF.map((p) => (
                 <div key={p.small} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -725,23 +731,6 @@ export function LandingPage() {
 
       {/* FOOTER */}
       <footer style={{ background: lc.pageBg }} className="px-[14px] pt-6 lg:px-10 lg:pt-8">
-        <div
-          className="mx-auto flex max-w-[1100px] flex-col items-center justify-between gap-[18px] px-[22px] py-[26px] text-center lg:flex-row lg:gap-7 lg:px-10 lg:py-8 lg:text-left"
-          style={{ background: '#f4f9ef', border: '2px solid #e0ebd6', borderRadius: 26, marginTop: 0 }}
-        >
-          <div>
-            <div className="text-[26px] lg:text-[34px]" style={{ fontFamily: fontDisplay, fontWeight: 800, color: lc.ink, lineHeight: 1.05 }}>
-              Speak with confidence, starting today.
-            </div>
-            <div style={{ fontSize: 13.5, color: lc.muted, fontWeight: 600, marginTop: 6 }}>
-              One 60-second rep is all it takes to begin. Free for 14 days.
-            </div>
-          </div>
-          <PrimaryCta big>
-            <Icon id="ic-mic" size={18} color="#fff" />
-            START FREE TRIAL
-          </PrimaryCta>
-        </div>
         <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-4 px-[18px] py-6 lg:px-10 lg:py-[30px]">
           <LocutaLogo size={28} />
           <nav aria-label="Footer" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 22px' }}>

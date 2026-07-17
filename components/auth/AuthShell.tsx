@@ -46,16 +46,18 @@ export function AuthShell({
 
       {/* Coach panel */}
       <section
-        className="flex flex-col justify-center px-6 py-8 lg:px-14 lg:py-12"
+        className="flex flex-col items-center px-6 py-8 lg:items-center lg:px-14 lg:py-12"
         style={{ background: '#f4f9ef', borderRight: `2px solid ${lc.sidebarBorder}` }}
       >
         <Link href="/" aria-label="Back to Locuta home" style={{ textDecoration: 'none', alignSelf: 'flex-start' }}>
           <LocutaLogo />
         </Link>
 
-        <div className="mt-8 flex flex-col items-center lg:mt-14 lg:items-start">
+        {/* Mascot + bubble: centered, sitting up near the top rather than
+            stranded in the vertical middle. */}
+        <div className="mt-10 flex flex-col items-center lg:mt-14">
           <div
-            className="max-w-[280px] text-center lg:text-left"
+            className="max-w-[300px] text-center"
             style={{
               position: 'relative',
               background: '#fff',
@@ -93,7 +95,7 @@ export function AuthShell({
         </div>
 
         {/* Proof points — desktop only, they'd push the form below the fold on mobile */}
-        <ul className="mt-12 hidden list-none flex-col gap-4 p-0 lg:flex">
+        <ul className="mt-11 hidden w-full max-w-[320px] list-none flex-col gap-4 p-0 lg:flex">
           {SIDE_POINTS.map((p) => (
             <li key={p.text} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span
