@@ -427,7 +427,7 @@ export function DashboardClient(d: DashboardData) {
         </form>
       </main>
 
-      {showWelcome && <TrialWelcomeModal onClose={() => setShowWelcome(false)} />}
+      {showWelcome && <TrialWelcomeModal onClose={() => setShowWelcome(false)} daysLeft={d.trial?.daysLeft ?? 14} />}
     </div>
   )
 }
