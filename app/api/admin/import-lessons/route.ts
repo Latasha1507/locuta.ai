@@ -3,12 +3,16 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
-    // Get authenticated user first
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized - Please sign in first' }, { status: 401 })
+    // SECURITY: admin-only. This upserts into `lessons`, overwriting product
+    // content for EVERY user. A signed-in-only check let any authenticated
+    // (e.g. paying) user rewrite the entire curriculum. Gate on app_metadata
+    // (service-role only), NOT user_metadata (user-writable) — same pattern as
+    // the sibling admin routes (stats, analytics).
+    if (!user || user.app_metadata?.is_admin !== true) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
     const formData = await request.formData()
