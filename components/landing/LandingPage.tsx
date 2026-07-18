@@ -213,7 +213,7 @@ export function LandingPage() {
             <div className="flex flex-wrap items-center justify-center gap-[14px] lg:justify-start">
               <PrimaryCta big>
                 <Icon id="ic-mic" size={19} color="#fff" />
-                START YOUR FREE TRIAL
+                START 14 DAYS FREE TRIAL
               </PrimaryCta>
               <a
                 href="#loop"
