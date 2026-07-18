@@ -89,7 +89,7 @@ export function ShareActions({ shareText }: { shareText: string }) {
         <Share2 size={18} /> Share my score
       </button>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+      <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 10 }}>
         <button type="button" onClick={openWhatsApp} style={{ ...btn, color: '#128C7E' }}>
           <MessageCircle size={17} /> WhatsApp
         </button>

@@ -11,6 +11,12 @@ import { ShareActions } from './ShareActions'
 // the fun moment. Feedback (strengths/level-ups) is shown ONLY to the owner;
 // strangers who open a shared link see the number, the breakdown and a
 // "beat this" CTA.
+//
+// LAYOUT: horizontal on desktop — score panel on the left, breakdown + feedback
+// on the right, sharing across the full width underneath. This mirrors the
+// landscape share image and kills the tall dead-space column. Below `md` it
+// stacks (score → breakdown → feedback → share), which is the only order that
+// works on a phone.
 
 export interface ScoreCardProps {
   overall: number
@@ -57,7 +63,15 @@ export function ScoreCard(p: ScoreCardProps) {
       if (t < 1) raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
+    // SAFETY NET: requestAnimationFrame is suspended entirely while a tab is
+    // backgrounded or the renderer is throttled — without this the number would
+    // sit on 0 forever and the reveal (the whole payoff) silently breaks.
+    // setTimeout still fires in that state, so the real score always lands.
+    const settle = setTimeout(() => setDisplay(p.overall), dur + 400)
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(settle)
+    }
   }, [p.overall, reduced])
 
   // Fill the bars a beat after mount.
@@ -97,107 +111,133 @@ export function ScoreCard(p: ScoreCardProps) {
   return (
     <>
       <div
+        className="w-full p-5 sm:p-6 md:p-7"
         style={{
-          width: '100%',
-          maxWidth: 440,
+          maxWidth: 900,
           background: '#fff',
           border: `2px solid ${lc.cardBorder}`,
           borderRadius: 26,
           boxShadow: `0 10px 0 ${lc.cardBorder}`,
-          padding: '26px 22px 24px',
-          overflow: 'hidden',
         }}
       >
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 11.5, fontWeight: 800, color: lc.faint, letterSpacing: '0.07em' }}>
-            30-SECOND SPEAKING TEST
-          </div>
-
-          {/* verdict pill */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-5 md:gap-7">
+          {/* LEFT — the score */}
           <div
+            className="md:col-span-2"
             style={{
-              display: 'inline-flex',
+              background: `${tier.color}12`,
+              border: `2px solid ${tier.color}33`,
+              borderRadius: 20,
+              padding: '20px 16px 22px',
+              display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              gap: 7,
-              background: tier.color,
-              color: '#fff',
-              fontFamily: fontDisplay,
-              fontWeight: 800,
-              fontSize: 13,
-              padding: '5px 14px',
-              borderRadius: 999,
-              marginTop: 12,
-              boxShadow: `0 3px 0 rgba(0,0,0,0.12)`,
+              justifyContent: 'center',
+              textAlign: 'center',
             }}
           >
-            <span style={{ fontSize: 15 }}>{tier.emoji}</span> {tier.label}
+            <div style={{ fontSize: 11, fontWeight: 800, color: lc.faint, letterSpacing: '0.07em' }}>
+              30-SECOND SPEAKING TEST
+            </div>
+
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                background: tier.color,
+                color: '#fff',
+                fontFamily: fontDisplay,
+                fontWeight: 800,
+                fontSize: 13,
+                padding: '5px 14px',
+                borderRadius: 999,
+                marginTop: 12,
+                boxShadow: '0 3px 0 rgba(0,0,0,0.12)',
+              }}
+            >
+              <span style={{ fontSize: 15 }}>{tier.emoji}</span> {tier.label}
+            </div>
+
+            <div
+              style={{
+                fontFamily: fontDisplay,
+                fontWeight: 800,
+                fontSize: 'clamp(76px, 13vw, 104px)',
+                lineHeight: 1,
+                color: tier.color,
+                marginTop: 8,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {display}
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: lc.faint, marginTop: 2 }}>out of 100</div>
+            <div
+              style={{
+                fontFamily: fontDisplay,
+                fontWeight: 800,
+                fontSize: 23,
+                color: '#2c3a26',
+                marginTop: 12,
+                lineHeight: 1.15,
+              }}
+            >
+              {p.topic}
+            </div>
           </div>
 
-          <div
-            style={{
-              fontFamily: fontDisplay,
-              fontWeight: 800,
-              fontSize: 92,
-              lineHeight: 1,
-              color: tier.color,
-              margin: '6px 0 0',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {display}
-          </div>
-          <div style={{ fontSize: 13.5, fontWeight: 800, color: lc.faint, marginTop: -2 }}>out of 100</div>
-          <div style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 25, color: '#2c3a26', marginTop: 12 }}>
-            {p.topic}
-          </div>
-        </div>
+          {/* RIGHT — breakdown + feedback */}
+          <div className="md:col-span-3" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {dims.map((d) => (
+                <div key={d.label}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: lc.ink }}>{d.label}</span>
+                    <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 13.5, color: d.color }}>
+                      {d.display}
+                    </span>
+                  </div>
+                  <div style={{ height: 9, background: '#eef2e8', borderRadius: 6, overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        height: '100%',
+                        width: barsIn ? `${d.value}%` : '0%',
+                        background: d.color,
+                        borderRadius: 6,
+                        transition: reduced ? undefined : 'width .9s cubic-bezier(.22,1,.36,1)',
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
 
-        {/* dimension bars */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 22 }}>
-          {dims.map((d) => (
-            <div key={d.label}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: lc.ink }}>{d.label}</span>
-                <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 13.5, color: d.color }}>{d.display}</span>
-              </div>
-              <div style={{ height: 9, background: '#eef2e8', borderRadius: 6, overflow: 'hidden' }}>
-                <div
-                  style={{
-                    height: '100%',
-                    width: barsIn ? `${d.value}%` : '0%',
-                    background: d.color,
-                    borderRadius: 6,
-                    transition: reduced ? undefined : 'width .9s cubic-bezier(.22,1,.36,1)',
-                  }}
+            {p.isOwner && (
+              <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 12 }}>
+                <FeedbackBlock
+                  title="What you nailed"
+                  items={p.strengths}
+                  tint="#eef7e8"
+                  border="#d7e8c8"
+                  chip={lc.green}
+                  glyph="✓"
+                />
+                <FeedbackBlock
+                  title="Level up"
+                  items={p.improvements}
+                  tint="#fff8e6"
+                  border="#ffe39c"
+                  chip={lc.orange}
+                  glyph="↑"
                 />
               </div>
-            </div>
-          ))}
+            )}
+          </div>
         </div>
 
-        {/* feedback — owner only */}
-        {p.isOwner && (
-          <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <FeedbackBlock
-              title="What you nailed"
-              items={p.strengths}
-              tint="#eef7e8"
-              border="#d7e8c8"
-              chip={lc.green}
-              glyph="✓"
-            />
-            <FeedbackBlock
-              title="Level up"
-              items={p.improvements}
-              tint="#fff8e6"
-              border="#ffe39c"
-              chip={lc.orange}
-              glyph="↑"
-            />
-          </div>
-        )}
-
-        <div style={{ marginTop: 22 }}>
+        {/* Sharing — full width under the split */}
+        <div style={{ marginTop: 20 }}>
           <ShareActions shareText={p.shareText} />
         </div>
       </div>
