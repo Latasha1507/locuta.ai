@@ -21,6 +21,13 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const supabase = createClient()
 
+  // Same-origin ?next= (e.g. /s/<token> from the landing score gate) so an
+  // existing user who logs in from the gate lands on their reveal, not /dashboard.
+  const safeNext = (): string | null => {
+    const n = searchParams.get('next')
+    return n && n.startsWith('/') && !n.startsWith('//') && !n.includes('\\') ? n : null
+  }
+
   // Surface errors handed back by /auth/callback, then clean the URL.
   useEffect(() => {
     const errorParam = searchParams.get('error')
@@ -55,7 +62,7 @@ function LoginForm() {
     }
 
     // refresh() makes the server components pick up the new session cookie.
-    router.push('/dashboard')
+    router.push(safeNext() ?? '/dashboard')
     router.refresh()
   }
 
@@ -64,10 +71,12 @@ function LoginForm() {
     setError('')
 
     try {
+      const next = safeNext()
+      const redirectTo = `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo,
           queryParams: { access_type: 'offline', prompt: 'consent' },
         },
       })

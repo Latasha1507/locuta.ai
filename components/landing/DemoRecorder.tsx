@@ -1,44 +1,190 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { lc, fontDisplay } from './tokens'
 import { Icon } from './icons'
+import { PROMPTS } from '@/lib/quick-score'
 
-// Illustrative demo of the daily practice card (per the design handoff).
-// It simulates a rep — it does not access the microphone. Real recording
-// happens in the signed-in Practice flow.
+// The hero micro-tool: record 30 seconds against a simple prompt, get one
+// number back. The score is gated — you create a free account to reveal it and
+// get a shareable card. This is the top of the growth loop, so it's the real
+// thing (mic + scoring), not a simulation.
 
+const MAX_SEC = 30
 const WAVE_HEIGHTS = [30, 55, 80, 45, 95, 60, 100, 42, 78, 58, 88, 36, 70, 50, 84]
 
-// Product scores are out of 100 (pass thresholds are 70–75), so the demo
-// shows /100 values — the prototype's "8.6" style was inconsistent with
-// the Feedback screen's own "all scores out of 100" rule.
-const DEMO_SCORES = [
-  { label: 'Delivery', val: 86, color: lc.green },
-  { label: 'Clarity', val: 91, color: lc.blue },
-  { label: 'Confidence', val: 88, color: lc.purple },
-]
+type Phase = 'idle' | 'recording' | 'scoring' | 'locked' | 'error'
+
+/** Pick a container this browser can actually record. Safari can't do webm. */
+function pickMimeType(): string | undefined {
+  if (typeof MediaRecorder === 'undefined') return undefined
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
+  return candidates.find((t) => MediaRecorder.isTypeSupported(t))
+}
+
+const fmt = (s: number) => `0:${String(Math.max(0, Math.ceil(s))).padStart(2, '0')}`
 
 export function DemoRecorder() {
-  const [phase, setPhase] = useState<'idle' | 'recording' | 'scored'>('idle')
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [promptIdx, setPromptIdx] = useState(0)
+  const [phase, setPhase] = useState<Phase>('idle')
+  const [elapsed, setElapsed] = useState(0)
+  const [token, setToken] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState('')
 
+  const recRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const streamRef = useRef<MediaStream | null>(null)
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const startedAtRef = useRef(0)
+
+  // Randomise the prompt AFTER mount so server and client render the same first
+  // paint (no hydration mismatch), then vary it.
   useEffect(() => {
-    return () => {
-      if (timer.current) clearTimeout(timer.current)
+    setPromptIdx(Math.floor(Math.random() * PROMPTS.length))
+  }, [])
+
+  const stopTracks = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
     }
   }, [])
 
-  const start = () => {
-    if (phase === 'recording') return
-    setPhase('recording')
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => setPhase('scored'), 1800)
+  const clearTick = useCallback(() => {
+    if (tickRef.current) {
+      clearInterval(tickRef.current)
+      tickRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      clearTick()
+      stopTracks()
+    }
+  }, [clearTick, stopTracks])
+
+  const prompt = PROMPTS[promptIdx]
+
+  const shuffle = () => {
+    if (phase === 'recording' || phase === 'scoring') return
+    setPhase('idle')
+    setToken(null)
+    setErrorMsg('')
+    setElapsed(0)
+    // Advance by a random non-zero step so it always changes.
+    setPromptIdx((i) => (i + 1 + Math.floor(Math.random() * (PROMPTS.length - 1))) % PROMPTS.length)
   }
 
+  const submit = useCallback(
+    async (blob: Blob, durationSec: number) => {
+      setPhase('scoring')
+      try {
+        const fd = new FormData()
+        const ext = blob.type.includes('mp4') ? 'mp4' : blob.type.includes('ogg') ? 'ogg' : 'webm'
+        fd.append('audio', blob, `rec.${ext}`)
+        fd.append('promptId', String(prompt.id))
+        fd.append('duration', String(Math.round(durationSec)))
+        const res = await fetch('/api/quick-score', { method: 'POST', body: fd })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.token) {
+          setErrorMsg(data.message || 'Could not score that. Try again.')
+          setPhase('error')
+          return
+        }
+        setToken(data.token as string)
+        setPhase('locked')
+      } catch {
+        setErrorMsg('Network error — try again.')
+        setPhase('error')
+      }
+    },
+    [prompt.id],
+  )
+
+  const stop = useCallback(() => {
+    clearTick()
+    const rec = recRef.current
+    if (rec && rec.state !== 'inactive') rec.stop()
+  }, [clearTick])
+
+  const start = useCallback(async () => {
+    if (phase === 'recording' || phase === 'scoring') return
+    setErrorMsg('')
+    setToken(null)
+    setElapsed(0)
+
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setErrorMsg('Recording is not supported in this browser.')
+      setPhase('error')
+      return
+    }
+
+    let stream: MediaStream
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    } catch {
+      setErrorMsg('Mic access is off. Allow the microphone and try again.')
+      setPhase('error')
+      return
+    }
+    streamRef.current = stream
+
+    const mime = pickMimeType()
+    let rec: MediaRecorder
+    try {
+      rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+    } catch {
+      rec = new MediaRecorder(stream)
+    }
+
+    chunksRef.current = []
+    rec.ondataavailable = (e) => {
+      if (e.data && e.data.size) chunksRef.current.push(e.data)
+    }
+    rec.onstop = () => {
+      const durationSec = Math.min(MAX_SEC, (Date.now() - startedAtRef.current) / 1000)
+      const type = chunksRef.current[0]?.type || 'audio/webm'
+      const blob = new Blob(chunksRef.current, { type })
+      stopTracks()
+      if (blob.size > 0 && durationSec >= 1) {
+        submit(blob, durationSec)
+      } else {
+        setErrorMsg('That was too short — try again.')
+        setPhase('error')
+      }
+    }
+
+    recRef.current = rec
+    startedAtRef.current = Date.now()
+    rec.start()
+    setPhase('recording')
+
+    tickRef.current = setInterval(() => {
+      const e = (Date.now() - startedAtRef.current) / 1000
+      setElapsed(e)
+      if (e >= MAX_SEC) stop()
+    }, 100)
+  }, [phase, stop, stopTracks, submit])
+
   const recording = phase === 'recording'
-  const scored = phase === 'scored'
-  const status = recording ? 'RECORDING…' : scored ? 'GREAT REP!' : 'READY'
+  const scoring = phase === 'scoring'
+  const locked = phase === 'locked'
+  const errored = phase === 'error'
+  const remaining = Math.max(0, MAX_SEC - elapsed)
+  const nextHref = token ? `/s/${token}` : '/dashboard'
+
+  const status = recording
+    ? 'RECORDING…'
+    : scoring
+      ? 'SCORING…'
+      : locked
+        ? 'SCORE READY'
+        : errored
+          ? 'TRY AGAIN'
+          : 'READY'
+  const dotColor = recording ? lc.coral : locked ? lc.green : errored ? '#f2545b' : '#cdd6c6'
 
   return (
     <div
@@ -50,42 +196,59 @@ export function DemoRecorder() {
         boxShadow: `0 8px 0 ${lc.cardBorder}`,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} aria-live="polite">
           <span
             style={{
               width: 10,
               height: 10,
               borderRadius: '50%',
-              background: recording ? lc.coral : scored ? lc.green : '#cdd6c6',
+              background: dotColor,
               display: 'inline-block',
+              animation: recording ? 'lp-pop .6s ease infinite alternate' : undefined,
             }}
           />
           <span style={{ fontWeight: 800, fontSize: 12, color: lc.faint, letterSpacing: '0.03em' }}>{status}</span>
         </div>
-        <div
+        <span
           style={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
             gap: 6,
-            background: '#fff3d6',
-            border: '2px solid #ffdb6e',
-            padding: '5px 11px',
+            background: '#eef7e8',
+            border: '2px solid #d7e8c8',
+            padding: '4px 10px',
             borderRadius: 999,
+            fontFamily: fontDisplay,
+            fontWeight: 800,
+            fontSize: 11,
+            color: lc.greenDark,
+            letterSpacing: '0.03em',
           }}
         >
-          <Icon id="ic-flame" size={14} color={lc.orange} />
-          <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 13, color: '#c07d08' }}>12</span>
+          FREE · 30s
+        </span>
+      </div>
+
+      {/* Pitch line */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 19, color: '#2c3a26', lineHeight: 1.15 }}>
+          How do you actually sound?
+        </div>
+        <div style={{ fontSize: 13.5, color: lc.faint, fontWeight: 700, marginTop: 2 }}>
+          Record 30 seconds. Get scored.
         </div>
       </div>
 
+      {/* Prompt */}
       <div
         style={{
           background: '#f2f8ec',
           border: '2px solid #e2eed6',
           borderRadius: 16,
           padding: '15px 18px',
-          marginBottom: 16,
+          marginBottom: 14,
           position: 'relative',
         }}
       >
@@ -105,13 +268,35 @@ export function DemoRecorder() {
             boxShadow: `0 2px 0 ${lc.greenDark}`,
           }}
         >
-          TODAY&apos;S PROMPT
+          YOUR PROMPT
         </span>
         <div style={{ fontSize: 15, lineHeight: 1.4, color: '#5a6b52', fontWeight: 700, marginTop: 4 }}>
-          &ldquo;Tell us about a challenge you overcame.&rdquo;
+          &ldquo;{prompt.prompt}&rdquo;
         </div>
+        {!recording && !scoring && (
+          <button
+            type="button"
+            onClick={shuffle}
+            style={{
+              marginTop: 10,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              background: 'transparent',
+              border: 0,
+              padding: 0,
+              cursor: 'pointer',
+              color: lc.green,
+              fontWeight: 800,
+              fontSize: 12.5,
+            }}
+          >
+            <Icon id="ic-star" size={13} color={lc.green} /> New topic
+          </button>
+        )}
       </div>
 
+      {/* Waveform / countdown */}
       <div
         style={{
           display: 'flex',
@@ -119,7 +304,8 @@ export function DemoRecorder() {
           justifyContent: 'center',
           gap: 4,
           height: 50,
-          marginBottom: 18,
+          marginBottom: 16,
+          position: 'relative',
         }}
         aria-hidden="true"
       >
@@ -130,7 +316,7 @@ export function DemoRecorder() {
               width: 5,
               height: Math.round(h * 0.4) + 8,
               borderRadius: 4,
-              background: recording ? lc.green : '#dbe4d2',
+              background: recording ? lc.green : scoring ? '#c7d6ba' : '#dbe4d2',
               transformOrigin: 'center',
               animation: recording
                 ? `lp-wave ${(0.5 + (i % 5) * 0.11).toFixed(2)}s ease-in-out ${(i * 0.05).toFixed(2)}s infinite alternate`
@@ -138,108 +324,162 @@ export function DemoRecorder() {
             }}
           />
         ))}
-      </div>
-
-      <button
-        type="button"
-        onClick={start}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 10,
-          background: recording ? lc.coral : lc.green,
-          color: '#fff',
-          border: 0,
-          padding: 15,
-          borderRadius: 16,
-          fontFamily: fontDisplay,
-          fontWeight: 800,
-          fontSize: 15,
-          letterSpacing: '0.02em',
-          cursor: 'pointer',
-          boxShadow: `0 5px 0 ${recording ? lc.coralDark : lc.greenDark}`,
-        }}
-      >
-        <span
-          style={{
-            width: 13,
-            height: 13,
-            background: '#fff',
-            borderRadius: recording ? 3 : '50%',
-          }}
-          aria-hidden="true"
-        />
-        {recording ? 'LISTENING…' : scored ? 'TRY THE DEMO AGAIN' : 'TRY A DEMO REP'}
-      </button>
-
-      {scored ? (
-        <>
-          <div
+        {recording && (
+          <span
             style={{
-              marginTop: 16,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 9,
-              background: '#fff3d6',
-              border: '2px solid #ffdb6e',
-              color: '#a06a00',
-              borderRadius: 14,
-              padding: '10px 12px',
+              position: 'absolute',
+              right: 0,
+              top: -2,
               fontFamily: fontDisplay,
               fontWeight: 800,
               fontSize: 13,
-              letterSpacing: '0.01em',
-              animation: 'lp-pop .4s ease both',
+              color: lc.coral,
+            }}
+          >
+            {fmt(remaining)}
+          </span>
+        )}
+      </div>
+
+      {/* Primary action by phase */}
+      {locked ? (
+        <LockedGate topic={prompt.topic} nextHref={nextHref} onRetry={shuffle} />
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={recording ? stop : start}
+            disabled={scoring}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              background: recording ? lc.coral : scoring ? '#b7c6ab' : lc.green,
+              color: '#fff',
+              border: 0,
+              padding: 15,
+              borderRadius: 16,
+              fontFamily: fontDisplay,
+              fontWeight: 800,
+              fontSize: 15,
+              letterSpacing: '0.02em',
+              cursor: scoring ? 'default' : 'pointer',
+              boxShadow: `0 5px 0 ${recording ? lc.coralDark : scoring ? '#9aab8e' : lc.greenDark}`,
             }}
           >
             <span
               style={{
-                width: 30,
-                height: 30,
-                borderRadius: 9,
-                background: lc.yellow,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flex: 'none',
-                boxShadow: `0 3px 0 ${lc.yellowDark}`,
-                transform: 'rotate(-8deg)',
+                width: 13,
+                height: 13,
+                background: '#fff',
+                borderRadius: recording ? 3 : '50%',
+                animation: scoring ? 'lp-pop .7s ease infinite alternate' : undefined,
               }}
-            >
-              <Icon id="ic-star" size={20} color="#fff" />
-            </span>
-            <span>You earned today&apos;s sticker!</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginTop: 12 }}>
-            {DEMO_SCORES.map((s, i) => (
-              <div
-                key={s.label}
-                style={{
-                  background: '#f6faf2',
-                  border: `2px solid ${lc.cardBorder}`,
-                  borderRadius: 14,
-                  padding: '11px 8px',
-                  textAlign: 'center',
-                  animation: `lp-pop .4s ease ${(i * 0.09 + 0.1).toFixed(2)}s both`,
-                }}
-              >
-                <div style={{ fontSize: 11, color: lc.faint, fontWeight: 800, marginBottom: 3 }}>{s.label}</div>
-                <div style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 23, color: s.color }}>{s.val}</div>
-                <div style={{ height: 6, background: '#eef2e8', borderRadius: 5, marginTop: 7, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${s.val}%`, background: s.color, borderRadius: 5 }} />
-                </div>
-              </div>
-            ))}
-          </div>
+              aria-hidden="true"
+            />
+            {recording ? 'STOP & SCORE' : scoring ? 'SCORING YOUR VOICE…' : errored ? 'RECORD AGAIN' : 'RECORD 30 SECONDS'}
+          </button>
+
+          {errored ? (
+            <div style={{ marginTop: 12, textAlign: 'center', fontSize: 12.5, color: '#c65b52', fontWeight: 700 }}>
+              {errorMsg}
+            </div>
+          ) : (
+            <div style={{ marginTop: 12, textAlign: 'center', fontSize: 11.5, color: '#b0bca8', fontWeight: 600, lineHeight: 1.4 }}>
+              We process your audio to score it and don&apos;t store the recording.
+            </div>
+          )}
         </>
-      ) : (
-        <div style={{ marginTop: 14, textAlign: 'center', fontSize: 12.5, color: '#b0bca8', fontWeight: 700 }}>
-          Tap to see how a rep works ↑
-        </div>
       )}
+    </div>
+  )
+}
+
+function LockedGate({ topic, nextHref, onRetry }: { topic: string; nextHref: string; onRetry: () => void }) {
+  const signupHref = `/auth/signup?next=${encodeURIComponent(nextHref)}`
+  const loginHref = `/auth/login?next=${encodeURIComponent(nextHref)}`
+  return (
+    <div style={{ animation: 'lp-pop .4s ease both' }}>
+      <div
+        style={{
+          background: '#fff8e6',
+          border: '2px solid #ffe39c',
+          borderRadius: 16,
+          padding: '16px 16px 18px',
+          textAlign: 'center',
+        }}
+      >
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 14,
+            background: lc.yellow,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 10px',
+            boxShadow: `0 4px 0 ${lc.yellowDark}`,
+            transform: 'rotate(-6deg)',
+          }}
+        >
+          <Icon id="ic-star" size={26} color="#fff" />
+        </div>
+        <div style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 17, color: '#7a5b00' }}>
+          Your score is ready 🔒
+        </div>
+        <div style={{ fontSize: 13, color: '#9a7b2e', fontWeight: 700, marginTop: 4, lineHeight: 1.4 }}>
+          Create a free account to reveal your <strong>{topic}</strong> score and get your shareable card.
+        </div>
+
+        <Link
+          href={signupHref}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            marginTop: 14,
+            background: lc.green,
+            color: '#fff',
+            textDecoration: 'none',
+            padding: 14,
+            borderRadius: 14,
+            fontFamily: fontDisplay,
+            fontWeight: 800,
+            fontSize: 14.5,
+            letterSpacing: '0.02em',
+            boxShadow: `0 5px 0 ${lc.greenDark}`,
+          }}
+        >
+          REVEAL MY SCORE →
+        </Link>
+        <div style={{ marginTop: 10, fontSize: 12.5, color: '#9a7b2e', fontWeight: 700 }}>
+          Already have an account?{' '}
+          <Link href={loginHref} style={{ color: lc.greenDark, fontWeight: 800 }}>
+            Log in
+          </Link>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onRetry}
+        style={{
+          width: '100%',
+          marginTop: 10,
+          background: 'transparent',
+          border: 0,
+          padding: 6,
+          cursor: 'pointer',
+          color: lc.faint,
+          fontWeight: 700,
+          fontSize: 12.5,
+        }}
+      >
+        Try a different prompt
+      </button>
     </div>
   )
 }

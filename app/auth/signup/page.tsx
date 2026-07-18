@@ -9,6 +9,17 @@ import { lc, fontDisplay } from '@/components/landing/tokens'
 import { Icon } from '@/components/landing/icons'
 import type { MascotMood } from '@/components/landing/Mascot'
 
+// Read a same-origin ?next= from the current URL (event-handler time, so
+// window is available and we avoid a Suspense boundary for useSearchParams).
+// Used to carry a landing score card (?next=/s/<token>) through signup so the
+// callback lands the new user straight on their reveal.
+function callbackUrl(): string {
+  const base = `${window.location.origin}/auth/callback`
+  const n = new URLSearchParams(window.location.search).get('next')
+  const safe = n && n.startsWith('/') && !n.startsWith('//') && !n.includes('\\') ? n : null
+  return safe ? `${base}?next=${encodeURIComponent(safe)}` : base
+}
+
 export default function SignupPage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -31,7 +42,7 @@ export default function SignupPage() {
         password,
         options: {
           data: { full_name: fullName },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: callbackUrl(),
         },
       })
 
@@ -61,7 +72,7 @@ export default function SignupPage() {
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: callbackUrl(),
           queryParams: { access_type: 'offline', prompt: 'consent' },
         },
       })

@@ -20,6 +20,14 @@ export async function GET(request: Request) {
     !!nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') && !nextParam.includes('\\')
   const destination = isSafeNext ? nextParam : '/dashboard'
 
+  // Trial init below must run for EVERY genuine new signup — including ones that
+  // carry a ?next= (e.g. the landing micro-tool sends new users to their score
+  // card via ?next=/s/...). The ONLY case that should skip trial init is a
+  // password-recovery hop, which is specifically ?next=/auth/reset-password.
+  // (Previously this keyed off "has a next param", which silently denied a
+  // trial to anyone signing up through the score gate.)
+  const isRecovery = nextParam === '/auth/reset-password'
+
   // Handle OAuth errors
   if (error) {
     console.error('❌ OAuth error:', error, errorDescription)
@@ -57,9 +65,9 @@ export async function GET(request: Request) {
     console.log('✅ OAuth callback successful')
 
     // ⭐ Initialize trial for new users.
-    // Skipped when this is a password-recovery hop — the user already has a
+    // Skipped only for a password-recovery hop — the user already has a
     // profile, and we don't want a reset to touch trial state.
-    if (!isSafeNext) {
+    if (!isRecovery) {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (user) {
