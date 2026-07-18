@@ -30,6 +30,7 @@ export function DemoRecorder() {
   const [phase, setPhase] = useState<Phase>('idle')
   const [elapsed, setElapsed] = useState(0)
   const [token, setToken] = useState<string | null>(null)
+  const [preview, setPreview] = useState<{ didWell: string; improve: string } | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
 
   const recRef = useRef<MediaRecorder | null>(null)
@@ -71,6 +72,7 @@ export function DemoRecorder() {
     if (phase === 'recording' || phase === 'scoring') return
     setPhase('idle')
     setToken(null)
+    setPreview(null)
     setErrorMsg('')
     setElapsed(0)
     // Advance by a random non-zero step so it always changes.
@@ -94,6 +96,7 @@ export function DemoRecorder() {
           return
         }
         setToken(data.token as string)
+        setPreview(data.preview ?? null)
         setPhase('locked')
       } catch {
         setErrorMsg('Network error — try again.')
@@ -113,6 +116,7 @@ export function DemoRecorder() {
     if (phase === 'recording' || phase === 'scoring') return
     setErrorMsg('')
     setToken(null)
+    setPreview(null)
     setElapsed(0)
 
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
@@ -343,7 +347,7 @@ export function DemoRecorder() {
 
       {/* Primary action by phase */}
       {locked ? (
-        <LockedGate topic={prompt.topic} nextHref={nextHref} onRetry={shuffle} />
+        <LockedGate topic={prompt.topic} nextHref={nextHref} preview={preview} onRetry={shuffle} />
       ) : (
         <>
           <button
@@ -397,11 +401,64 @@ export function DemoRecorder() {
   )
 }
 
-function LockedGate({ topic, nextHref, onRetry }: { topic: string; nextHref: string; onRetry: () => void }) {
+function PeekLine({ glyph, color, text }: { glyph: string; color: string; text: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+      <span
+        style={{
+          width: 20,
+          height: 20,
+          flex: 'none',
+          borderRadius: 7,
+          background: color,
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 12,
+          fontWeight: 800,
+        }}
+      >
+        {glyph}
+      </span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: '#43513c', lineHeight: 1.3 }}>{text}</span>
+    </div>
+  )
+}
+
+function LockedGate({
+  topic,
+  nextHref,
+  preview,
+  onRetry,
+}: {
+  topic: string
+  nextHref: string
+  preview: { didWell: string; improve: string } | null
+  onRetry: () => void
+}) {
   const signupHref = `/auth/signup?next=${encodeURIComponent(nextHref)}`
   const loginHref = `/auth/login?next=${encodeURIComponent(nextHref)}`
   return (
     <div style={{ animation: 'lp-pop .4s ease both' }}>
+      {preview && (
+        <div
+          style={{
+            background: '#f2f8ec',
+            border: '2px solid #e2eed6',
+            borderRadius: 16,
+            padding: '13px 15px',
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 12.5, color: '#4b5a43', marginBottom: 9 }}>
+            👀 Your sneak peek
+          </div>
+          <PeekLine glyph="✓" color={lc.green} text={preview.didWell} />
+          <div style={{ height: 7 }} />
+          <PeekLine glyph="↑" color={lc.orange} text={preview.improve} />
+        </div>
+      )}
       <div
         style={{
           background: '#fff8e6',
@@ -431,7 +488,7 @@ function LockedGate({ topic, nextHref, onRetry }: { topic: string; nextHref: str
           Your score is ready 🔒
         </div>
         <div style={{ fontSize: 13, color: '#9a7b2e', fontWeight: 700, marginTop: 4, lineHeight: 1.4 }}>
-          Create a free account to reveal your <strong>{topic}</strong> score and get your shareable card.
+          Create a free account to reveal your <strong>{topic}</strong> score, your full breakdown and bragging rights worth sharing.
         </div>
 
         <Link

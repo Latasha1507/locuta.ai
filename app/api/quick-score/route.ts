@@ -6,6 +6,9 @@ import {
   countFillers,
   computeWpm,
   overallScore,
+  paceFeedback,
+  fillerFeedback,
+  pickLines,
   type QuickScore,
 } from '@/lib/quick-score'
 import { signScore } from '@/lib/quick-score-token'
@@ -43,36 +46,54 @@ function rateLimited(ip: string): boolean {
   return recent.length > MAX_PER_WINDOW
 }
 
-async function judge(
-  transcript: string,
-  task: string,
-): Promise<{ clarity: number; confidence: number }> {
+interface Analysis {
+  clarity: number
+  confidence: number
+  /** ONE content-level thing they did well (model's words). */
+  didWell: string
+  /** ONE content-level fix (model's words). */
+  improve: string
+}
+
+// The one model call. Beyond clarity/confidence it returns a single, concrete
+// "did well" and "improve" line — the qualitative half of the score. Kept to
+// gpt-4o-mini and a tight JSON schema for cost and consistency.
+async function analyze(transcript: string, task: string): Promise<Analysis> {
   try {
     const res = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
-      temperature: 0.2,
-      max_tokens: 60,
+      temperature: 0.3,
+      max_tokens: 140,
       response_format: { type: 'json_object' },
       messages: [
         {
           role: 'system',
           content:
-            'You are a speaking coach scoring a ~30 second spoken answer. Return STRICT JSON: ' +
-            '{"clarity": <0-100>, "confidence": <0-100>}. ' +
+            'You are a warm, sharp speaking coach scoring a ~30 second spoken answer. Return STRICT JSON: ' +
+            '{"clarity": <0-100>, "confidence": <0-100>, "did_well": "<text>", "improve": "<text>"}. ' +
             'clarity = how easy the answer is to follow — structure, articulation, staying on task. ' +
-            'confidence = how assured and decisive the delivery reads from the words — few hedges, clear stance. ' +
-            'Be fair but discriminating; most genuine first attempts land 55–80. No prose, JSON only.',
+            'confidence = how assured and decisive the delivery reads from the words — few hedges, a clear stance. ' +
+            'did_well = ONE specific thing they did well, max 6 words, encouraging, no ending period. ' +
+            'improve = ONE concrete, kind, actionable fix, max 6 words, no ending period. ' +
+            'Judge the content and structure of the answer, not pronunciation. ' +
+            'Be fair but discriminating; most genuine first attempts land 55–80. No prose outside the JSON.',
         },
         { role: 'user', content: `Task: ${task}\n\nTranscript: "${transcript}"` },
       ],
     })
     const raw = res.choices[0]?.message?.content ?? '{}'
-    const parsed = JSON.parse(raw) as { clarity?: unknown; confidence?: unknown }
+    const parsed = JSON.parse(raw) as Record<string, unknown>
     const clamp = (x: unknown) => Math.max(0, Math.min(100, Math.round(Number(x) || 0)))
-    return { clarity: clamp(parsed.clarity), confidence: clamp(parsed.confidence) }
+    const str = (x: unknown) => (typeof x === 'string' ? x : '')
+    return {
+      clarity: clamp(parsed.clarity),
+      confidence: clamp(parsed.confidence),
+      didWell: str(parsed.did_well),
+      improve: str(parsed.improve),
+    }
   } catch {
     // Model or JSON failure shouldn't break the tool — neutral fallback.
-    return { clarity: 60, confidence: 60 }
+    return { clarity: 60, confidence: 60, didWell: '', improve: '' }
   }
 }
 
@@ -123,13 +144,38 @@ export async function POST(request: NextRequest) {
 
     const filler = countFillers(transcript)
     const wpm = computeWpm(words, duration)
-    const { clarity, confidence } = await judge(transcript, prompt.prompt)
+    const { clarity, confidence, didWell, improve } = await analyze(transcript, prompt.prompt)
     const overall = overallScore({ clarity, confidence, wpm, fillerCount: filler, wordCount: words })
 
-    const score: QuickScore = { promptId: prompt.id, overall, filler, wpm, clarity, confidence }
+    // Blend the model's content feedback with the metric-grounded lines. Lead
+    // with the model line (most coaching-like), then the deterministic ones.
+    const pace = paceFeedback(wpm)
+    const fill = fillerFeedback(filler, words)
+    const strengths = pickLines([didWell, fill.good, pace.good])
+    const improvements = pickLines([improve, fill.improve, pace.improve])
+    // Never hand back an empty section — a gentle default keeps it human.
+    if (strengths.length === 0) strengths.push('You showed up and spoke')
+    if (improvements.length === 0) improvements.push('Keep practising to lock it in')
 
-    // Return the SIGNED TOKEN only. No score numbers — the reveal is gated.
-    return NextResponse.json({ ok: true, token: signScore(score) })
+    const score: QuickScore = {
+      promptId: prompt.id,
+      overall,
+      filler,
+      wpm,
+      clarity,
+      confidence,
+      strengths,
+      improvements,
+    }
+
+    // Return the SIGNED TOKEN (carries everything for the gated reveal) plus a
+    // tiny PREVIEW — one strength + one fix — so the pre-signup card can show a
+    // genuine sneak peek of the coaching while the number stays locked.
+    return NextResponse.json({
+      ok: true,
+      token: signScore(score),
+      preview: { didWell: strengths[0], improve: improvements[0] },
+    })
   } catch (err) {
     console.error('quick-score error:', err)
     return NextResponse.json(

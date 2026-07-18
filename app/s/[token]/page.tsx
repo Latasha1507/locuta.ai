@@ -1,24 +1,18 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { verifyScore } from '@/lib/quick-score-token'
-import { promptById, verdict } from '@/lib/quick-score'
+import { promptById } from '@/lib/quick-score'
 import { createClient } from '@/lib/supabase/server'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { ShareActions } from '@/components/landing/ShareActions'
+import { ScoreCard } from '@/components/landing/ScoreCard'
 
 // Public share card for a quick-score result. Stateless — everything is decoded
 // from the signed token in the URL, so there's no DB lookup and the link works
-// forever. Owners (freshly signed in) get a "practise to improve" CTA; strangers
-// who clicked a shared link get a "beat this" CTA that funnels them into the tool.
+// forever. The interactive card (confetti, count-up, feedback) lives in the
+// ScoreCard client component; this server page handles the token, metadata and
+// owner-vs-stranger check.
 
 export const dynamic = 'force-dynamic'
-
-function scoreColor(o: number): string {
-  if (o >= 75) return lc.green
-  if (o >= 60) return lc.blue
-  if (o >= 45) return lc.orange
-  return lc.coral
-}
 
 export async function generateMetadata({
   params,
@@ -51,9 +45,9 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   if (!score) return <InvalidCard />
 
   const topic = promptById(score.promptId)?.topic ?? 'Speaking'
-  const color = scoreColor(score.overall)
 
-  // Owner vs stranger — only changes the CTA. Never blocks the page.
+  // Owner vs stranger — only changes the CTA + whether feedback shows. Never
+  // blocks the page.
   let isOwner = false
   try {
     const supabase = await createClient()
@@ -66,13 +60,6 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   }
 
   const shareText = `I scored ${score.overall} on ${topic} on Locuta. Beat me. 🎤`
-
-  const stats = [
-    { label: 'Filler words', value: String(score.filler), color: lc.coral },
-    { label: 'Pace', value: `${score.wpm} wpm`, color: lc.blue },
-    { label: 'Clarity', value: String(score.clarity), color: lc.purple },
-    { label: 'Confidence', value: String(score.confidence), color: lc.green },
-  ]
 
   return (
     <main
@@ -93,113 +80,18 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
         Locuta
       </Link>
 
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 440,
-          background: '#fff',
-          border: `2px solid ${lc.cardBorder}`,
-          borderRadius: 26,
-          boxShadow: `0 10px 0 ${lc.cardBorder}`,
-          padding: '28px 24px 26px',
-        }}
-      >
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800, color: lc.faint, letterSpacing: '0.06em' }}>
-            30-SECOND SPEAKING TEST
-          </div>
-          <div
-            style={{
-              fontFamily: fontDisplay,
-              fontWeight: 800,
-              fontSize: 88,
-              lineHeight: 1,
-              color,
-              margin: '10px 0 2px',
-            }}
-          >
-            {score.overall}
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: lc.faint }}>
-            out of 100 · {verdict(score.overall)}
-          </div>
-          <div
-            style={{
-              fontFamily: fontDisplay,
-              fontWeight: 800,
-              fontSize: 26,
-              color: '#2c3a26',
-              marginTop: 14,
-            }}
-          >
-            {topic}
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginTop: 20 }}>
-          {stats.map((s) => (
-            <div
-              key={s.label}
-              style={{
-                background: '#f7faf4',
-                border: `2px solid ${lc.cardBorder}`,
-                borderRadius: 14,
-                padding: '12px 14px',
-              }}
-            >
-              <div style={{ fontSize: 11.5, fontWeight: 800, color: lc.faint }}>{s.label}</div>
-              <div style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 22, color: s.color, marginTop: 2 }}>
-                {s.value}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ marginTop: 22 }}>
-          <ShareActions shareText={shareText} />
-        </div>
-      </div>
-
-      {/* CTA — owner practises, stranger takes the test */}
-      <div style={{ marginTop: 22, textAlign: 'center' }}>
-        {isOwner ? (
-          <Link
-            href="/dashboard"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              fontFamily: fontDisplay,
-              fontWeight: 800,
-              fontSize: 16,
-              color: lc.greenDark,
-              textDecoration: 'none',
-            }}
-          >
-            Want to fix it? Start practising →
-          </Link>
-        ) : (
-          <Link
-            href="/"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              background: lc.green,
-              color: '#fff',
-              fontFamily: fontDisplay,
-              fontWeight: 800,
-              fontSize: 16,
-              textDecoration: 'none',
-              padding: '15px 26px',
-              borderRadius: 16,
-              boxShadow: `0 6px 0 ${lc.greenDark}`,
-            }}
-          >
-            Think you can beat {score.overall}? Take the free test →
-          </Link>
-        )}
-      </div>
+      <ScoreCard
+        overall={score.overall}
+        topic={topic}
+        clarity={score.clarity}
+        confidence={score.confidence}
+        wpm={score.wpm}
+        filler={score.filler}
+        strengths={score.strengths}
+        improvements={score.improvements}
+        isOwner={isOwner}
+        shareText={shareText}
+      />
     </main>
   )
 }

@@ -45,8 +45,10 @@ export function promptById(id: number): PromptDef | undefined {
   return PROMPTS.find((p) => p.id === id)
 }
 
-/** The result carried in the signed share token. Numbers only — never the
-    transcript or audio (those can be personal and must not travel in a URL). */
+/** The result carried in the signed share token. Numbers + SHORT coaching
+    lines only — never the transcript or audio (those can be personal and must
+    not travel in a URL). The feedback lines are constructive, ≤~52 chars, and
+    are only ever rendered to the signed-in owner, never in the public image. */
 export interface QuickScore {
   promptId: number
   /** 0–100 composite — the one big number. */
@@ -57,6 +59,10 @@ export interface QuickScore {
   wpm: number
   clarity: number
   confidence: number
+  /** Up to 2 very short "you nailed this" lines. */
+  strengths: string[]
+  /** Up to 2 very short "level up" lines. */
+  improvements: string[]
 }
 
 // Filler set kept deliberately moderate. "so", "well", "right", "okay",
@@ -126,11 +132,57 @@ export function overallScore(p: {
   return clamp(Math.round(o), 0, 100)
 }
 
-/** Short verdict word for the card, driven by the overall number. */
+/** The fun "rank" for the result screen: a colour, an encouraging label and an
+    emoji, all driven by the one number. Kept positive at every tier — the card
+    gets shared, so no tier should feel like a punishment. Hexes mirror the
+    design tokens (green / blue / orange / coral). */
+export function scoreTier(overall: number): { color: string; label: string; emoji: string } {
+  if (overall >= 85) return { color: '#3fce6f', label: 'Outstanding', emoji: '🔥' }
+  if (overall >= 75) return { color: '#3fce6f', label: 'Strong', emoji: '💪' }
+  if (overall >= 65) return { color: '#1cb0f6', label: 'Solid', emoji: '✨' }
+  if (overall >= 50) return { color: '#f5a623', label: 'Getting there', emoji: '🌱' }
+  return { color: '#ff6f61', label: 'Rough start', emoji: '🎯' }
+}
+
+/** Short verdict word (the tier label). */
 export function verdict(overall: number): string {
-  if (overall >= 85) return 'Outstanding'
-  if (overall >= 75) return 'Strong'
-  if (overall >= 65) return 'Solid'
-  if (overall >= 50) return 'Getting there'
-  return 'Rough start'
+  return scoreTier(overall).label
+}
+
+/** Normalise a coaching line: single-spaced, trimmed, hard length cap. */
+export function tidyFeedback(s: string, max = 52): string {
+  const t = (s ?? '').trim().replace(/\s+/g, ' ').replace(/[.]+$/, '')
+  return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t
+}
+
+// Deterministic, metric-grounded feedback. These are always accurate because
+// they read the real numbers — the model only adds the content-level line on
+// top. Each returns an optional "good" (a strength) and "improve" (a fix).
+
+export function paceFeedback(wpm: number): { good?: string; improve?: string } {
+  if (wpm >= 120 && wpm <= 160) return { good: 'Great, steady speaking pace' }
+  if (wpm < 105) return { improve: 'Pick up the pace a little' }
+  if (wpm > 175) return { improve: 'Slow down — you rushed it' }
+  return {}
+}
+
+export function fillerFeedback(fillerCount: number, words: number): { good?: string; improve?: string } {
+  if (words <= 0) return {}
+  const per100 = (fillerCount / words) * 100
+  if (fillerCount === 0) return { good: 'Zero filler words — crisp' }
+  if (per100 >= 8 || fillerCount >= 4) return { improve: `Trim filler words (you said ${fillerCount})` }
+  if (per100 <= 3) return { good: 'Barely any filler words' }
+  return {}
+}
+
+/** First `n` unique, non-empty, tidied lines. */
+export function pickLines(lines: (string | undefined)[], n = 2): string[] {
+  const out: string[] = []
+  for (const raw of lines) {
+    if (!raw) continue
+    const t = tidyFeedback(raw)
+    if (t && !out.includes(t)) out.push(t)
+    if (out.length >= n) break
+  }
+  return out
 }
