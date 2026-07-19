@@ -38,17 +38,20 @@ interface Skin {
   bg: string
   fg: string
   border: string
+  /** Fill on hover. Wired through --lc-bg-hover; this is the cue people see. */
   hoverBg: string
+  /** Soft shadow colour under the button on hover. */
+  glow: string
   ring: string
 }
 
 const SKINS: Record<ButtonVariant, Skin> = {
-  primary: { bg: lc.green, fg: '#fff', border: lc.greenDark, hoverBg: lc.greenDark, ring: 'rgba(63,206,111,.45)' },
-  secondary: { bg: '#fff', fg: lc.ink, border: '#dde7d6', hoverBg: '#f4f9f1', ring: 'rgba(63,206,111,.35)' },
-  ghost: { bg: 'transparent', fg: lc.greenDark, border: 'transparent', hoverBg: 'rgba(63,206,111,.10)', ring: 'rgba(63,206,111,.35)' },
+  primary: { bg: lc.green, fg: '#fff', border: lc.greenDark, hoverBg: lc.greenDark, glow: 'rgba(47,165,82,.38)', ring: 'rgba(63,206,111,.45)' },
+  secondary: { bg: '#fff', fg: lc.ink, border: '#c3d8b8', hoverBg: '#f0f8ec', glow: 'rgba(63,206,111,.22)', ring: 'rgba(63,206,111,.35)' },
+  ghost: { bg: 'transparent', fg: lc.greenDark, border: 'transparent', hoverBg: 'rgba(63,206,111,.14)', glow: 'rgba(63,206,111,.18)', ring: 'rgba(63,206,111,.35)' },
   // White button sitting on the green band — the border is a translucent dark
   // so it keeps its weight without introducing a second colour.
-  onDark: { bg: '#fff', fg: lc.greenText, border: 'rgba(0,0,0,.14)', hoverBg: '#f2fbf5', ring: 'rgba(255,255,255,.65)' },
+  onDark: { bg: '#fff', fg: lc.greenText, border: 'rgba(0,0,0,.14)', hoverBg: '#eaf9ef', glow: 'rgba(0,0,0,.22)', ring: 'rgba(255,255,255,.65)' },
 }
 
 /** Injected once. Real :hover/:active/:focus-visible beats React state here. */
@@ -62,17 +65,33 @@ export function ButtonStyles() {
         font-family:${fontDisplay};font-weight:800;letter-spacing:.01em;
         text-decoration:none;cursor:pointer;
         border-style:solid;border-width:2px;
+        background:var(--lc-bg);
         transform:translateY(var(--lc-lift));
-        transition:transform .12s ease,background-color .12s ease,border-bottom-width .12s ease,box-shadow .12s ease;
+        transition:transform .13s ease,background-color .13s ease,box-shadow .13s ease,border-bottom-width .13s ease;
         -webkit-tap-highlight-color:transparent;
       }
-      .lc-btn:hover:not(:disabled){--lc-lift:-1px;}
-      .lc-btn:active:not(:disabled){--lc-lift:2px;border-bottom-width:2px!important;}
+      /* HOVER — three cues at once so it is impossible to miss:
+         the fill deepens, the button rises 2px, and a soft shadow appears
+         underneath it. A 1px nudge on its own reads as nothing. */
+      .lc-btn:hover:not(:disabled):not([aria-disabled="true"]){
+        background:var(--lc-bg-hover);
+        --lc-lift:-2px;
+        box-shadow:0 6px 14px var(--lc-glow);
+      }
+      /* PRESS — the button drops past its resting position, the shadow
+         collapses and the bottom edge thins, so it reads as physically
+         pushed into the page. */
+      .lc-btn:active:not(:disabled):not([aria-disabled="true"]){
+        --lc-lift:2px;
+        box-shadow:none;
+        border-bottom-width:2px!important;
+      }
       .lc-btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--lc-ring);}
-      .lc-btn:disabled,.lc-btn[aria-disabled="true"]{opacity:.5;cursor:not-allowed;--lc-lift:0px;}
+      .lc-btn:disabled,.lc-btn[aria-disabled="true"]{opacity:.5;cursor:not-allowed;--lc-lift:0px;box-shadow:none;}
+      /* Motion-sensitive users still get the colour change, just no movement. */
       @media (prefers-reduced-motion:reduce){
-        .lc-btn{transition:background-color .12s ease;}
-        .lc-btn:hover:not(:disabled),.lc-btn:active:not(:disabled){--lc-lift:0px;}
+        .lc-btn{transition:background-color .13s ease;}
+        .lc-btn:hover:not(:disabled),.lc-btn:active:not(:disabled){--lc-lift:0px;box-shadow:none;}
       }
     `}</style>
   )
@@ -115,13 +134,15 @@ export function Button({
     fontSize: s.font,
     borderRadius: s.radius,
     gap: s.gap,
-    background: skin.bg,
     color: skin.fg,
     borderColor: skin.border,
     // The thicker bottom edge is what replaces the old offset shadow: it reads
     // as a physical edge the button can press into, on a single flat plane.
     borderBottomWidth: 3,
     width: block ? '100%' : undefined,
+    ['--lc-bg']: skin.bg,
+    ['--lc-bg-hover']: skin.hoverBg,
+    ['--lc-glow']: skin.glow,
     ['--lc-ring']: skin.ring,
     ...style,
   } as CSSProperties

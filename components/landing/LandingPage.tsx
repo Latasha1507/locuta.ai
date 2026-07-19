@@ -701,18 +701,21 @@ export function LandingPage() {
         style={{ background: lc.green, color: '#fff', borderTop: `4px solid ${lc.greenDark}` }}
       >
         <div
-          className="mx-auto flex max-w-[900px] flex-col items-center gap-4 text-center lg:flex-row lg:justify-between lg:gap-8 lg:text-left"
+          className="mx-auto flex max-w-[1100px] flex-col items-center gap-5 text-center lg:flex-row lg:items-center lg:justify-between lg:gap-12 lg:text-left"
         >
           <div>
             <h2
-              className="text-[22px] lg:text-[28px]"
+              className="text-[22px] lg:text-[29px]"
               style={{
                 fontFamily: fontDisplay,
                 fontWeight: 800,
                 letterSpacing: '-0.5px',
-                lineHeight: 1.15,
+                lineHeight: 1.18,
                 margin: 0,
                 color: '#fff',
+                // Stops the last word dropping alone onto a second line, which
+                // left an orphaned "be." hanging under the headline.
+                textWrap: 'balance',
               }}
             >
               Become the confident communicator you want to be.
