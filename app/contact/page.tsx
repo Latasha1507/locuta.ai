@@ -5,7 +5,7 @@ import { lc, fontDisplay } from '@/components/landing/tokens'
 import { Icon } from '@/components/landing/icons'
 import { MarketingShell, MarketingCard } from '@/components/marketing/MarketingShell'
 
-const SUPPORT_EMAIL = 'hello@locuta.ai'
+const SUPPORT_EMAIL = 'info@locuta.in'
 
 export default function ContactPage() {
   const [name, setName] = useState('')
