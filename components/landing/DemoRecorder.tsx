@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay } from './tokens'
-import { Icon } from './icons'
+import { Icon } from '@/components/ui/icons'
 import { PROMPTS } from '@/lib/quick-score'
 
 // The hero micro-tool: record 30 seconds against a simple prompt, get one
@@ -293,7 +293,7 @@ export function DemoRecorder() {
               fontSize: 12.5,
             }}
           >
-            <Icon id="ic-star" size={13} color={lc.green} /> New topic
+            <Icon name="star" size={13} color={lc.green} /> New topic
           </button>
         )}
       </div>
@@ -436,10 +436,10 @@ function LockedGate({
             transform: 'rotate(-6deg)',
           }}
         >
-          <Icon id="ic-star" size={26} color="#fff" />
+          <Icon name="star" size={26} color="#fff" />
         </div>
         <div style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 17, color: '#7a5b00' }}>
-          Your score is ready 🔒
+          Your score is ready
         </div>
         <div style={{ fontSize: 13, color: '#9a7b2e', fontWeight: 700, marginTop: 4, lineHeight: 1.4 }}>
           Create a free account to reveal your <strong>{topic}</strong> score, your full breakdown and bragging rights worth sharing.

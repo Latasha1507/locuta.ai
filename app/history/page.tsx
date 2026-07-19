@@ -11,12 +11,12 @@ export const dynamic = 'force-dynamic'
 const PER_PAGE = 20
 
 const META: Record<string, { icon: string; color: string }> = {
-  'public-speaking': { icon: 'ic-mic', color: '#3fce6f' },
-  storytelling: { icon: 'ic-book', color: '#ffc531' },
-  'creator-speaking': { icon: 'ic-camera', color: '#ff6f61' },
-  'casual-conversation': { icon: 'ic-chat', color: '#1cb0f6' },
-  'workplace-communication': { icon: 'ic-briefcase', color: '#a56cf5' },
-  'pitch-anything': { icon: 'ic-target', color: '#3fce6f' },
+  'public-speaking': { icon: 'mic', color: '#3fce6f' },
+  storytelling: { icon: 'book', color: '#ffc531' },
+  'creator-speaking': { icon: 'camera', color: '#ff6f61' },
+  'casual-conversation': { icon: 'chat', color: '#1cb0f6' },
+  'workplace-communication': { icon: 'briefcase', color: '#a56cf5' },
+  'pitch-anything': { icon: 'target', color: '#3fce6f' },
 }
 
 interface FeedbackShape {
@@ -137,7 +137,7 @@ export default async function HistoryPage({
   const personalBests: PersonalBest[] = [...bestByCat.entries()]
     .map(([name, best]) => {
       const id = slugForCategory(name)
-      return { categoryName: name, icon: META[id]?.icon ?? 'ic-mic', color: META[id]?.color ?? '#3fce6f', best }
+      return { categoryName: name, icon: META[id]?.icon ?? 'mic', color: META[id]?.color ?? '#3fce6f', best }
     })
     .sort((a, b) => b.best - a.best)
 

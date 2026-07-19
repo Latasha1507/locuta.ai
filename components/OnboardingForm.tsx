@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { Icon } from '@/components/ui/icons'
 
 interface OnboardingFormProps {
   userId: string
@@ -97,7 +98,7 @@ export default function OnboardingForm({ userId, onComplete }: OnboardingFormPro
       <div className="max-w-2xl w-full">
         <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 border border-slate-100">
           <div className="text-center mb-6">
-            <div className="text-5xl mb-4">👋</div>
+            <div className="mb-4 flex justify-center"><Icon name="wave" size={52} color="#3fce6f" /></div>
             <h2 className="text-3xl font-bold text-slate-900 mb-2">Welcome to Locuta!</h2>
             <p className="text-slate-600">Let's personalize your experience (takes 1 minute)</p>
           </div>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import FounderCallModal from '@/components/FounderCallModal'
 import { lc, fontDisplay } from '@/components/landing/tokens'
+import { Icon } from '@/components/ui/icons'
 
 export interface FounderPromo {
   /** Slots left, straight from founder_call_settings. */
@@ -43,7 +44,7 @@ export function SidebarPromo({ promo }: { promo: FounderPromo }) {
         }}
       >
         <div style={{ fontSize: 22, lineHeight: 1 }} aria-hidden="true">
-          🎁
+          <Icon name="gift" size={22} color="#fff" />
         </div>
         <div
           style={{

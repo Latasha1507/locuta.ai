@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay } from './tokens'
 import { Mascot } from './Mascot'
-import { LandingIconSprite, Icon } from './icons'
+import { Icon } from '@/components/ui/icons'
 import { scoreTier, metricColor, PACE_TARGET } from '@/lib/quick-score'
 import { ShareActions } from './ShareActions'
 
@@ -156,7 +156,6 @@ export function ScoreCard(p: ScoreCardProps) {
         position: 'relative',
       }}
     >
-      <LandingIconSprite />
 
       {isModal && p.onClose && (
         <button
@@ -242,7 +241,7 @@ export function ScoreCard(p: ScoreCardProps) {
               borderRadius: 999,
             }}
           >
-            <span aria-hidden="true">{tier.emoji}</span>
+            <Icon name={tier.icon} size={15} color={tier.color} fillOpacity={0.28} />
             {tier.label}
           </div>
 
@@ -303,10 +302,10 @@ export function ScoreCard(p: ScoreCardProps) {
           {p.isOwner && (p.strengths.length > 0 || p.improvements.length > 0) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {p.strengths.length > 0 && (
-                <FeedbackBlock title="What you nailed" lines={p.strengths} color={lc.green} bg="#eefaf0" glyph="ic-check" />
+                <FeedbackBlock title="What you nailed" lines={p.strengths} color={lc.green} bg="#eefaf0" glyph="check" />
               )}
               {p.improvements.length > 0 && (
-                <FeedbackBlock title="Work on this next" lines={p.improvements} color="#c07d08" bg="#fff6e5" glyph="ic-arrow" />
+                <FeedbackBlock title="Work on this next" lines={p.improvements} color="#c07d08" bg="#fff6e5" glyph="arrow" />
               )}
             </div>
           )}
@@ -344,7 +343,7 @@ export function ScoreCard(p: ScoreCardProps) {
                   textDecoration: 'none',
                 }}
               >
-                <Icon id="ic-mic" size={15} color={lc.greenDark} />
+                <Icon name="mic" size={15} color={lc.greenDark} />
                 Start practising →
               </Link>
             </div>
@@ -368,7 +367,7 @@ export function ScoreCard(p: ScoreCardProps) {
               boxShadow: `0 5px 0 ${lc.greenDark}`,
             }}
           >
-            <Icon id="ic-mic" size={18} color="#fff" />
+            <Icon name="mic" size={18} color="#fff" />
             Think you can beat {p.overall}?
           </Link>
         )}
@@ -421,7 +420,7 @@ function FeedbackBlock({
                 marginTop: 1,
               }}
             >
-              <Icon id={glyph} size={10} color="#fff" />
+              <Icon name={glyph} size={10} color="#fff" />
             </span>
             <span style={{ fontSize: 12.5, fontWeight: 700, color: '#41503c', lineHeight: 1.35 }}>{l}</span>
           </div>

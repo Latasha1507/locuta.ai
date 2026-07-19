@@ -14,7 +14,7 @@ import {
 } from '@/lib/analytics/helpers'
 import UpgradeModal from '@/components/UpgradeModal'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { LandingIconSprite, Icon } from '@/components/landing/icons'
+import { Icon } from '@/components/ui/icons'
 import { Mascot, type MascotMood } from '@/components/landing/Mascot'
 
 export interface PracticeData {
@@ -400,7 +400,6 @@ export function PracticeView(d: PracticeData) {
 
   return (
     <div className="min-h-screen" style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}>
-      <LandingIconSprite />
 
       <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-3 px-4 pb-10 pt-4 lg:gap-4 lg:px-8 lg:pb-8 lg:pt-5">
         {/* HEADER */}
@@ -430,7 +429,7 @@ export function PracticeView(d: PracticeData) {
               transform: 'scaleX(-1)',
             }}
           >
-            <Icon id="ic-arrow" size={18} color={lc.greenDark} />
+            <Icon name="arrow" size={18} color={lc.greenDark} />
           </Link>
 
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -466,7 +465,7 @@ export function PracticeView(d: PracticeData) {
                 borderRadius: 999,
               }}
             >
-              <Icon id="ic-chat" size={11} color={lc.greenDark} />
+              <Icon name="chat" size={11} color={lc.greenDark} />
               {d.tone} coach
             </span>
           </div>
@@ -519,7 +518,7 @@ export function PracticeView(d: PracticeData) {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <Icon id="ic-bulb" size={20} color={lc.blue} />
+              <Icon name="bulb" size={20} color={lc.blue} />
               <span
                 style={{
                   fontFamily: fontDisplay,
@@ -600,7 +599,7 @@ export function PracticeView(d: PracticeData) {
           style={{ background: '#eef8ea', border: '2px solid #cfe9c6', borderRadius: 20, boxShadow: '0 5px 0 #d8ecd0' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <Icon id="ic-target" size={20} color={lc.greenDark} />
+            <Icon name="target" size={20} color={lc.greenDark} />
             <span
               style={{
                 fontFamily: fontDisplay,
@@ -623,7 +622,7 @@ export function PracticeView(d: PracticeData) {
                 color: '#6d8a66',
               }}
             >
-              <Icon id="ic-clock" size={12} color="#6d8a66" />
+              <Icon name="clock" size={12} color="#6d8a66" />
               ~{d.expectedDurationSec}s
             </span>
           </div>
@@ -637,7 +636,7 @@ export function PracticeView(d: PracticeData) {
           className="p-[18px] lg:p-6"
           style={{ background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 22, boxShadow: `0 5px 0 ${lc.cardBorder}` }}
         >
-          <StepHead icon="ic-chat" title="Prefer to listen?" subtitle={`Hear the lesson above in your ${d.tone} coach's voice`} />
+          <StepHead icon="chat" title="Prefer to listen?" subtitle={`Hear the lesson above in your ${d.tone} coach's voice`} />
 
           {/* No gate: the audio loads by itself. While it's coming, we show a
               quiet placeholder — never a button the user has to press first. */}
@@ -855,7 +854,7 @@ export function PracticeView(d: PracticeData) {
                 {recording ? (
                   <span style={{ width: 26, height: 26, borderRadius: 6, background: '#fff' }} />
                 ) : (
-                  <Icon id="ic-mic" size={34} color="#fff" />
+                  <Icon name="mic" size={34} color="#fff" />
                 )}
               </span>
             </button>
@@ -938,7 +937,7 @@ export function PracticeView(d: PracticeData) {
                 }}
               >
                 {submitting ? SUBMIT_LOADING[loaderIdx] : 'Get my feedback'}
-                {!submitting && <Icon id="ic-arrow" size={17} color="#fff" />}
+                {!submitting && <Icon name="arrow" size={17} color="#fff" />}
               </button>
             </div>
           )}
@@ -1007,7 +1006,7 @@ function StepHead({ n, icon, title, subtitle }: { n?: number; icon?: string; tit
             flex: 'none',
           }}
         >
-          <Icon id={icon ?? 'ic-chat'} size={17} color={lc.greenDark} />
+          <Icon name={icon ?? 'chat'} size={17} color={lc.greenDark} />
         </span>
       )}
       <div>
@@ -1059,7 +1058,7 @@ function AudioPlayer({
             aria-label="Replay from the start"
             style={secBtn}
           >
-            <Icon id="ic-clock" size={18} color="#5f6d58" />
+            <Icon name="clock" size={18} color="#5f6d58" />
           </button>
           <button
             type="button"
@@ -1097,7 +1096,7 @@ function AudioPlayer({
             )}
           </button>
           <button type="button" onClick={() => audio.skipForward()} aria-label="Skip forward" style={secBtn}>
-            <Icon id="ic-arrow" size={18} color="#5f6d58" />
+            <Icon name="arrow" size={18} color="#5f6d58" />
           </button>
         </div>
       </div>

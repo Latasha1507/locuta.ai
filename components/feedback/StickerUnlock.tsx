@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay } from '@/components/landing/tokens'
-import { Icon } from '@/components/landing/icons'
+import { Icon } from '@/components/ui/icons'
 import { Mascot } from '@/components/landing/Mascot'
 
 // The reward moment. Fires only when a level is completed for the FIRST time —
@@ -151,7 +151,7 @@ export function StickerUnlock({
                 : 'lp-sticker-land .5s cubic-bezier(.34,1.56,.64,1) both',
             }}
           >
-            <Icon id={stickerIcon} size={52} color="#fff" />
+            <Icon name={stickerIcon} size={52} color="#fff" />
             {/* gloss sweep */}
             <span
               aria-hidden="true"
@@ -220,7 +220,7 @@ export function StickerUnlock({
               marginBottom: 20,
             }}
           >
-            <Icon id="ic-flame" size={17} color={lc.orange} />
+            <Icon name="flame" size={17} color={lc.orange} />
             <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 14, color: '#c07d08' }}>
               {streak} day streak
             </span>

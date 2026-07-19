@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Mixpanel from '@/lib/mixpanel'
 import TrialWelcomeModal from '@/components/TrialWelcomeModal'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { LandingIconSprite, Icon } from '@/components/landing/icons'
+import { Icon } from '@/components/ui/icons'
 import { Sidebar } from './Sidebar'
 import { HeroMascot } from './HeroMascot'
 import { StickerWeek } from './StickerWeek'
@@ -67,7 +67,7 @@ export function DashboardClient(d: DashboardData) {
       label: 'Current streak',
       value: d.streak,
       hint: d.streak === 0 ? 'Start today to begin' : d.practicedToday ? 'Alive and well' : 'Practice today to keep it',
-      icon: 'ic-flame',
+      icon: 'flame',
       color: lc.coral,
       warm: true,
       delay: 0,
@@ -77,7 +77,7 @@ export function DashboardClient(d: DashboardData) {
       value: d.lessonsCompleted,
       suffix: ` / ${d.lessonsTotal}`,
       hint: isNewUser ? 'Every expert started at 0' : 'Keep going',
-      icon: 'ic-book',
+      icon: 'book',
       color: lc.blue,
       delay: 0.06,
     },
@@ -86,7 +86,7 @@ export function DashboardClient(d: DashboardData) {
       value: d.stickersThisWeek,
       suffix: ' / 7',
       hint: d.stickersThisWeek === 0 ? 'Your collection awaits' : 'Nice collection',
-      icon: 'ic-star',
+      icon: 'star',
       color: lc.yellow,
       delay: 0.12,
     },
@@ -95,7 +95,7 @@ export function DashboardClient(d: DashboardData) {
       value: d.bestScore > 0 ? d.bestScore : null,
       placeholder: '—',
       hint: d.bestScore > 0 ? 'Out of 100' : 'Record your first rep',
-      icon: 'ic-crown',
+      icon: 'crown',
       color: lc.green,
       delay: 0.18,
     },
@@ -106,7 +106,6 @@ export function DashboardClient(d: DashboardData) {
       className="flex min-h-screen flex-col lg:flex-row"
       style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}
     >
-      <LandingIconSprite />
       <Sidebar isAdmin={d.isAdmin} promo={d.promo} />
 
       <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-9 pt-5 lg:gap-[22px] lg:px-10 lg:pb-11 lg:pt-[30px]">
@@ -117,7 +116,7 @@ export function DashboardClient(d: DashboardData) {
               className="text-[26px] lg:text-[32px]"
               style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-0.5px', lineHeight: 1.05, margin: 0 }}
             >
-              Welcome back, {d.firstName} <span style={{ fontFamily: fontBody }}>👋</span>
+              Welcome back, {d.firstName} <Icon name="wave" size={26} color="#3fce6f" style={{ display: 'inline-block', verticalAlign: '-4px' }} />
             </h1>
             <p style={{ fontSize: 14.5, color: lc.muted, fontWeight: 600, margin: '4px 0 0' }}>
               Ready to improve your speaking skills today?
@@ -156,7 +155,7 @@ export function DashboardClient(d: DashboardData) {
               }}
               title={`${d.streak} day streak`}
             >
-              <Icon id="ic-flame" size={17} color={lc.orange} />
+              <Icon name="flame" size={17} color={lc.orange} />
               <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 14, color: '#c07d08' }}>
                 {d.streak}
               </span>
@@ -267,15 +266,15 @@ export function DashboardClient(d: DashboardData) {
                   whiteSpace: 'nowrap',
                 }}
               >
-                <Icon id="ic-mic" size={19} color={d.practicedToday ? lc.greenDark : '#fff'} />
+                <Icon name="mic" size={19} color={d.practicedToday ? lc.greenDark : '#fff'} />
                 {d.practicedToday ? 'PRACTICE AGAIN' : isNewUser ? 'START YOUR FIRST REP' : "START TODAY'S PRACTICE"}
               </Link>
               <span style={{ fontSize: 13, color: '#5f6d58', fontWeight: 700 }}>
                 {d.practicedToday
-                  ? 'Extra reps still sharpen you 💪'
+                  ? 'Extra reps still sharpen you'
                   : isNewUser
                     ? '60 seconds · earn your first sticker 🌟'
-                    : '60 seconds · keep your flame lit 🔥'}
+                    : '60 seconds · keep your flame lit'}
               </span>
             </div>
           </div>
@@ -331,7 +330,7 @@ export function DashboardClient(d: DashboardData) {
                     boxShadow: '0 4px 0 rgba(0,0,0,.13)',
                   }}
                 >
-                  <Icon id={c.icon} size={28} color="#fff" />
+                  <Icon name={c.icon} size={28} color="#fff" />
                 </span>
                 {c.completed > 0 && (
                   <span
@@ -399,7 +398,7 @@ export function DashboardClient(d: DashboardData) {
                   }}
                 >
                   {c.completed > 0 ? 'Continue' : 'Start'}
-                  <Icon id="ic-arrow" size={13} color={c.completed > 0 ? lc.greenDark : lc.green} />
+                  <Icon name="arrow" size={13} color={c.completed > 0 ? lc.greenDark : lc.green} />
                 </span>
               </div>
             </Link>

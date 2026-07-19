@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { lc, fontDisplay } from '@/components/landing/tokens'
-import { Icon } from '@/components/landing/icons'
+import { Icon } from '@/components/ui/icons'
 
 /** Counts 0 -> target once on mount. Respects prefers-reduced-motion. */
 function useCountUp(target: number, ms = 700) {
@@ -79,7 +79,7 @@ export function StatCard({ label, value, suffix, placeholder, hint, icon, color,
           transition: 'transform .2s cubic-bezier(.34,1.56,.64,1)',
         }}
       >
-        <Icon id={icon} size={24} color="#fff" />
+        <Icon name={icon} size={24} color="#fff" />
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'block', fontSize: 12.5, color: lc.faint, fontWeight: 800, marginBottom: 3 }}>

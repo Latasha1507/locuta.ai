@@ -1,5 +1,6 @@
 'use client'
 
+import { Icon } from '@/components/ui/icons'
 import { useEffect, useState } from 'react'
 
 interface AchievementPopupProps {
@@ -38,7 +39,7 @@ export default function AchievementPopup({ score, moduleNumber, onClose }: Achie
   
   // Determine achievement level
   let achievement = {
-    icon: '✓',
+    icon: 'check',
     title: 'Lesson Completed!',
     color: 'from-green-400 to-emerald-500',
     bgColor: 'from-green-50 to-emerald-50'
@@ -46,14 +47,14 @@ export default function AchievementPopup({ score, moduleNumber, onClose }: Achie
   
   if (score >= 90) {
     achievement = {
-      icon: '⭐',
+      icon: 'star',
       title: 'Exceptional Performance!',
       color: 'from-yellow-400 to-amber-500',
       bgColor: 'from-yellow-50 to-amber-50'
     }
   } else if (score >= 80) {
     achievement = {
-      icon: '🏆',
+      icon: 'trophy',
       title: 'Excellent Work!',
       color: 'from-purple-500 to-pink-500',
       bgColor: 'from-purple-50 to-pink-50'
@@ -74,7 +75,7 @@ export default function AchievementPopup({ score, moduleNumber, onClose }: Achie
         <div className="text-center">
           {/* Animated Icon */}
           <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br ${achievement.color} mb-4 animate-bounce`}>
-            <span className="text-5xl">{achievement.icon}</span>
+            <Icon name={achievement.icon} size={54} color="#3fce6f" />
           </div>
           
           {/* Title */}
@@ -89,7 +90,7 @@ export default function AchievementPopup({ score, moduleNumber, onClose }: Achie
           
           {/* Message */}
           <p className="text-gray-700 text-lg font-medium">
-            {score >= 90 ? 'Outstanding achievement! You\'re a star! ⭐' :
+            {score >= 90 ? 'Outstanding achievement! You\'re a star!' :
              score >= 80 ? 'Great job! Keep up the excellent work! 🎉' :
              'Well done! Lesson completed! 🎊'}
           </p>

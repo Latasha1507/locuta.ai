@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay } from './tokens'
-import { LocutaLogo } from './icons'
+import { LocutaLogo } from '@/components/ui/LocutaLogo'
 
 const NAV_LINKS = [
   { label: 'How it works', href: '#loop' },

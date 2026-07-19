@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { LandingIconSprite, Icon, LocutaLogo } from '@/components/landing/icons'
+import { LocutaLogo } from '@/components/ui/LocutaLogo'
+import { Icon } from '@/components/ui/icons'
 import { Mascot, type MascotMood } from '@/components/landing/Mascot'
 
 // Shared shell for every auth screen (signup, login, forgot, reset).
@@ -15,9 +16,9 @@ import { Mascot, type MascotMood } from '@/components/landing/Mascot'
 // Below 900px the panel collapses to a compact mascot header above the form.
 
 const SIDE_POINTS = [
-  { icon: 'ic-mic', text: '60-second reps. That is the whole commitment.', color: lc.green },
-  { icon: 'ic-chat', text: 'Six coaches. Pick the energy you want in your ear.', color: lc.blue },
-  { icon: 'ic-shield', text: 'Private by default. Nobody hears your practice.', color: lc.coral },
+  { icon: 'mic', text: '60-second reps. That is the whole commitment.', color: lc.green },
+  { icon: 'chat', text: 'Six coaches. Pick the energy you want in your ear.', color: lc.blue },
+  { icon: 'shield', text: 'Private by default. Nobody hears your practice.', color: lc.coral },
 ]
 
 export function AuthShell({
@@ -42,7 +43,6 @@ export function AuthShell({
       style={{ fontFamily: fontBody, background: lc.pageBg, color: lc.ink, minHeight: '100vh' }}
       className="flex flex-col lg:grid lg:grid-cols-[1fr_1.05fr]"
     >
-      <LandingIconSprite />
 
       {/* Coach panel */}
       <section
@@ -111,7 +111,7 @@ export function AuthShell({
                   boxShadow: '0 3px 0 rgba(0,0,0,.12)',
                 }}
               >
-                <Icon id={p.icon} size={18} color="#fff" />
+                <Icon name={p.icon} size={18} color="#fff" />
               </span>
               <span style={{ fontSize: 13.5, fontWeight: 700, color: lc.muted, lineHeight: 1.4 }}>{p.text}</span>
             </li>

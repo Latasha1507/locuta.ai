@@ -17,7 +17,7 @@ const CATEGORY_MAP: Record<string, string> = {
   'pitch-anything': 'Pitch Anything',
 }
 
-const STICKER_ICONS = ['ic-mic', 'ic-star', 'ic-chat', 'ic-flame', 'ic-bulb', 'ic-gift', 'ic-crown']
+const STICKER_ICONS = ['mic', 'star', 'chat', 'flame', 'bulb', 'gift', 'crown']
 const STICKER_COLORS = [lc.green, lc.yellow, lc.blue, lc.coral, lc.purple, lc.teal, lc.pink]
 const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 

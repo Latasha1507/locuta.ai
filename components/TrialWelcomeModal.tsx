@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { LandingIconSprite, Icon } from '@/components/landing/icons'
+import { Icon } from '@/components/ui/icons'
 import { Mascot } from '@/components/landing/Mascot'
 
 // Shown once, in the first minutes of a brand-new trial. This is the
@@ -50,7 +50,6 @@ export default function TrialWelcomeModal({ onClose, daysLeft = 14 }: TrialWelco
         animation: 'lp-fade .25s ease both',
       }}
     >
-      <LandingIconSprite />
 
       {/* confetti */}
       <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
@@ -127,9 +126,9 @@ export default function TrialWelcomeModal({ onClose, daysLeft = 14 }: TrialWelco
         {/* what's included */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9, textAlign: 'left', marginBottom: 22 }}>
           {[
-            { icon: 'ic-mic', text: 'Up to 10 sessions every day' },
-            { icon: 'ic-chat', text: 'All 6 coaches to practise with' },
-            { icon: 'ic-flame', text: 'Daily streaks & stickers' },
+            { icon: 'mic', text: 'Up to 10 sessions every day' },
+            { icon: 'chat', text: 'All 6 coaches to practise with' },
+            { icon: 'flame', text: 'Daily streaks & stickers' },
           ].map((f) => (
             <div key={f.text} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
               <span
@@ -144,7 +143,7 @@ export default function TrialWelcomeModal({ onClose, daysLeft = 14 }: TrialWelco
                   flex: 'none',
                 }}
               >
-                <Icon id={f.icon} size={16} color={lc.green} />
+                <Icon name={f.icon} size={16} color={lc.green} />
               </span>
               <span style={{ fontSize: 13.5, fontWeight: 700, color: '#4a5645' }}>{f.text}</span>
             </div>
@@ -170,7 +169,7 @@ export default function TrialWelcomeModal({ onClose, daysLeft = 14 }: TrialWelco
             boxShadow: `0 5px 0 ${lc.greenDark}`,
           }}
         >
-          <Icon id="ic-mic" size={18} color="#fff" />
+          <Icon name="mic" size={18} color="#fff" />
           START MY FIRST REP
         </Link>
         <button

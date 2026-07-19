@@ -4,7 +4,7 @@ import { verifyScore } from '@/lib/quick-score-token'
 import { promptById } from '@/lib/quick-score'
 import { createClient } from '@/lib/supabase/server'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { LandingIconSprite, LocutaLogo } from '@/components/landing/icons'
+import { LocutaLogo } from '@/components/ui/LocutaLogo'
 import { ScoreCard } from '@/components/landing/ScoreCard'
 
 // Public share card for a quick-score result. Stateless — everything is decoded
@@ -74,7 +74,6 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
         padding: '32px 20px 56px',
       }}
     >
-      <LandingIconSprite />
       <Link href="/" aria-label="Locuta home" style={{ textDecoration: 'none', marginBottom: 22 }}>
         <LocutaLogo />
       </Link>

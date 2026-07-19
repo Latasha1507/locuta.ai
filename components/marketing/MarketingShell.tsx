@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { LandingIconSprite, LocutaLogo } from '@/components/landing/icons'
+import { LocutaLogo } from '@/components/ui/LocutaLogo'
 import { LandingNav } from '@/components/landing/LandingNav'
 
 const FOOTER_LINKS = [
@@ -28,7 +28,6 @@ export function MarketingShell({
 }) {
   return (
     <div style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody, minHeight: '100vh' }}>
-      <LandingIconSprite />
       <LandingNav />
 
       <header className="mx-auto max-w-[900px] px-5 pb-6 pt-12 text-center lg:pb-10 lg:pt-16">

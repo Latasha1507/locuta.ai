@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { LandingIconSprite, Icon } from '@/components/landing/icons'
+import { Icon } from '@/components/ui/icons'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import type { FounderPromo } from '@/components/dashboard/SidebarPromo'
 import { TONES } from '@/lib/tones'
@@ -93,7 +93,6 @@ export function SettingsView(d: SettingsData) {
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row" style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}>
-      <LandingIconSprite />
       <Sidebar isAdmin={d.isAdmin} promo={d.promo} />
 
       <main className="mx-auto flex w-full max-w-[820px] flex-1 flex-col gap-[18px] px-4 pb-16 pt-5 lg:gap-5 lg:px-8 lg:pt-8">
@@ -148,7 +147,7 @@ export function SettingsView(d: SettingsData) {
         </section>
 
         {/* COACHING */}
-        <Card title="Coaching" sub="How your practice starts" icon="ic-chat" color={lc.blue}>
+        <Card title="Coaching" sub="How your practice starts" icon="chat" color={lc.blue}>
           <SelectRow
             label="Default coach"
             hint="The voice you hear first each session"
@@ -184,7 +183,7 @@ export function SettingsView(d: SettingsData) {
         </Card>
 
         {/* NOTIFICATIONS */}
-        <Card title="Notifications" sub="What Locuta pings you about" icon="ic-bolt" color={lc.yellow}>
+        <Card title="Notifications" sub="What Locuta pings you about" icon="bolt" color={lc.yellow}>
           <ToggleRow label="Daily practice reminder" hint="A gentle nudge to keep your streak" on={tg.dailyReminder} onChange={() => flip('dailyReminder')} />
           <Divider />
           <SelectRow
@@ -207,19 +206,19 @@ export function SettingsView(d: SettingsData) {
         </Card>
 
         {/* STREAK RULES */}
-        <Card title="Streak rules" sub="Keep your streak fair" icon="ic-flame" color={lc.coral}>
+        <Card title="Streak rules" sub="Keep your streak fair" icon="flame" color={lc.coral}>
           <ToggleRow label="Rest days" hint="One skipped day a week won't break your streak" on={tg.restDays} onChange={() => flip('restDays')} />
         </Card>
 
         {/* RECORDINGS & DATA — no delete option, per request */}
-        <Card title="Recordings & data" sub="What we keep and why" icon="ic-mic" color={lc.green}>
+        <Card title="Recordings & data" sub="What we keep and why" icon="mic" color={lc.green}>
           <ToggleRow label="Save my recordings" hint="Keep audio so I can replay past reps" on={tg.saveRecordings} onChange={() => flip('saveRecordings')} />
           <Divider />
           <ToggleRow label="Improve Locuta with my data" hint="Share anonymised audio to train the coach" on={tg.shareData} onChange={() => flip('shareData')} />
         </Card>
 
         {/* PRACTICE / ACCOUNT */}
-        <Card title="Practice & account" sub="The rest" icon="ic-cog" color={lc.purple}>
+        <Card title="Practice & account" sub="The rest" icon="cog" color={lc.purple}>
           <ToggleRow label="Sound effects" hint="Chimes and pops during practice" on={tg.soundEffects} onChange={() => flip('soundEffects')} />
           <Divider />
           <PasswordRow supabase={supabase} onDone={() => flash('Password updated')} />
@@ -233,7 +232,7 @@ export function SettingsView(d: SettingsData) {
         {/* SIGN OUT */}
         <form action="/auth/signout" method="post">
           <button type="submit" style={signOutBtn}>
-            <Icon id="ic-out" size={17} color="#c04333" />
+            <Icon name="out" size={17} color="#c04333" />
             Sign out
           </button>
         </form>
@@ -492,7 +491,7 @@ function Card({ title, sub, icon, color, children }: { title: string; sub: strin
     <section className="p-5 lg:p-6" style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, paddingBottom: 14, borderBottom: '2px solid #f0f4ec' }}>
         <span style={{ width: 38, height: 38, borderRadius: 12, background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', boxShadow: '0 3px 0 rgba(0,0,0,.12)' }}>
-          <Icon id={icon} size={19} color="#fff" />
+          <Icon name={icon} size={19} color="#fff" />
         </span>
         <div>
           <h2 style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 16.5, margin: 0 }}>{title}</h2>

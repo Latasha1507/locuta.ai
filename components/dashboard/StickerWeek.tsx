@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay } from '@/components/landing/tokens'
-import { Icon } from '@/components/landing/icons'
+import { Icon } from '@/components/ui/icons'
 import type { WeekDay } from '@/lib/streaks'
 
-const STICKER_ICONS = ['ic-mic', 'ic-star', 'ic-chat', 'ic-flame', 'ic-bulb', 'ic-gift', 'ic-crown']
+const STICKER_ICONS = ['mic', 'star', 'chat', 'flame', 'bulb', 'gift', 'crown']
 const STICKER_COLORS = [lc.green, lc.yellow, lc.blue, lc.coral, lc.purple, lc.teal, lc.pink]
 const TILTS = [-5, 4, -3, 5, -4, 3, -2]
 
@@ -61,12 +61,12 @@ export function StickerWeek({ week, nextHref }: { week: WeekDay[]; nextHref: str
           className="text-[20px] lg:text-[24px]"
           style={{ fontFamily: fontDisplay, fontWeight: 800, lineHeight: 1.05, margin: 0 }}
         >
-          {perfectWeek ? 'Perfect week! 🏆' : "This week's stickers"}
+          {perfectWeek ? 'Perfect week!' : "This week's stickers"}
         </h3>
         <p style={{ fontSize: 13.5, color: lc.muted, fontWeight: 600, margin: '7px 0 0', maxWidth: 290 }}>
           {perfectWeek
             ? 'Seven for seven. You showed up every single day — that rare crown is yours.'
-            : 'Finish one rep a day to peel that day’s sticker. Fill the week to unlock a rare one 🏆'}
+            : 'Finish one rep a day to peel that day’s sticker. Fill the week to unlock a rare one'}
         </p>
         <div
           style={{
@@ -163,7 +163,7 @@ export function StickerWeek({ week, nextHref }: { week: WeekDay[]; nextHref: str
                 } as React.CSSProperties
               }
             >
-              <Icon id={STICKER_ICONS[i]} size={22} color={fg} />
+              <Icon name={STICKER_ICONS[i]} size={22} color={fg} />
             </span>
           )
 

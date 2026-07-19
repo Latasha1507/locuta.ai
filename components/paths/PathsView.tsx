@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { LandingIconSprite, Icon } from '@/components/landing/icons'
+import { Icon } from '@/components/ui/icons'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import type { FounderPromo } from '@/components/dashboard/SidebarPromo'
 import type { ModuleNode } from '@/lib/category-map'
@@ -44,7 +44,6 @@ export function PathsView(d: PathsData) {
       className="flex min-h-screen flex-col lg:flex-row"
       style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}
     >
-      <LandingIconSprite />
       <Sidebar isAdmin={d.isAdmin} promo={d.promo} />
 
       <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-12 pt-5 lg:gap-6 lg:px-10 lg:pb-16 lg:pt-8">
@@ -99,7 +98,7 @@ export function PathsView(d: PathsData) {
                     flex: 'none',
                   }}
                 >
-                  <Icon id={c.icon} size={18} color={active ? '#fff' : c.color} />
+                  <Icon name={c.icon} size={18} color={active ? '#fff' : c.color} />
                 </span>
                 <span>
                   <span
@@ -184,9 +183,9 @@ function ChapterRow({
           }}
         >
           {mod.locked ? (
-            <Icon id="ic-lock" size={20} color="#a9b4a0" />
+            <Icon name="lock" size={20} color="#a9b4a0" />
           ) : chapterDone ? (
-            <Icon id="ic-check" size={22} color="#fff" />
+            <Icon name="check" size={22} color="#fff" />
           ) : (
             <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 18, color: '#fff' }}>{mod.number}</span>
           )}
@@ -249,9 +248,9 @@ function ChapterRow({
                   }}
                 >
                   {lvl.done ? (
-                    <Icon id="ic-check" size={15} color="#fff" />
+                    <Icon name="check" size={15} color="#fff" />
                   ) : lvl.locked ? (
-                    <Icon id="ic-lock" size={13} color="#aab4a1" />
+                    <Icon name="lock" size={13} color="#aab4a1" />
                   ) : (
                     lvl.levelNumber
                   )}
@@ -357,7 +356,7 @@ function ChapterRow({
         }}
       >
         <span style={{ fontSize: 20 }} aria-hidden="true">
-          {chapterDone ? '🏆' : '🎁'}
+          <Icon name={chapterDone ? 'trophy' : 'gift'} size={26} color="#fff" />
         </span>
         <span style={{ fontSize: 12.5, fontWeight: 700, color: chapterDone ? '#8a6100' : lc.muted, lineHeight: 1.4 }}>
           {chapterDone

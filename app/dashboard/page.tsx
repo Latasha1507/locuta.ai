@@ -22,37 +22,37 @@ const CATEGORY_META: Record<string, { name: string; desc: string; icon: string; 
   'public-speaking': {
     name: 'Public Speaking',
     desc: 'Presentations, speeches and big rooms.',
-    icon: 'ic-mic',
+    icon: 'mic',
     color: lc.green,
   },
   storytelling: {
     name: 'Storytelling',
     desc: 'Narratives people remember and repeat.',
-    icon: 'ic-book',
+    icon: 'book',
     color: lc.yellow,
   },
   'creator-speaking': {
     name: 'Creator Speaking',
     desc: 'Sound natural and hold attention on camera.',
-    icon: 'ic-camera',
+    icon: 'camera',
     color: lc.coral,
   },
   'casual-conversation': {
     name: 'Casual Conversation',
     desc: 'Everyday confidence for small talk.',
-    icon: 'ic-chat',
+    icon: 'chat',
     color: lc.blue,
   },
   'workplace-communication': {
     name: 'Workplace Communication',
     desc: 'Meetings, reviews and tough talks.',
-    icon: 'ic-briefcase',
+    icon: 'briefcase',
     color: lc.purple,
   },
   'pitch-anything': {
     name: 'Pitch Anything',
     desc: 'Win over investors, customers and teams.',
-    icon: 'ic-target',
+    icon: 'target',
     color: lc.green,
   },
 }

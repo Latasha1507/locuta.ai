@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { Icon } from '@/components/ui/icons'
 
 interface FounderCallModalProps {
   slotsRemaining: number
@@ -145,7 +146,7 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
         </button>
 
         <div className="text-center mb-6">
-          <div className="text-5xl mb-3">🎁</div>
+          <div className="mb-3 flex justify-center"><Icon name="gift" size={52} color="#3fce6f" /></div>
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
             Get 1 Year FREE Access!
           </h2>

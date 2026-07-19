@@ -186,18 +186,20 @@ export function overallScore(p: { pace: number; fluency: number; flow: number; c
 export function scoreTier(overall: number): {
   color: string
   label: string
-  emoji: string
+  /** Name from the Locuta icon set. Never an emoji — emoji render differently
+      on every OS, so they can't be on-brand. */
+  icon: string
   mood: MascotMoodName
 } {
   // Thresholds are deliberately high at the top: three of the four dimensions
   // saturate at 100 for competent speech, so without this the "Exceptional"
   // tier would be handed to anyone merely good — and a top tier everyone earns
   // is worth nothing to share.
-  if (overall >= 92) return { color: '#3fce6f', label: 'Exceptional', emoji: '🔥', mood: 'cheer' }
-  if (overall >= 80) return { color: '#3fce6f', label: 'Sharp', emoji: '💪', mood: 'cheer' }
-  if (overall >= 66) return { color: '#1cb0f6', label: 'Solid', emoji: '✨', mood: 'happy' }
-  if (overall >= 50) return { color: '#f5a623', label: 'Getting there', emoji: '🌱', mood: 'happy' }
-  return { color: '#ff6f61', label: 'Rough start', emoji: '🎯', mood: 'shy' }
+  if (overall >= 92) return { color: '#3fce6f', label: 'Exceptional', icon: 'flame', mood: 'cheer' }
+  if (overall >= 80) return { color: '#3fce6f', label: 'Sharp', icon: 'bolt', mood: 'cheer' }
+  if (overall >= 66) return { color: '#1cb0f6', label: 'Solid', icon: 'sparkle', mood: 'happy' }
+  if (overall >= 50) return { color: '#f5a623', label: 'Getting there', icon: 'sprout', mood: 'happy' }
+  return { color: '#ff6f61', label: 'Rough start', icon: 'target', mood: 'shy' }
 }
 
 /** Colour a sub-score by PERFORMANCE, not by category. This is what stops a

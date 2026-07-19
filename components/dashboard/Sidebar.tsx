@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { lc, fontDisplay } from '@/components/landing/tokens'
-import { Icon, LocutaLogo } from '@/components/landing/icons'
+import { LocutaLogo } from '@/components/ui/LocutaLogo'
+import { Icon } from '@/components/ui/icons'
 import { SidebarPromo, type FounderPromo } from './SidebarPromo'
 
 // The full nav from the design. `soon: true` = the route does not exist yet.
@@ -11,12 +12,12 @@ import { SidebarPromo, type FounderPromo } from './SidebarPromo'
 // because a nav link that 404s is worse than one that says "not yet".
 // When each page ships, delete its `soon` flag and add the real href.
 const NAV: { label: string; href: string; icon: string; soon?: boolean }[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: 'ic-grid' },
-  { label: 'Practice', href: '/practice', icon: 'ic-mic' },
-  { label: 'Paths', href: '/paths', icon: 'ic-book' },
-  { label: 'Streak', href: '/streak', icon: 'ic-flame' },
-  { label: 'History', href: '/history', icon: 'ic-clock' },
-  { label: 'Settings', href: '/settings', icon: 'ic-cog' },
+  { label: 'Dashboard', href: '/dashboard', icon: 'grid' },
+  { label: 'Practice', href: '/practice', icon: 'mic' },
+  { label: 'Paths', href: '/paths', icon: 'book' },
+  { label: 'Streak', href: '/streak', icon: 'flame' },
+  { label: 'History', href: '/history', icon: 'clock' },
+  { label: 'Settings', href: '/settings', icon: 'cog' },
 ]
 
 export function Sidebar({ isAdmin, promo }: { isAdmin: boolean; promo: FounderPromo | null }) {
@@ -62,7 +63,7 @@ export function Sidebar({ isAdmin, promo }: { isAdmin: boolean; promo: FounderPr
                 title="Coming soon"
                 style={{ ...rowStyle, opacity: 0.55, cursor: 'default' }}
               >
-                <Icon id={n.icon} size={20} color="#8d9a85" />
+                <Icon name={n.icon} size={20} color="#8d9a85" />
                 <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 14.5, color: '#8d9a85' }}>
                   {n.label}
                 </span>
@@ -89,7 +90,7 @@ export function Sidebar({ isAdmin, promo }: { isAdmin: boolean; promo: FounderPr
 
           return (
             <Link key={n.href} href={n.href} style={rowStyle} className="hover:bg-[#f2f7ee]">
-              <Icon id={n.icon} size={20} color={active ? '#fff' : '#6f7d67'} />
+              <Icon name={n.icon} size={20} color={active ? '#fff' : '#6f7d67'} />
               <span
                 style={{
                   fontFamily: fontDisplay,
@@ -119,7 +120,7 @@ export function Sidebar({ isAdmin, promo }: { isAdmin: boolean; promo: FounderPr
               border: '2px solid #e3d5f7',
             }}
           >
-            <Icon id="ic-shield" size={20} color={lc.purpleDark} />
+            <Icon name="shield" size={20} color={lc.purpleDark} />
             <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 14.5, color: lc.purpleDark }}>
               Admin
             </span>
@@ -149,7 +150,7 @@ export function Sidebar({ isAdmin, promo }: { isAdmin: boolean; promo: FounderPr
             color: '#c04333',
           }}
         >
-          <Icon id="ic-out" size={18} color="#b0392f" />
+          <Icon name="out" size={18} color="#b0392f" />
           Sign out
         </button>
       </form>

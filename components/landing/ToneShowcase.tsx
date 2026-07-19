@@ -1,5 +1,5 @@
 import { lc, fontDisplay } from './tokens'
-import { Icon } from './icons'
+import { Icon } from '@/components/ui/icons'
 
 // The 6 coaching tones. This is a SHOWCASE, not a picker — on the landing page
 // the visitor isn't choosing anything yet, so there are no check circles, no
@@ -7,12 +7,12 @@ import { Icon } from './icons'
 // own colour, so the section reads as "here are your six coaches" rather than
 // "select one now".
 const TONES = [
-  { name: 'Normal', tag: 'everyday', icon: 'ic-chat', desc: 'Clear, simple, everyday conversational style.', color: lc.green },
-  { name: 'Supportive', tag: 'gentle', icon: 'ic-heart', desc: 'Soft, kind and reassuring, like a supportive friend.', color: lc.coral },
-  { name: 'Inspiring', tag: 'high energy', icon: 'ic-bolt', desc: 'Energizing and passionate, like a motivational coach.', color: lc.yellowDark },
-  { name: 'Funny', tag: 'playful', icon: 'ic-smile', desc: 'Entertaining, playful and casual with light humor.', color: lc.blue },
-  { name: 'Diplomatic', tag: 'balanced', icon: 'ic-crown', desc: 'Calm, professional and trustworthy. A balanced approach.', color: lc.purple },
-  { name: 'Bossy', tag: 'no-nonsense', icon: 'ic-shield', desc: 'Commanding, no-nonsense, authoritative leadership.', color: '#f2545b' },
+  { name: 'Normal', tag: 'everyday', icon: 'chat', desc: 'Clear, simple, everyday conversational style.', color: lc.green },
+  { name: 'Supportive', tag: 'gentle', icon: 'heart', desc: 'Soft, kind and reassuring, like a supportive friend.', color: lc.coral },
+  { name: 'Inspiring', tag: 'high energy', icon: 'bolt', desc: 'Energizing and passionate, like a motivational coach.', color: lc.yellowDark },
+  { name: 'Funny', tag: 'playful', icon: 'smile', desc: 'Entertaining, playful and casual with light humor.', color: lc.blue },
+  { name: 'Diplomatic', tag: 'balanced', icon: 'crown', desc: 'Calm, professional and trustworthy. A balanced approach.', color: lc.purple },
+  { name: 'Bossy', tag: 'no-nonsense', icon: 'shield', desc: 'Commanding, no-nonsense, authoritative leadership.', color: '#f2545b' },
 ]
 
 export function ToneShowcase() {
@@ -45,7 +45,7 @@ export function ToneShowcase() {
               flex: 'none',
             }}
           >
-            <Icon id={t.icon} size={26} color={t.color} />
+            <Icon name={t.icon} size={26} color={t.color} />
           </span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

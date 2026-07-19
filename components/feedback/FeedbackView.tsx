@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { LandingIconSprite, Icon } from '@/components/landing/icons'
+import { Icon } from '@/components/ui/icons'
 import { Mascot } from '@/components/landing/Mascot'
 import { StickerUnlock } from './StickerUnlock'
 
@@ -102,7 +102,6 @@ export function FeedbackView(d: FeedbackData) {
 
   return (
     <div className="min-h-screen" style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}>
-      <LandingIconSprite />
 
       {showSticker && (
         <StickerUnlock
@@ -144,7 +143,7 @@ export function FeedbackView(d: FeedbackData) {
               transform: 'scaleX(-1)',
             }}
           >
-            <Icon id="ic-arrow" size={18} color={lc.greenDark} />
+            <Icon name="arrow" size={18} color={lc.greenDark} />
           </Link>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 11, letterSpacing: '0.1em', color: '#7fa98a' }}>
@@ -218,7 +217,7 @@ export function FeedbackView(d: FeedbackData) {
                   marginBottom: 12,
                 }}
               >
-                <Icon id={d.passed ? 'ic-check' : 'ic-target'} size={14} color={d.passed ? lc.greenDark : '#a86a12'} />
+                <Icon name={d.passed ? 'check' : 'target'} size={14} color={d.passed ? lc.greenDark : '#a86a12'} />
                 {d.passed ? 'PASSED' : `${d.passThreshold} NEEDED TO PASS`}
               </div>
 
@@ -253,7 +252,7 @@ export function FeedbackView(d: FeedbackData) {
                   boxShadow: `0 5px 0 ${lc.greenDark}`,
                 }}
               >
-                <Icon id={d.passed ? 'ic-arrow' : 'ic-mic'} size={17} color="#fff" />
+                <Icon name={d.passed ? 'arrow' : 'mic'} size={17} color="#fff" />
                 {d.passed ? 'NEXT LESSON' : 'TRY AGAIN'}
               </Link>
               {d.passed && (
@@ -284,7 +283,7 @@ export function FeedbackView(d: FeedbackData) {
           <div className="flex flex-col gap-3 lg:gap-4">
             {/* Focus areas */}
             {focusEntries.length > 0 && (
-              <Card title="How you scored" icon="ic-target" iconColor={lc.blue}>
+              <Card title="How you scored" icon="target" iconColor={lc.blue}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {focusEntries.map(([name, val], i) => (
                     <Bar key={name} label={name} value={Number(val) || 0} delay={i * 0.08} visible={scoreVisible} />
@@ -295,7 +294,7 @@ export function FeedbackView(d: FeedbackData) {
 
             {/* Strengths / improvements */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4">
-              <Card title="What worked" icon="ic-star" iconColor={lc.green}>
+              <Card title="What worked" icon="star" iconColor={lc.green}>
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 9 }}>
                   {(d.strengths.length ? d.strengths : ['You showed up and spoke. That is the hard part.']).map((s, i) => (
                     <li
@@ -311,7 +310,7 @@ export function FeedbackView(d: FeedbackData) {
                       }}
                     >
                       <span style={{ color: lc.green, flex: 'none', marginTop: 2 }}>
-                        <Icon id="ic-check" size={13} color={lc.green} />
+                        <Icon name="check" size={13} color={lc.green} />
                       </span>
                       {s}
                     </li>
@@ -319,7 +318,7 @@ export function FeedbackView(d: FeedbackData) {
                 </ul>
               </Card>
 
-              <Card title="Work on this" icon="ic-bulb" iconColor={lc.orange}>
+              <Card title="Work on this" icon="bulb" iconColor={lc.orange}>
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 9 }}>
                   {(d.improvements.length ? d.improvements : ['Keep going — more reps will sharpen this.']).map((s, i) => (
                     <li
@@ -335,7 +334,7 @@ export function FeedbackView(d: FeedbackData) {
                       }}
                     >
                       <span style={{ flex: 'none', marginTop: 2 }}>
-                        <Icon id="ic-bolt" size={13} color={lc.orange} />
+                        <Icon name="bolt" size={13} color={lc.orange} />
                       </span>
                       {s}
                     </li>
@@ -346,7 +345,7 @@ export function FeedbackView(d: FeedbackData) {
 
             {/* Coach's read */}
             {d.detailedFeedback && (
-              <Card title={`Your ${d.tone} coach's read`} icon="ic-chat" iconColor={lc.purple}>
+              <Card title={`Your ${d.tone} coach's read`} icon="chat" iconColor={lc.purple}>
                 <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4a5645', fontWeight: 600, margin: 0 }}>
                   {d.detailedFeedback}
                 </p>
@@ -354,7 +353,7 @@ export function FeedbackView(d: FeedbackData) {
             )}
 
             {/* THE MODEL ANSWER — the user's own attempt, done properly */}
-            <Card title="Your answer, done properly" icon="ic-crown" iconColor={lc.green}>
+            <Card title="Your answer, done properly" icon="crown" iconColor={lc.green}>
               <p style={{ fontSize: 12.5, color: lc.faint, fontWeight: 700, margin: '-4px 0 12px', lineHeight: 1.45 }}>
                 Not a generic sample — this is <strong style={{ color: lc.greenDark }}>your</strong> answer, your topic and
                 your details, rewritten the way a strong speaker would deliver it, in your {d.tone} coach&apos;s voice.
@@ -411,7 +410,7 @@ export function FeedbackView(d: FeedbackData) {
                       boxShadow: `0 4px 0 ${exLoading ? '#8fc9a1' : lc.greenDark}`,
                     }}
                   >
-                    <Icon id="ic-bolt" size={16} color="#fff" />
+                    <Icon name="bolt" size={16} color="#fff" />
                     {exLoading ? 'REWRITING YOUR ANSWER…' : 'SHOW ME HOW IT SHOULD SOUND'}
                   </button>
                   {exError && (
@@ -425,7 +424,7 @@ export function FeedbackView(d: FeedbackData) {
 
             {/* What you said */}
             {d.transcript && (
-              <Card title="What you said" icon="ic-mic" iconColor={lc.coral} collapsible>
+              <Card title="What you said" icon="mic" iconColor={lc.coral} collapsible>
                 <p
                   style={{
                     fontSize: 13.5,
@@ -491,7 +490,7 @@ function Card({
           fontFamily: 'inherit',
         }}
       >
-        <Icon id={icon} size={19} color={iconColor} />
+        <Icon name={icon} size={19} color={iconColor} />
         <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 15.5, color: lc.ink, flex: 1 }}>{title}</span>
         {collapsible && (
           <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 17, color: lc.faint }}>

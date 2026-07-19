@@ -10,12 +10,12 @@ import { PathsView, type PathCategory } from '@/components/paths/PathsView'
 export const dynamic = 'force-dynamic'
 
 const META: Record<string, { icon: string; color: string }> = {
-  'public-speaking': { icon: 'ic-mic', color: '#3fce6f' },
-  storytelling: { icon: 'ic-book', color: '#ffc531' },
-  'creator-speaking': { icon: 'ic-camera', color: '#ff6f61' },
-  'casual-conversation': { icon: 'ic-chat', color: '#1cb0f6' },
-  'workplace-communication': { icon: 'ic-briefcase', color: '#a56cf5' },
-  'pitch-anything': { icon: 'ic-target', color: '#3fce6f' },
+  'public-speaking': { icon: 'mic', color: '#3fce6f' },
+  storytelling: { icon: 'book', color: '#ffc531' },
+  'creator-speaking': { icon: 'camera', color: '#ff6f61' },
+  'casual-conversation': { icon: 'chat', color: '#1cb0f6' },
+  'workplace-communication': { icon: 'briefcase', color: '#a56cf5' },
+  'pitch-anything': { icon: 'target', color: '#3fce6f' },
 }
 
 export default async function PathsPage({

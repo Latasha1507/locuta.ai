@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { LandingIconSprite, Icon } from '@/components/landing/icons'
+import { Icon } from '@/components/ui/icons'
 import { Mascot, type MascotMood } from '@/components/landing/Mascot'
 import { TONES, TONE_QUIPS, DEFAULT_TONE } from '@/lib/tones'
 
@@ -86,7 +86,6 @@ export function CoachLessonView(d: CoachLessonData) {
       className="min-h-screen"
       style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}
     >
-      <LandingIconSprite />
 
       <main className="mx-auto flex max-w-[1080px] flex-col gap-[18px] px-4 pb-11 pt-5 lg:gap-[22px] lg:px-8 lg:pb-14 lg:pt-7">
         {/* HERO BANNER */}
@@ -119,7 +118,7 @@ export function CoachLessonView(d: CoachLessonData) {
                 transform: 'scaleX(-1)',
               }}
             >
-              <Icon id="ic-arrow" size={18} color={lc.greenDark} />
+              <Icon name="arrow" size={18} color={lc.greenDark} />
             </Link>
             <div style={{ minWidth: 0 }}>
               <div
@@ -277,7 +276,7 @@ export function CoachLessonView(d: CoachLessonData) {
                       transition: 'background .14s ease',
                     }}
                   >
-                    <Icon id={t.icon} size={21} color={active ? '#fff' : t.color} />
+                    <Icon name={t.icon} size={21} color={active ? '#fff' : t.color} />
                   </span>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -329,7 +328,7 @@ export function CoachLessonView(d: CoachLessonData) {
                       opacity: active ? 1 : 0.6,
                     }}
                   >
-                    <Icon id="ic-check" size={13} color="#fff" />
+                    <Icon name="check" size={13} color="#fff" />
                   </span>
                 </button>
               )
@@ -437,9 +436,9 @@ export function CoachLessonView(d: CoachLessonData) {
                     }}
                   >
                     {l.done ? (
-                      <Icon id="ic-check" size={17} color="#fff" />
+                      <Icon name="check" size={17} color="#fff" />
                     ) : l.locked ? (
-                      <Icon id="ic-lock" size={16} color="#b7c2ad" />
+                      <Icon name="lock" size={16} color="#b7c2ad" />
                     ) : (
                       l.levelNumber
                     )}
@@ -518,7 +517,7 @@ export function CoachLessonView(d: CoachLessonData) {
                           fontWeight: 800,
                         }}
                       >
-                        <Icon id="ic-clock" size={12} color="#a3b099" />
+                        <Icon name="clock" size={12} color="#a3b099" />
                         {l.durationSec} sec
                       </span>
                       <span
@@ -556,7 +555,7 @@ export function CoachLessonView(d: CoachLessonData) {
                     ) : (
                       <>
                         {l.done ? 'Retry' : isNext ? 'Start' : 'Open'}
-                        <Icon id="ic-arrow" size={14} color={isNext ? lc.greenDark : lc.green} />
+                        <Icon name="arrow" size={14} color={isNext ? lc.greenDark : lc.green} />
                       </>
                     )}
                   </span>
@@ -672,7 +671,7 @@ function ModuleArrow({ href, dir }: { href: string | null; dir: 'prev' | 'next' 
     opacity: href ? 1 : 0.4,
     cursor: href ? 'pointer' : 'not-allowed',
   }
-  const icon = <Icon id="ic-arrow" size={15} color={lc.greenDark} />
+  const icon = <Icon name="arrow" size={15} color={lc.greenDark} />
 
   if (!href) {
     return (

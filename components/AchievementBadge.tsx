@@ -1,10 +1,11 @@
 'use client'
+import { Icon } from '@/components/ui/icons'
 
 export default function AchievementBadge({ score }: { score: number }) {
   if (score >= 90) {
     return (
       <div className="inline-flex items-center gap-1 bg-gradient-to-r from-yellow-400 to-amber-500 text-white px-2 py-0.5 rounded-full text-xs font-bold shadow-lg animate-pulse">
-        <span className="text-sm">⭐</span>
+        <Icon name="star" size={15} color="#b8860b" />
         <span>Exceptional!</span>
       </div>
     )
@@ -13,7 +14,7 @@ export default function AchievementBadge({ score }: { score: number }) {
   if (score >= 80) {
     return (
       <div className="inline-flex items-center gap-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-0.5 rounded-full text-xs font-bold shadow">
-        <span className="text-sm">🏆</span>
+        <Icon name="trophy" size={15} color="#b8860b" />
         <span>Excellent</span>
       </div>
     )

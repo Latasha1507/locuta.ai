@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { AuthShell, AuthLink } from '@/components/auth/AuthShell'
 import { Field, PrimaryButton, GoogleButton, ErrorBanner, Divider } from '@/components/auth/ui'
 import { lc, fontDisplay } from '@/components/landing/tokens'
-import { Icon } from '@/components/landing/icons'
+import { Icon } from '@/components/ui/icons'
 import type { MascotMood } from '@/components/landing/Mascot'
 
 // Read a same-origin ?next= from the current URL (event-handler time, so
@@ -132,7 +132,7 @@ export default function SignupPage() {
               transform: 'rotate(-6deg)',
             }}
           >
-            <Icon id="ic-star" size={20} color="#fff" />
+            <Icon name="star" size={20} color="#fff" />
           </span>
           <span style={{ fontSize: 13.5, fontWeight: 700, color: lc.muted, lineHeight: 1.45 }}>
             Your first sticker is waiting on the other side. No link in a minute? Check spam.

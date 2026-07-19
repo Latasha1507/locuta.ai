@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { LandingIconSprite, Icon } from '@/components/landing/icons'
+import { Icon } from '@/components/ui/icons'
 import { Mascot } from '@/components/landing/Mascot'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import type { FounderPromo } from '@/components/dashboard/SidebarPromo'
@@ -23,7 +23,7 @@ export interface StreakData {
   nextHref: string
 }
 
-const WEEK_ICONS = ['ic-mic', 'ic-star', 'ic-chat', 'ic-flame', 'ic-bulb', 'ic-gift', 'ic-crown']
+const WEEK_ICONS = ['mic', 'star', 'chat', 'flame', 'bulb', 'gift', 'crown']
 const WEEK_COLORS = [lc.green, lc.yellow, lc.blue, lc.coral, lc.purple, lc.teal, lc.pink]
 
 export function StreakView(d: StreakData) {
@@ -38,7 +38,6 @@ export function StreakView(d: StreakData) {
       className="flex min-h-screen flex-col lg:flex-row"
       style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}
     >
-      <LandingIconSprite />
       <Sidebar isAdmin={d.isAdmin} promo={d.promo} />
 
       <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-12 pt-5 lg:gap-5 lg:px-10 lg:pb-16 lg:pt-8">
@@ -68,7 +67,7 @@ export function StreakView(d: StreakData) {
                 marginBottom: 16,
               }}
             >
-              <Icon id="ic-flame" size={16} color={lc.orange} />
+              <Icon name="flame" size={16} color={lc.orange} />
               <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 12.5, color: '#c07d08' }}>
                 {d.practicedToday ? 'PRACTISED TODAY' : 'STREAK ACTIVE'}
               </span>
@@ -103,7 +102,7 @@ export function StreakView(d: StreakData) {
                   boxShadow: `0 5px 0 ${lc.greenDark}`,
                 }}
               >
-                <Icon id="ic-mic" size={17} color="#fff" />
+                <Icon name="mic" size={17} color="#fff" />
                 KEEP IT ALIVE
               </Link>
             )}
@@ -116,9 +115,9 @@ export function StreakView(d: StreakData) {
         {/* STAT STRIP */}
         <div className="grid grid-cols-3 gap-3 lg:gap-[18px]">
           {[
-            { label: 'Current', value: d.streak, icon: 'ic-flame', color: lc.coral, suffix: 'day' },
-            { label: 'Longest ever', value: d.longestStreak, icon: 'ic-crown', color: lc.yellow, suffix: 'day' },
-            { label: 'Total days', value: d.totalDays, icon: 'ic-check', color: lc.green, suffix: '' },
+            { label: 'Current', value: d.streak, icon: 'flame', color: lc.coral, suffix: 'day' },
+            { label: 'Longest ever', value: d.longestStreak, icon: 'crown', color: lc.yellow, suffix: 'day' },
+            { label: 'Total days', value: d.totalDays, icon: 'check', color: lc.green, suffix: '' },
           ].map((s) => (
             <div
               key={s.label}
@@ -138,7 +137,7 @@ export function StreakView(d: StreakData) {
                   boxShadow: '0 3px 0 rgba(0,0,0,.12)',
                 }}
               >
-                <Icon id={s.icon} size={22} color="#fff" />
+                <Icon name={s.icon} size={22} color="#fff" />
               </span>
               <span style={{ minWidth: 0 }}>
                 <span style={{ display: 'block', fontSize: 11.5, color: lc.faint, fontWeight: 800 }}>{s.label}</span>
@@ -181,7 +180,7 @@ export function StreakView(d: StreakData) {
                         boxShadow: done ? '0 3px 0 rgba(0,0,0,.12)' : 'none',
                       }}
                     >
-                      <Icon id={WEEK_ICONS[i]} size={19} color={done ? '#fff' : today ? lc.green : '#c2cdb6'} />
+                      <Icon name={WEEK_ICONS[i]} size={19} color={done ? '#fff' : today ? lc.green : '#c2cdb6'} />
                     </div>
                     <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 10.5, color: today ? lc.green : lc.faint }}>
                       {w.day}
@@ -278,7 +277,7 @@ export function StreakView(d: StreakData) {
                     opacity: earned ? 1 : 0.6,
                   }}
                 >
-                  <Icon id={earned ? icon : 'ic-lock'} size={22} color={earned ? '#fff' : '#c2cdb6'} />
+                  <Icon name={earned ? icon : 'lock'} size={22} color={earned ? '#fff' : '#c2cdb6'} />
                 </div>
               )
             })}

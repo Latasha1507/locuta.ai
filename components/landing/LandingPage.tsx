@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { lc, fontDisplay } from './tokens'
-import { LandingIconSprite, Icon, LocutaLogo } from './icons'
+import { Icon } from '@/components/ui/icons'
+import { LocutaLogo } from '@/components/ui/LocutaLogo'
+import { Button, ButtonStyles } from '@/components/ui/Button'
 import { Mascot } from './Mascot'
 import { LandingNav } from './LandingNav'
 import { DemoRecorder } from './DemoRecorder'
@@ -15,9 +17,9 @@ import { FaqSection } from './FaqSection'
 // ---------------------------------------------------------------------------
 
 const HERO_PROOF = [
-  { big: 'Real-time', small: 'AI feedback', icon: 'ic-star', color: lc.green },
-  { big: '6', small: 'Coaching styles', icon: 'ic-chat', color: lc.blue },
-  { big: 'Private', small: 'Judgment-free space', icon: 'ic-shield', color: lc.coral },
+  { big: 'Real-time', small: 'AI feedback', icon: 'star', color: lc.green },
+  { big: '6', small: 'Coaching styles', icon: 'chat', color: lc.blue },
+  { big: 'Private', small: 'Judgment-free space', icon: 'shield', color: lc.coral },
 ]
 
 const TICKER = [
@@ -32,36 +34,36 @@ const RESEARCH = [
 ]
 
 const WHY = [
-  { icon: 'ic-bulb', title: 'AI that learns your voice', desc: 'Get specific feedback on your pace, clarity, filler words and delivery. Your coach adapts to how you actually speak and tailors every session.', pill: 'Personalized coaching that adapts to you' },
-  { icon: 'ic-chat', title: 'Six coaching styles', desc: 'From supportive to bossy, choose the energy that brings out your best, and switch whenever your goal or mood changes.', pill: 'A coaching personality for every moment' },
-  { icon: 'ic-target', title: 'Every real scenario', desc: 'Rehearse the moments that count: interviews, pitches, tough talks, toasts. If you will say it out loud, you can practice it here first.', pill: 'Confidence for the conversations that matter' },
+  { icon: 'bulb', title: 'AI that learns your voice', desc: 'Get specific feedback on your pace, clarity, filler words and delivery. Your coach adapts to how you actually speak and tailors every session.', pill: 'Personalized coaching that adapts to you' },
+  { icon: 'chat', title: 'Six coaching styles', desc: 'From supportive to bossy, choose the energy that brings out your best, and switch whenever your goal or mood changes.', pill: 'A coaching personality for every moment' },
+  { icon: 'target', title: 'Every real scenario', desc: 'Rehearse the moments that count: interviews, pitches, tough talks, toasts. If you will say it out loud, you can practice it here first.', pill: 'Confidence for the conversations that matter' },
 ]
 
 const WEEK = [
-  { day: 'MON', icon: 'ic-mic', color: lc.green, state: 'done' as const, tilt: -5 },
-  { day: 'TUE', icon: 'ic-star', color: lc.yellow, state: 'done' as const, tilt: 4 },
-  { day: 'WED', icon: 'ic-chat', color: lc.blue, state: 'done' as const, tilt: -3 },
-  { day: 'THU', icon: 'ic-flame', color: lc.coral, state: 'today' as const, tilt: 0 },
-  { day: 'FRI', icon: 'ic-bulb', color: '#cfd8c8', state: 'locked' as const, tilt: 0 },
-  { day: 'SAT', icon: 'ic-gift', color: '#cfd8c8', state: 'locked' as const, tilt: 0 },
-  { day: 'SUN', icon: 'ic-crown', color: '#cfd8c8', state: 'locked' as const, tilt: 0 },
+  { day: 'MON', icon: 'mic', color: lc.green, state: 'done' as const, tilt: -5 },
+  { day: 'TUE', icon: 'star', color: lc.yellow, state: 'done' as const, tilt: 4 },
+  { day: 'WED', icon: 'chat', color: lc.blue, state: 'done' as const, tilt: -3 },
+  { day: 'THU', icon: 'flame', color: lc.coral, state: 'today' as const, tilt: 0 },
+  { day: 'FRI', icon: 'bulb', color: '#cfd8c8', state: 'locked' as const, tilt: 0 },
+  { day: 'SAT', icon: 'gift', color: '#cfd8c8', state: 'locked' as const, tilt: 0 },
+  { day: 'SUN', icon: 'crown', color: '#cfd8c8', state: 'locked' as const, tilt: 0 },
 ]
 
 const LOOP = [
-  { icon: 'ic-book', title: 'Pick a path', desc: 'Public speaking, storytelling, pitching. Choose what matters to you today.', color: lc.blue },
-  { icon: 'ic-chat', title: 'Pick a coach', desc: 'Supportive, funny, bossy. Set the exact energy you want in your ear.', color: lc.purple },
-  { icon: 'ic-mic', title: 'Speak out loud', desc: 'Answer a real scenario. Sixty seconds, spoken, not typed or overthought.', color: lc.coral },
-  { icon: 'ic-star', title: 'Collect your sticker', desc: 'Instant scores on delivery, clarity and confidence, then keep your streak alive.', color: lc.green },
+  { icon: 'book', title: 'Pick a path', desc: 'Public speaking, storytelling, pitching. Choose what matters to you today.', color: lc.blue },
+  { icon: 'chat', title: 'Pick a coach', desc: 'Supportive, funny, bossy. Set the exact energy you want in your ear.', color: lc.purple },
+  { icon: 'mic', title: 'Speak out loud', desc: 'Answer a real scenario. Sixty seconds, spoken, not typed or overthought.', color: lc.coral },
+  { icon: 'star', title: 'Collect your sticker', desc: 'Instant scores on delivery, clarity and confidence, then keep your streak alive.', color: lc.green },
 ]
 
 // Names match the six real product categories (app/dashboard/page.tsx).
 const CATEGORIES = [
-  { name: 'Public Speaking', desc: 'From a five-minute update to a full keynote, without the nerves.', icon: 'ic-mic', color: lc.green },
-  { name: 'Storytelling', desc: 'Craft narratives people actually remember and repeat.', icon: 'ic-book', color: lc.yellow },
-  { name: 'Creator Speaking', desc: 'Sound natural and hold attention on video, podcasts and recordings.', icon: 'ic-camera', color: lc.coral },
-  { name: 'Casual Conversation', desc: 'Build easy confidence for small talk and quick conversations.', icon: 'ic-chat', color: lc.blue },
-  { name: 'Workplace Communication', desc: 'Own meetings, reviews and the tough conversations that count.', icon: 'ic-briefcase', color: lc.purple },
-  { name: 'Pitch Anything', desc: 'Win over investors, customers and your team with clarity.', icon: 'ic-target', color: lc.green },
+  { name: 'Public Speaking', desc: 'From a five-minute update to a full keynote, without the nerves.', icon: 'mic', color: lc.green },
+  { name: 'Storytelling', desc: 'Craft narratives people actually remember and repeat.', icon: 'book', color: lc.yellow },
+  { name: 'Creator Speaking', desc: 'Sound natural and hold attention on video, podcasts and recordings.', icon: 'camera', color: lc.coral },
+  { name: 'Casual Conversation', desc: 'Build easy confidence for small talk and quick conversations.', icon: 'chat', color: lc.blue },
+  { name: 'Workplace Communication', desc: 'Own meetings, reviews and the tough conversations that count.', icon: 'briefcase', color: lc.purple },
+  { name: 'Pitch Anything', desc: 'Win over investors, customers and your team with clarity.', icon: 'target', color: lc.green },
 ]
 
 // Trial terms mirror lib/check-session-limit.ts: 14 days, 10 sessions/day.
@@ -170,7 +172,7 @@ function PrimaryCta({ children, big = false }: { children: React.ReactNode; big?
 export function LandingPage() {
   return (
     <div style={{ background: lc.pageBg, overflowX: 'hidden', color: lc.ink }}>
-      <LandingIconSprite />
+      <ButtonStyles />
       <LandingNav />
 
       {/* HERO */}
@@ -212,7 +214,7 @@ export function LandingPage() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-[14px] lg:justify-start">
               <PrimaryCta big>
-                <Icon id="ic-mic" size={19} color="#fff" />
+                <Icon name="mic" size={19} color="#fff" />
                 START 14 DAYS FREE TRIAL
               </PrimaryCta>
               <a
@@ -259,7 +261,7 @@ export function LandingPage() {
                       boxShadow: '0 3px 0 rgba(0,0,0,.12)',
                     }}
                   >
-                    <Icon id={p.icon} size={18} color="#fff" />
+                    <Icon name={p.icon} size={18} color="#fff" />
                   </span>
                   <span style={{ whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'block', fontFamily: fontDisplay, fontWeight: 800, fontSize: 17, color: lc.ink, lineHeight: 1 }}>
@@ -387,7 +389,7 @@ export function LandingPage() {
                   boxShadow: `0 4px 0 ${lc.greenDark}`,
                 }}
               >
-                <Icon id={w.icon} size={28} color="#fff" />
+                <Icon name={w.icon} size={28} color="#fff" />
               </div>
               <h3 style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 20, margin: '18px 0 8px', color: lc.ink, lineHeight: 1.1 }}>
                 {w.title}
@@ -459,7 +461,7 @@ export function LandingPage() {
               return (
                 <div key={w.day} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
                   <div className="h-[50px] w-[50px] lg:h-[58px] lg:w-[58px]" style={style}>
-                    <Icon id={w.icon} size={24} color={fg} />
+                    <Icon name={w.icon} size={24} color={fg} />
                   </div>
                   <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 11, color: labelColor }}>{w.day}</span>
                 </div>
@@ -495,7 +497,7 @@ export function LandingPage() {
                   boxShadow: '0 4px 0 rgba(0,0,0,.13)',
                 }}
               >
-                <Icon id={s.icon} size={30} color="#fff" />
+                <Icon name={s.icon} size={30} color="#fff" />
                 <span
                   style={{
                     position: 'absolute',
@@ -552,7 +554,7 @@ export function LandingPage() {
                   boxShadow: '0 4px 0 rgba(0,0,0,.13)',
                 }}
               >
-                <Icon id={c.icon} size={30} color="#fff" />
+                <Icon name={c.icon} size={30} color="#fff" />
               </div>
               <h3 style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 19, color: lc.ink, lineHeight: 1.1, margin: '16px 0 6px' }}>
                 {c.name}
@@ -689,12 +691,32 @@ export function LandingPage() {
 
       {/* FINAL CTA */}
       <section
-        className="px-5 py-[54px] text-center lg:px-11 lg:py-[70px]"
+        className="px-5 py-[42px] text-center lg:px-11 lg:py-[54px]"
         style={{ background: lc.green, color: '#fff', position: 'relative', borderTop: `4px solid ${lc.greenDark}` }}
       >
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 22 }}>
-          <Mascot />
-        </div>
+        {/* Content is capped and centred. Left full-bleed, the heading stretched
+            edge to edge on a wide monitor and the band read as an oversized
+            slab rather than a closing call to action. */}
+        <div style={{ maxWidth: 620, marginLeft: 'auto', marginRight: 'auto' }}>
+          {/* The mascot is green and the band is green, so unplated it simply
+              disappeared into the background. A soft white disc gives it the
+              contrast it needs without introducing a new colour. */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <span
+              style={{
+                width: 132,
+                height: 132,
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,.96)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 0 10px rgba(255,255,255,.16)',
+              }}
+            >
+              <Mascot />
+            </span>
+          </div>
         <h2
           className="text-[30px] lg:text-[46px]"
           style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-1px', lineHeight: 1.05, marginBottom: 10, color: '#fff', marginTop: 0 }}
@@ -706,27 +728,11 @@ export function LandingPage() {
         <p style={{ fontSize: 15, color: 'rgba(255,255,255,.92)', marginBottom: 28, fontWeight: 700, maxWidth: 460, marginLeft: 'auto', marginRight: 'auto' }}>
           Start with one 60-second rep today. 14 days free, no card required.
         </p>
-        <Link
-          href="/auth/signup"
-          style={{
-            background: '#fff',
-            color: lc.green,
-            padding: '17px 32px',
-            borderRadius: 16,
-            fontFamily: fontDisplay,
-            fontWeight: 800,
-            fontSize: 15,
-            letterSpacing: '0.02em',
-            textDecoration: 'none',
-            boxShadow: '0 6px 0 rgba(0,0,0,.18)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 10,
-          }}
-        >
-          <Icon id="ic-mic" size={19} color={lc.greenText} />
-          START YOUR FREE TRIAL
-        </Link>
+          <Button href="/auth/signup" variant="onDark" size="lg">
+            <Icon name="mic" size={19} color={lc.greenText} />
+            START YOUR FREE TRIAL
+          </Button>
+        </div>
       </section>
 
       {/* FOOTER */}

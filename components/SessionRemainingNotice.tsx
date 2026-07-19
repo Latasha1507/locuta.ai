@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { Icon } from '@/components/ui/icons'
 
 interface SessionRemainingNoticeProps {
   userId: string
@@ -63,7 +64,7 @@ export default function SessionRemainingNotice({ userId }: SessionRemainingNotic
     }`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{isLow ? '⚠️' : '✨'}</span>
+          <Icon name={isLow ? 'alert' : 'sparkle'} size={22} color={isLow ? '#e8892b' : '#3fce6f'} />
           <div>
             <p className="font-bold text-slate-900">
               {sessionsRemaining === 0 ? (

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { LandingIconSprite, Icon } from '@/components/landing/icons'
+import { Icon } from '@/components/ui/icons'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import type { FounderPromo } from '@/components/dashboard/SidebarPromo'
 import { ProfileButton } from '@/components/common/ProfileButton'
@@ -57,7 +57,6 @@ function scoreColor(s: number): string {
 export function HistoryView(d: HistoryData) {
   return (
     <div className="flex min-h-screen flex-col lg:flex-row" style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}>
-      <LandingIconSprite />
       <Sidebar isAdmin={d.isAdmin} promo={d.promo} />
 
       <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-14 pt-5 lg:gap-5 lg:px-10 lg:pt-8">
@@ -80,10 +79,10 @@ export function HistoryView(d: HistoryData) {
           <>
             {/* STAT STRIP */}
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-              <Stat label="Sessions" value={d.totalCount} icon="ic-mic" color={lc.blue} />
-              <Stat label="Average" value={d.avgScore} icon="ic-target" color={lc.purple} />
-              <Stat label="Personal best" value={d.bestScore} icon="ic-crown" color={lc.yellow} />
-              <Stat label="Pass rate" value={`${d.passRate}%`} icon="ic-check" color={lc.green} />
+              <Stat label="Sessions" value={d.totalCount} icon="mic" color={lc.blue} />
+              <Stat label="Average" value={d.avgScore} icon="target" color={lc.purple} />
+              <Stat label="Personal best" value={d.bestScore} icon="crown" color={lc.yellow} />
+              <Stat label="Pass rate" value={`${d.passRate}%`} icon="check" color={lc.green} />
             </div>
 
             {/* ANALYTICS SPLIT */}
@@ -115,7 +114,7 @@ export function HistoryView(d: HistoryData) {
                           display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none',
                         }}
                       >
-                        <Icon id={pb.icon} size={17} color={pb.color} />
+                        <Icon name={pb.icon} size={17} color={pb.color} />
                       </span>
                       <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: lc.ink, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {pb.categoryName}
@@ -204,7 +203,7 @@ export function HistoryView(d: HistoryData) {
                       {new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11.5, fontWeight: 800, color: lc.green, marginTop: 6 }}>
-                      Review <Icon id="ic-arrow" size={12} color={lc.green} />
+                      Review <Icon name="arrow" size={12} color={lc.green} />
                     </span>
                   </span>
                 </Link>
@@ -246,7 +245,7 @@ function Stat({ label, value, icon, color }: { label: string; value: number | st
         className="hidden sm:flex"
         style={{ width: 40, height: 40, borderRadius: 11, background: color, alignItems: 'center', justifyContent: 'center', flex: 'none', boxShadow: '0 3px 0 rgba(0,0,0,.12)' }}
       >
-        <Icon id={icon} size={20} color="#fff" />
+        <Icon name={icon} size={20} color="#fff" />
       </span>
       <span style={{ minWidth: 0 }}>
         <span style={{ display: 'block', fontSize: 11, color: lc.faint, fontWeight: 800 }}>{label}</span>
@@ -298,7 +297,7 @@ function PageLink({ href, disabled, dir }: { href: string; disabled: boolean; di
   }
   return (
     <Link href={href} aria-label={dir === 'prev' ? 'Newer' : 'Older'} style={style} aria-disabled={disabled}>
-      <Icon id="ic-arrow" size={16} color={lc.greenDark} />
+      <Icon name="arrow" size={16} color={lc.greenDark} />
     </Link>
   )
 }
@@ -350,7 +349,7 @@ function EmptyState() {
       style={{ background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 22, boxShadow: `0 5px 0 ${lc.cardBorder}` }}
     >
       <span style={{ width: 64, height: 64, borderRadius: 18, background: '#eafaef', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Icon id="ic-clock" size={30} color={lc.green} />
+        <Icon name="clock" size={30} color={lc.green} />
       </span>
       <div>
         <h2 style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 20, margin: 0 }}>No sessions yet</h2>
@@ -366,7 +365,7 @@ function EmptyState() {
           textDecoration: 'none', boxShadow: `0 5px 0 ${lc.greenDark}`,
         }}
       >
-        <Icon id="ic-mic" size={17} color="#fff" />
+        <Icon name="mic" size={17} color="#fff" />
         Start practising
       </Link>
     </section>

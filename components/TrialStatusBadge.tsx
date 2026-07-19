@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { Icon } from '@/components/ui/icons'
 
 interface TrialStatusBadgeProps {
   userId: string
@@ -89,7 +90,7 @@ export default function TrialStatusBadge({ userId }: TrialStatusBadgeProps) {
   return (
     <div className="flex items-center gap-3 bg-white rounded-xl shadow-md px-4 py-3 border border-purple-200">
       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-        <span className="text-2xl">🎁</span>
+        <Icon name="gift" size={22} color="#3fce6f" />
       </div>
       <div>
         <div className="text-sm font-bold text-gray-900">Free Trial Active</div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import FounderCallModal from '@/components/FounderCallModal'
+import { Icon } from '@/components/ui/icons'
 
 export default function FounderCallButton() {
   const [showModal, setShowModal] = useState(false)
@@ -51,7 +52,7 @@ export default function FounderCallButton() {
         onClick={() => setShowModal(true)}
         className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-full shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 flex items-center gap-3 animate-pulse-slow group"
       >
-        <span className="text-2xl">🎁</span>
+        <Icon name="gift" size={22} color="#3fce6f" />
         <div className="text-left hidden sm:block">
           <div className="font-bold text-sm">Get 1 Year FREE!</div>
           <div className="text-xs opacity-90">Only {slotsRemaining} spots left</div>
