@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay } from './tokens'
+import { ButtonStyles } from '@/components/ui/Button'
+import { pressable } from '@/components/ui/buttonSkins'
 import { LocutaLogo } from '@/components/ui/LocutaLogo'
 
 const NAV_LINKS = [
@@ -16,6 +18,8 @@ export function LandingNav() {
   const [open, setOpen] = useState(false)
 
   return (
+    <>
+    <ButtonStyles />
     <header
       style={{
         position: 'sticky',
@@ -62,6 +66,7 @@ export function LandingNav() {
           </Link>
           <Link
             href="/auth/signup"
+            className={pressable('primary').className}
             style={{
               background: lc.green,
               color: '#fff',
@@ -72,7 +77,7 @@ export function LandingNav() {
               fontSize: 13.5,
               letterSpacing: '0.02em',
               textDecoration: 'none',
-              boxShadow: `0 4px 0 ${lc.greenDark}`,
+              ...pressable('primary').style,
               display: 'inline-flex',
             }}
           >
@@ -127,6 +132,7 @@ export function LandingNav() {
             Log in
           </Link>
           <Link
+            className={pressable('primary').className}
             href="/auth/signup"
             style={{
               background: lc.green,
@@ -139,7 +145,7 @@ export function LandingNav() {
               textAlign: 'center',
               textDecoration: 'none',
               marginTop: 14,
-              boxShadow: `0 4px 0 ${lc.greenDark}`,
+              ...pressable('primary').style,
             }}
           >
             GET STARTED
@@ -147,5 +153,6 @@ export function LandingNav() {
         </div>
       )}
     </header>
+    </>
   )
 }

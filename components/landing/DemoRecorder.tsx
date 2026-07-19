@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay } from './tokens'
+import { ButtonStyles } from '@/components/ui/Button'
+import { pressable } from '@/components/ui/buttonSkins'
 import { Icon } from '@/components/ui/icons'
 import { PROMPTS } from '@/lib/quick-score'
 
@@ -349,6 +351,7 @@ export function DemoRecorder() {
       ) : (
         <>
           <button
+            className="lc-btn"
             type="button"
             onClick={recording ? stop : start}
             disabled={scoring}
@@ -368,7 +371,10 @@ export function DemoRecorder() {
               fontSize: 15,
               letterSpacing: '0.02em',
               cursor: scoring ? 'default' : 'pointer',
-              boxShadow: `0 5px 0 ${recording ? lc.coralDark : scoring ? '#9aab8e' : lc.greenDark}`,
+              // The record button changes colour by state, so the 3D edge
+              // underneath has to track it rather than use a fixed skin.
+              ['--lc-edge' as string]: recording ? lc.coralDark : scoring ? '#9aab8e' : lc.greenDark,
+              ['--lc-bg-hover' as string]: recording ? lc.coralDark : scoring ? '#9aab8e' : lc.greenDark,
             }}
           >
             <span
@@ -446,6 +452,7 @@ function LockedGate({
         </div>
 
         <Link
+          className={pressable('primary').className}
           href={signupHref}
           style={{
             display: 'flex',
@@ -462,7 +469,7 @@ function LockedGate({
             fontWeight: 800,
             fontSize: 14.5,
             letterSpacing: '0.02em',
-            boxShadow: `0 5px 0 ${lc.greenDark}`,
+            ...pressable('primary').style,
           }}
         >
           REVEAL MY SCORE →

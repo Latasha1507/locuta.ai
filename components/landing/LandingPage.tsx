@@ -3,6 +3,7 @@ import { lc, fontDisplay } from './tokens'
 import { Icon } from '@/components/ui/icons'
 import { LocutaLogo } from '@/components/ui/LocutaLogo'
 import { Button, ButtonStyles } from '@/components/ui/Button'
+import { pressable } from '@/components/ui/buttonSkins'
 import { Mascot } from './Mascot'
 import { LandingNav } from './LandingNav'
 import { DemoRecorder } from './DemoRecorder'
@@ -144,6 +145,7 @@ function SectionHeading({ children, sub }: { children: React.ReactNode; sub?: st
 function PrimaryCta({ children, big = false }: { children: React.ReactNode; big?: boolean }) {
   return (
     <Link
+      className={pressable('primary').className}
       href="/auth/signup"
       style={{
         background: lc.green,
@@ -158,7 +160,7 @@ function PrimaryCta({ children, big = false }: { children: React.ReactNode; big?
         display: 'inline-flex',
         alignItems: 'center',
         gap: 10,
-        boxShadow: `0 5px 0 ${lc.greenDark}`,
+        ...pressable('primary').style,
         whiteSpace: 'nowrap',
       }}
     >

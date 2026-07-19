@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import type { CSSProperties, ReactNode } from 'react'
-import { fontDisplay, lc } from '@/components/landing/tokens'
+import { fontDisplay } from '@/components/landing/tokens'
+import { SIZES, SKINS, type ButtonVariant, type ButtonSize } from './buttonSkins'
 
 /**
  * THE LOCUTA BUTTON.
@@ -25,73 +26,54 @@ import { fontDisplay, lc } from '@/components/landing/tokens'
  * hover. Transitions are 120ms — fast enough to feel mechanical, not floaty.
  */
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'onDark'
-export type ButtonSize = 'sm' | 'md' | 'lg'
 
-const SIZES: Record<ButtonSize, { pad: string; font: number; radius: number; gap: number }> = {
-  sm: { pad: '9px 15px', font: 13, radius: 12, gap: 7 },
-  md: { pad: '13px 22px', font: 14.5, radius: 14, gap: 9 },
-  lg: { pad: '16px 30px', font: 15.5, radius: 16, gap: 10 },
-}
 
-interface Skin {
-  bg: string
-  fg: string
-  border: string
-  /** Fill on hover. Wired through --lc-bg-hover; this is the cue people see. */
-  hoverBg: string
-  /** Soft shadow colour under the button on hover. */
-  glow: string
-  ring: string
-}
 
-const SKINS: Record<ButtonVariant, Skin> = {
-  primary: { bg: lc.green, fg: '#fff', border: lc.greenDark, hoverBg: lc.greenDark, glow: 'rgba(47,165,82,.38)', ring: 'rgba(63,206,111,.45)' },
-  secondary: { bg: '#fff', fg: lc.ink, border: '#c3d8b8', hoverBg: '#f0f8ec', glow: 'rgba(63,206,111,.22)', ring: 'rgba(63,206,111,.35)' },
-  ghost: { bg: 'transparent', fg: lc.greenDark, border: 'transparent', hoverBg: 'rgba(63,206,111,.14)', glow: 'rgba(63,206,111,.18)', ring: 'rgba(63,206,111,.35)' },
-  // White button sitting on the green band — the border is a translucent dark
-  // so it keeps its weight without introducing a second colour.
-  onDark: { bg: '#fff', fg: lc.greenText, border: 'rgba(0,0,0,.14)', hoverBg: '#eaf9ef', glow: 'rgba(0,0,0,.22)', ring: 'rgba(255,255,255,.65)' },
-}
 
-/** Injected once. Real :hover/:active/:focus-visible beats React state here. */
+/** Injected once. Real :hover/:active beats React state here. */
 export function ButtonStyles() {
   return (
     <style>{`
       .lc-btn{
-        --lc-lift:0px;
+        --lc-drop:0px;      /* how far the top surface has sunk */
+        --lc-edge-h:5px;    /* remaining height of the 3D edge underneath */
         position:relative;
         display:inline-flex;align-items:center;justify-content:center;
         font-family:${fontDisplay};font-weight:800;letter-spacing:.01em;
         text-decoration:none;cursor:pointer;
-        border-style:solid;border-width:2px;
+        border:2px solid var(--lc-border);
         background:var(--lc-bg);
-        transform:translateY(var(--lc-lift));
-        transition:transform .13s ease,background-color .13s ease,box-shadow .13s ease,border-bottom-width .13s ease;
+        /* The "thick line" under the button. Solid, zero blur, same hue as the
+           fill — it reads as the SIDE of a physical key, not as a drop shadow.
+           box-shadow does not affect layout, so animating it never reflows. */
+        box-shadow:0 var(--lc-edge-h) 0 var(--lc-edge);
+        transform:translateY(var(--lc-drop));
+        transition:transform .1s ease-out,box-shadow .1s ease-out,background-color .1s ease-out;
         -webkit-tap-highlight-color:transparent;
       }
-      /* HOVER — three cues at once so it is impossible to miss:
-         the fill deepens, the button rises 2px, and a soft shadow appears
-         underneath it. A 1px nudge on its own reads as nothing. */
+      /* HOVER — the key is already going down. The surface drops 3px and the
+         edge beneath it shrinks by the same 3px, so the bottom stays put and
+         the button genuinely looks half-pressed. */
       .lc-btn:hover:not(:disabled):not([aria-disabled="true"]){
+        --lc-drop:3px;
+        --lc-edge-h:2px;
         background:var(--lc-bg-hover);
-        --lc-lift:-2px;
-        box-shadow:0 6px 14px var(--lc-glow);
       }
-      /* PRESS — the button drops past its resting position, the shadow
-         collapses and the bottom edge thins, so it reads as physically
-         pushed into the page. */
+      /* ACTIVE — bottomed out. Surface has travelled the full 5px, the edge is
+         gone, the key is flat against the page. */
       .lc-btn:active:not(:disabled):not([aria-disabled="true"]){
-        --lc-lift:2px;
-        box-shadow:none;
-        border-bottom-width:2px!important;
+        --lc-drop:5px;
+        --lc-edge-h:0px;
+        background:var(--lc-bg-hover);
       }
-      .lc-btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--lc-ring);}
-      .lc-btn:disabled,.lc-btn[aria-disabled="true"]{opacity:.5;cursor:not-allowed;--lc-lift:0px;box-shadow:none;}
-      /* Motion-sensitive users still get the colour change, just no movement. */
+      .lc-btn:focus-visible{outline:none;box-shadow:0 var(--lc-edge-h) 0 var(--lc-edge),0 0 0 4px var(--lc-ring);}
+      .lc-btn:disabled,.lc-btn[aria-disabled="true"]{
+        opacity:.5;cursor:not-allowed;--lc-drop:0px;--lc-edge-h:5px;
+      }
+      /* Motion-sensitive users keep the colour change but skip the travel. */
       @media (prefers-reduced-motion:reduce){
-        .lc-btn{transition:background-color .13s ease;}
-        .lc-btn:hover:not(:disabled),.lc-btn:active:not(:disabled){--lc-lift:0px;box-shadow:none;}
+        .lc-btn{transition:background-color .1s ease;}
+        .lc-btn:hover:not(:disabled),.lc-btn:active:not(:disabled){--lc-drop:0px;--lc-edge-h:5px;}
       }
     `}</style>
   )
@@ -135,14 +117,11 @@ export function Button({
     borderRadius: s.radius,
     gap: s.gap,
     color: skin.fg,
-    borderColor: skin.border,
-    // The thicker bottom edge is what replaces the old offset shadow: it reads
-    // as a physical edge the button can press into, on a single flat plane.
-    borderBottomWidth: 3,
     width: block ? '100%' : undefined,
     ['--lc-bg']: skin.bg,
     ['--lc-bg-hover']: skin.hoverBg,
-    ['--lc-glow']: skin.glow,
+    ['--lc-edge']: skin.edge,
+    ['--lc-border']: skin.border,
     ['--lc-ring']: skin.ring,
     ...style,
   } as CSSProperties
@@ -189,3 +168,16 @@ export function Button({
     </button>
   )
 }
+
+/**
+ * Adopt the press behaviour on an element that isn't a <Button> yet.
+ *
+ * Plenty of CTAs across the app are hand-rolled <Link>/<button> elements with
+ * inline styles. Rewriting each into <Button> means restructuring its JSX;
+ * this lets one adopt the exact same press mechanic by spreading two props,
+ * so conversion is a one-line change per button and can't alter layout.
+ *
+ *   <Link {...pressable('primary')} style={{ ...myStyles, ...pressable('primary').style }}>
+ *
+ * Requires <ButtonStyles /> mounted once on the page.
+ */
