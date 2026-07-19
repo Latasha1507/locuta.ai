@@ -12,19 +12,25 @@ import { ShareActions } from './ShareActions'
 //   • `variant="modal"` — the owner's celebratory pop-up over their dashboard
 //   • `variant="page"`  — the public link a stranger opens
 //
-// DESIGN NOTES (this is a rewrite; the previous version had three real problems)
+// LAYOUT: horizontal on desktop — score panel on the left, breakdown + coaching
+// on the right, sharing across the full width underneath. Stacked vertically it
+// became a tall column that pushed the share buttons below the fold, which is
+// fatal for a tool whose entire job is getting shared. Below `md` it stacks,
+// which is the only order that works on a phone.
+//
+// DESIGN NOTES (this replaced a version with three real problems)
 //
 // 1. MIXED UNITS. It drew four identical bars, but two were 0–100 scores and
 //    two were raw counts. "0 words" rendered as a FULL bar and "83 wpm" as a
 //    half bar, so a user could not tell what good looked like. Now every bar is
 //    the 0–100 sub-score, and the raw measurement moves into a caption that
-//    also states the target ("83 wpm · aim 125–165").
+//    also states the target ("119 wpm · aim for 125–165").
 //
 // 2. INVERTED COLOUR. Filler was always coral, so a perfect zero-filler result
 //    lit up a full red bar — the single best outcome looked like the worst.
 //    Bars are now coloured by PERFORMANCE (metricColor), never by category.
 //
-// 3. NO HIERARCHY. Everything competed. The order is now strictly: who you are
+// 3. NO HIERARCHY. Everything competed. Reading order is now: who you are
 //    (mascot) → the number → what it means (tier) → how you compare → the
 //    breakdown → what to fix → share.
 
@@ -140,9 +146,9 @@ export function ScoreCard(p: ScoreCardProps) {
 
   return (
     <div
-      className="w-full p-5 sm:p-7"
+      className="w-full p-5 sm:p-6 md:p-7"
       style={{
-        maxWidth: 520,
+        maxWidth: 880,
         background: '#fff',
         border: `2px solid ${lc.cardBorder}`,
         borderRadius: 26,
@@ -159,7 +165,7 @@ export function ScoreCard(p: ScoreCardProps) {
           aria-label="Close"
           style={{
             position: 'absolute',
-            top: 14,
+            top: 12,
             right: 16,
             background: 'none',
             border: 0,
@@ -167,165 +173,179 @@ export function ScoreCard(p: ScoreCardProps) {
             lineHeight: 1,
             cursor: 'pointer',
             color: lc.faint,
+            zIndex: 2,
           }}
         >
           ×
         </button>
       )}
 
-      {/* ---- IDENTITY: mascot reacts to how it went ---- */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
-        <Mascot mood={tier.mood} />
-      </div>
-
-      {/* ---- THE NUMBER ---- */}
-      <div style={{ textAlign: 'center' }}>
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-5 md:gap-6">
+        {/* ================= LEFT — identity + the number ================= */}
         <div
+          className="md:col-span-2"
           style={{
-            fontFamily: fontDisplay,
-            fontWeight: 800,
-            fontSize: 11,
-            letterSpacing: '0.14em',
-            color: lc.faint,
-            marginBottom: 2,
-          }}
-        >
-          YOUR 30-SECOND SCORE
-        </div>
-        <div
-          style={{
-            fontFamily: fontDisplay,
-            fontWeight: 800,
-            fontSize: 84,
-            lineHeight: 1,
-            letterSpacing: '-3px',
-            color: tier.color,
-          }}
-        >
-          {display}
-        </div>
-        <div style={{ fontSize: 12.5, color: lc.faint, fontWeight: 700, marginTop: 2 }}>out of 100</div>
-
-        <div
-          style={{
-            display: 'inline-flex',
+            background: `${tier.color}12`,
+            border: `2px solid ${tier.color}33`,
+            borderRadius: 20,
+            padding: '16px 16px 20px',
+            display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
-            gap: 7,
-            marginTop: 12,
-            background: `${tier.color}18`,
-            border: `2px solid ${tier.color}`,
-            color: tier.color,
-            fontFamily: fontDisplay,
-            fontWeight: 800,
-            fontSize: 14,
-            padding: '7px 18px',
-            borderRadius: 999,
+            justifyContent: 'center',
+            textAlign: 'center',
           }}
         >
-          <span aria-hidden="true">{tier.emoji}</span>
-          {tier.label}
-        </div>
+          <Mascot mood={tier.mood} />
 
-        {/* Percentile is only ever rendered when it came from real data. */}
-        {typeof p.percentile === 'number' && (
-          <div style={{ fontSize: 14, color: lc.muted, fontWeight: 700, marginTop: 12 }}>
-            You spoke better than{' '}
-            <strong style={{ color: lc.ink, fontFamily: fontDisplay }}>{p.percentile}%</strong> of people
+          <div
+            style={{
+              fontFamily: fontDisplay,
+              fontWeight: 800,
+              fontSize: 10.5,
+              letterSpacing: '0.14em',
+              color: lc.faint,
+              marginTop: 2,
+            }}
+          >
+            YOUR 30-SECOND SCORE
           </div>
-        )}
 
-        <div style={{ fontSize: 12.5, color: lc.faint, fontWeight: 700, marginTop: 8 }}>
-          on “{p.topic}”
-        </div>
-      </div>
+          <div
+            style={{
+              fontFamily: fontDisplay,
+              fontWeight: 800,
+              fontSize: 78,
+              lineHeight: 1,
+              letterSpacing: '-3px',
+              color: tier.color,
+              marginTop: 2,
+            }}
+          >
+            {display}
+          </div>
+          <div style={{ fontSize: 12, color: lc.faint, fontWeight: 700, marginTop: 2 }}>out of 100</div>
 
-      {/* ---- BREAKDOWN ---- */}
-      <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {metrics.map((m) => {
-          const color = metricColor(m.score)
-          return (
-            <div key={m.label}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-                <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 14, color: lc.ink }}>
-                  {m.label}
-                </span>
-                <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 14, color }}>
-                  {m.score}
-                </span>
-              </div>
-              <div
-                style={{
-                  height: 9,
-                  background: '#eef3e9',
-                  borderRadius: 999,
-                  overflow: 'hidden',
-                  margin: '6px 0 5px',
-                }}
-              >
-                <div
-                  style={{
-                    height: '100%',
-                    width: barsIn ? `${m.score}%` : '0%',
-                    background: color,
-                    borderRadius: 999,
-                    transition: 'width .8s cubic-bezier(.22,1,.36,1)',
-                  }}
-                />
-              </div>
-              <div style={{ fontSize: 11.5, color: lc.faint, fontWeight: 600 }}>{m.caption}</div>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              marginTop: 11,
+              background: '#fff',
+              border: `2px solid ${tier.color}`,
+              color: tier.color,
+              fontFamily: fontDisplay,
+              fontWeight: 800,
+              fontSize: 14,
+              padding: '6px 17px',
+              borderRadius: 999,
+            }}
+          >
+            <span aria-hidden="true">{tier.emoji}</span>
+            {tier.label}
+          </div>
+
+          {/* Percentile is only ever rendered when it came from real data. */}
+          {typeof p.percentile === 'number' && (
+            <div style={{ fontSize: 13, color: lc.muted, fontWeight: 700, marginTop: 11, lineHeight: 1.35 }}>
+              You spoke better than{' '}
+              <strong style={{ color: lc.ink, fontFamily: fontDisplay }}>{p.percentile}%</strong> of people
             </div>
-          )
-        })}
-      </div>
-
-      {/* ---- COACHING — owner only ---- */}
-      {p.isOwner && (p.strengths.length > 0 || p.improvements.length > 0) && (
-        <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-          {p.strengths.length > 0 && (
-            <FeedbackBlock
-              title="What you nailed"
-              lines={p.strengths}
-              color={lc.green}
-              bg="#eefaf0"
-              glyph="ic-check"
-            />
           )}
-          {p.improvements.length > 0 && (
-            <FeedbackBlock
-              title="Work on this next"
-              lines={p.improvements}
-              color="#c07d08"
-              bg="#fff6e5"
-              glyph="ic-arrow"
-            />
+
+          <div style={{ fontSize: 12, color: lc.faint, fontWeight: 700, marginTop: 9, lineHeight: 1.35 }}>
+            on “{p.topic}”
+          </div>
+        </div>
+
+        {/* ============ RIGHT — breakdown + coaching ============ */}
+        <div className="md:col-span-3" style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+            {metrics.map((m) => {
+              const color = metricColor(m.score)
+              return (
+                <div key={m.label}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+                    <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 13.5, color: lc.ink }}>
+                      {m.label}
+                    </span>
+                    <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 13.5, color }}>
+                      {m.score}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      height: 9,
+                      background: '#eef3e9',
+                      borderRadius: 999,
+                      overflow: 'hidden',
+                      margin: '5px 0 4px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: '100%',
+                        width: barsIn ? `${m.score}%` : '0%',
+                        background: color,
+                        borderRadius: 999,
+                        transition: 'width .8s cubic-bezier(.22,1,.36,1)',
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: 11, color: lc.faint, fontWeight: 600 }}>{m.caption}</div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Coaching — owner only. Side by side on desktop to stay compact. */}
+          {p.isOwner && (p.strengths.length > 0 || p.improvements.length > 0) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {p.strengths.length > 0 && (
+                <FeedbackBlock title="What you nailed" lines={p.strengths} color={lc.green} bg="#eefaf0" glyph="ic-check" />
+              )}
+              {p.improvements.length > 0 && (
+                <FeedbackBlock title="Work on this next" lines={p.improvements} color="#c07d08" bg="#fff6e5" glyph="ic-arrow" />
+              )}
+            </div>
           )}
         </div>
-      )}
+      </div>
 
-      {/* ---- SHARE / CTA ---- */}
-      <div style={{ marginTop: 22 }}>
+      {/* ================= SHARE — full width underneath ================= */}
+      <div style={{ marginTop: 18 }}>
         {p.isOwner ? (
           <>
             <ShareActions shareText={p.shareText} url={p.shareUrl} />
-            <p style={{ textAlign: 'center', fontSize: 11.5, color: lc.faint, fontWeight: 600, marginTop: 12 }}>
-              Send it to someone who thinks they talk better than you.
-            </p>
-            <div style={{ textAlign: 'center', marginTop: 14 }}>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px 16px',
+                marginTop: 12,
+              }}
+            >
+              <span style={{ fontSize: 11.5, color: lc.faint, fontWeight: 600 }}>
+                Send it to someone who thinks they talk better than you.
+              </span>
               <Link
                 href="/practice"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 8,
+                  gap: 7,
                   fontFamily: fontDisplay,
                   fontWeight: 800,
-                  fontSize: 14,
+                  fontSize: 13.5,
                   color: lc.greenDark,
                   textDecoration: 'none',
                 }}
               >
-                <Icon id="ic-mic" size={16} color={lc.greenDark} />
-                Want a better number? Start practising →
+                <Icon id="ic-mic" size={15} color={lc.greenDark} />
+                Start practising →
               </Link>
             </div>
           </>
@@ -371,27 +391,27 @@ function FeedbackBlock({
   glyph: string
 }) {
   return (
-    <div style={{ background: bg, borderRadius: 16, padding: '13px 15px' }}>
+    <div style={{ background: bg, borderRadius: 15, padding: '11px 13px' }}>
       <div
         style={{
           fontFamily: fontDisplay,
           fontWeight: 800,
-          fontSize: 10.5,
+          fontSize: 10,
           letterSpacing: '0.08em',
           textTransform: 'uppercase',
           color,
-          marginBottom: 8,
+          marginBottom: 7,
         }}
       >
         {title}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {lines.map((l) => (
-          <div key={l} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+          <div key={l} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <span
               style={{
-                width: 18,
-                height: 18,
+                width: 17,
+                height: 17,
                 borderRadius: '50%',
                 background: color,
                 display: 'flex',
@@ -403,7 +423,7 @@ function FeedbackBlock({
             >
               <Icon id={glyph} size={10} color="#fff" />
             </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#41503c', lineHeight: 1.4 }}>{l}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#41503c', lineHeight: 1.35 }}>{l}</span>
           </div>
         ))}
       </div>

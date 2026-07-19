@@ -241,10 +241,13 @@ export function fluencyFeedback(
 
 export function flowFeedback(longPauses: number, speechSec: number): { good?: string; improve?: string } {
   if (speechSec <= 0) return {}
-  const perMin = longPauses / (speechSec / 60)
+  // Derived from the SAME rounded score the user sees. Computing this from raw
+  // pauses/min independently let the score round up to 100 while the coaching
+  // still said "fewer long pauses" — a flat contradiction on the same card.
+  const score = flowScore(longPauses, speechSec)
   if (longPauses === 0) return { good: 'Kept going without stalling' }
-  if (perMin > 6) return { improve: `${longPauses} long pauses broke the flow` }
-  if (perMin <= PAUSE_ALLOWANCE_PER_MIN) return { good: 'Natural pauses, no stalling' }
+  if (score >= 90) return { good: 'Natural pauses, no stalling' }
+  if (score < 60) return { improve: `${longPauses} long pauses broke the flow` }
   return { improve: 'Fewer long pauses mid-answer' }
 }
 
