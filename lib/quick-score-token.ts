@@ -17,21 +17,52 @@ import { normaliseScore, type QuickScore } from './quick-score'
 // image + stranger view never render them. If we ever want feedback fully off
 // the URL, that's the point we'd introduce a DB row keyed by a short id.
 
-function secret(): string {
-  // Dedicated secret preferred; fall back to the service-role key (always set
+function signingSecret(): string {
+  // Dedicated secret preferred; falls back to the service-role key (always set
   // in any real deployment) so this never becomes a new required env var. The
   // signing key never leaves the server.
   const s = process.env.QUICK_SCORE_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!s) {
     throw new Error(
-      'QUICK_SCORE_SECRET (or SUPABASE_SERVICE_ROLE_KEY) is required to sign share cards',
+      'QUICK_SCORE_SECRET (or SUPABASE_SERVICE_ROLE_KEY) is required to sign share links',
     )
   }
   return s
 }
 
+/**
+ * Every secret a token might legitimately have been signed with, newest first.
+ *
+ * Verification accepts ALL of them so that introducing QUICK_SCORE_SECRET — or
+ * rotating the Supabase service-role key — does not silently kill every score
+ * anyone has already shared. A share link that stops opening is a dead end for
+ * whoever clicked it, and this tool exists to be clicked by strangers.
+ */
+function verificationSecrets(): string[] {
+  return [process.env.QUICK_SCORE_SECRET, process.env.SUPABASE_SERVICE_ROLE_KEY].filter(
+    (s): s is string => typeof s === 'string' && s.length > 0,
+  )
+}
+
+function hmacWith(body: string, key: string): string {
+  return crypto.createHmac('sha256', key).update(body).digest('base64url')
+}
+
 function hmac(body: string): string {
-  return crypto.createHmac('sha256', secret()).update(body).digest('base64url')
+  return hmacWith(body, signingSecret())
+}
+
+/** Timing-safe check of a signature against any accepted secret. */
+function signatureValid(body: string, sig: string): boolean {
+  const given = Buffer.from(sig)
+  let matched = false
+  for (const key of verificationSecrets()) {
+    const want = Buffer.from(hmacWith(body, key))
+    // Compare every candidate rather than returning early, so the work done
+    // doesn't leak which secret matched.
+    if (given.length === want.length && crypto.timingSafeEqual(given, want)) matched = true
+  }
+  return matched
 }
 
 const capLine = (x: unknown) => String(x ?? '').slice(0, 60)
@@ -69,16 +100,13 @@ export function verifyScore(token: string): QuickScore | null {
   const [body, sig] = token.split('.')
   if (!body || !sig) return null
 
-  let expected: string
+  let valid: boolean
   try {
-    expected = hmac(body)
+    valid = signatureValid(body, sig)
   } catch {
     return null
   }
-
-  const given = Buffer.from(sig)
-  const want = Buffer.from(expected)
-  if (given.length !== want.length || !crypto.timingSafeEqual(given, want)) return null
+  if (!valid) return null
 
   try {
     const p = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'))
