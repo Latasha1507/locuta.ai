@@ -450,7 +450,7 @@ export function LandingPage() {
                 fg = '#fff'
                 labelColor = lc.muted
               } else if (w.state === 'today') {
-                style = { ...base, background: w.color, boxShadow: `0 0 0 4px ${w.color}33, 0 4px 0 rgba(0,0,0,.13)`, animation: 'lp-bob 3s ease-in-out infinite' }
+                style = { ...base, background: w.color, boxShadow: `0 0 0 4px ${w.color}33, 0 4px 0 rgba(0,0,0,.13)` }
                 fg = '#fff'
                 labelColor = lc.coral
               } else {
@@ -539,7 +539,7 @@ export function LandingPage() {
           {CATEGORIES.map((c) => (
             <div
               key={c.name}
-              className="p-5 transition-transform duration-200 hover:-translate-y-[6px] lg:p-6"
+              className="p-5 lg:p-6"
               style={{ background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 22, boxShadow: `0 5px 0 ${lc.cardBorder}` }}
             >
               <div
@@ -690,48 +690,51 @@ export function LandingPage() {
       </section>
 
       {/* FINAL CTA */}
+      {/* Compact by design. This was a full-height slab with a mascot sitting on
+          a white disc — the disc existed only because a green mascot on a green
+          band is invisible, and a plate added purely to solve contrast always
+          reads as tacked on. The mascot already greets people in the hero, so
+          repeating it here bought nothing and cost a lot of height. What a
+          closing CTA needs is one line, one reason, one button. */}
       <section
-        className="px-5 py-[42px] text-center lg:px-11 lg:py-[54px]"
-        style={{ background: lc.green, color: '#fff', position: 'relative', borderTop: `4px solid ${lc.greenDark}` }}
+        className="px-5 py-8 lg:px-11 lg:py-10"
+        style={{ background: lc.green, color: '#fff', borderTop: `4px solid ${lc.greenDark}` }}
       >
-        {/* Content is capped and centred. Left full-bleed, the heading stretched
-            edge to edge on a wide monitor and the band read as an oversized
-            slab rather than a closing call to action. */}
-        <div style={{ maxWidth: 620, marginLeft: 'auto', marginRight: 'auto' }}>
-          {/* The mascot is green and the band is green, so unplated it simply
-              disappeared into the background. A soft white disc gives it the
-              contrast it needs without introducing a new colour. */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-            <span
+        <div
+          className="mx-auto flex max-w-[900px] flex-col items-center gap-4 text-center lg:flex-row lg:justify-between lg:gap-8 lg:text-left"
+        >
+          <div>
+            <h2
+              className="text-[22px] lg:text-[28px]"
               style={{
-                width: 132,
-                height: 132,
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,.96)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 0 0 10px rgba(255,255,255,.16)',
+                fontFamily: fontDisplay,
+                fontWeight: 800,
+                letterSpacing: '-0.5px',
+                lineHeight: 1.15,
+                margin: 0,
+                color: '#fff',
               }}
             >
-              <Mascot />
-            </span>
+              Become the confident communicator you want to be.
+            </h2>
+            <p
+              style={{
+                fontSize: 14,
+                color: 'rgba(255,255,255,.9)',
+                fontWeight: 700,
+                margin: '6px 0 0',
+              }}
+            >
+              One 60-second rep today. 14 days free, no card required.
+            </p>
           </div>
-        <h2
-          className="text-[30px] lg:text-[46px]"
-          style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-1px', lineHeight: 1.05, marginBottom: 10, color: '#fff', marginTop: 0 }}
-        >
-          Become the confident
-          <br />
-          communicator you want to be.
-        </h2>
-        <p style={{ fontSize: 15, color: 'rgba(255,255,255,.92)', marginBottom: 28, fontWeight: 700, maxWidth: 460, marginLeft: 'auto', marginRight: 'auto' }}>
-          Start with one 60-second rep today. 14 days free, no card required.
-        </p>
-          <Button href="/auth/signup" variant="onDark" size="lg">
-            <Icon name="mic" size={19} color={lc.greenText} />
-            START YOUR FREE TRIAL
-          </Button>
+
+          <div style={{ flex: 'none' }}>
+            <Button href="/auth/signup" variant="onDark" size="md">
+              <Icon name="mic" size={17} color={lc.greenText} />
+              START YOUR FREE TRIAL
+            </Button>
+          </div>
         </div>
       </section>
 

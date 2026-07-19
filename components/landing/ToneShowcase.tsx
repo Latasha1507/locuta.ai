@@ -21,7 +21,7 @@ export function ToneShowcase() {
       {TONES.map((t) => (
         <div
           key={t.name}
-          className="transition-transform duration-150 hover:-translate-y-[3px]"
+          className=""
           style={{
             display: 'flex',
             gap: 15,
