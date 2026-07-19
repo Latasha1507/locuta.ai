@@ -8,10 +8,16 @@ import { lc, fontDisplay } from './tokens'
 // (that's the native sheet on mobile → IG / TikTok / WhatsApp / Messages), with
 // explicit WhatsApp / X / copy / download fallbacks for desktop.
 
-export function ShareActions({ shareText }: { shareText: string }) {
+export function ShareActions({ shareText, url: urlProp }: { shareText: string; url?: string }) {
   const [copied, setCopied] = useState(false)
 
-  const url = () => (typeof window !== 'undefined' ? window.location.href : '')
+  // The share target must be the PUBLIC /s/<token> link. When this renders
+  // inside the dashboard reveal, window.location.href is /dashboard?score=...,
+  // which no one else can open — so an explicit url always wins.
+  const url = () => {
+    if (typeof window === 'undefined') return urlProp ?? ''
+    return urlProp ? new URL(urlProp, window.location.origin).href : window.location.href
+  }
 
   const nativeShare = async () => {
     const u = url()

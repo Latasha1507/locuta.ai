@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { verifyScore } from '@/lib/quick-score-token'
-import { promptById, verdict } from '@/lib/quick-score'
+import { promptById, scoreTier } from '@/lib/quick-score'
 
 // Dynamically generated share PNG. Doubles as the link-unfurl image (WhatsApp,
 // X, iMessage, Slack…) and the "Save image" download for IG/TikTok stories.
@@ -75,7 +75,7 @@ export default async function Image({ params }: { params: Promise<{ token: strin
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 44 }}>
           <div style={{ display: 'flex', fontSize: 300, fontWeight: 800, lineHeight: 1 }}>{overall}</div>
           <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: 34, gap: 14 }}>
-            <div style={{ fontSize: 30, fontWeight: 700, opacity: 0.9 }}>{`out of 100 · ${verdict(overall)}`}</div>
+            <div style={{ fontSize: 30, fontWeight: 700, opacity: 0.9 }}>{`out of 100 · ${scoreTier(overall).label}`}</div>
             <div style={{ fontSize: 56, fontWeight: 800 }}>{topic}</div>
             <div
               style={{
@@ -95,10 +95,10 @@ export default async function Image({ params }: { params: Promise<{ token: strin
 
         {/* bottom chips */}
         <div style={{ display: 'flex', gap: 18 }}>
-          {chip('Filler', String(score?.filler ?? 0))}
-          {chip('Pace', `${score?.wpm ?? 0} wpm`)}
-          {chip('Clarity', String(score?.clarity ?? 0))}
-          {chip('Confidence', String(score?.confidence ?? 0))}
+          {chip('Pace', String(score?.pace ?? 0))}
+          {chip('Fluency', String(score?.fluency ?? 0))}
+          {chip('Flow', String(score?.flow ?? 0))}
+          {chip('Content', String(score?.content ?? 0))}
         </div>
       </div>
     ),

@@ -1,23 +1,32 @@
-// Public "quick score" micro-tool — the hero recording widget on the landing
-// page. Anyone (no account) records 30 seconds against a simple prompt and gets
-// ONE number back, gated behind signup, then a shareable card.
+// Public "30-second speaking test" — the hero widget on the landing page.
+// Anyone (no account) records ~30s against a simple task and gets ONE number
+// back, gated behind signup, then a link they can share.
 //
-// This module is ISOMORPHIC — it is imported by the client recorder (for the
-// prompt list) AND by the server (API route, share page, OG image). So it must
-// NOT import node-only APIs. The HMAC sign/verify lives in the server-only
-// companion `lib/quick-score-token.ts`.
+// This module is ISOMORPHIC — imported by the client recorder (prompt list) AND
+// by the server (API route, share page, OG image). It must NOT import node-only
+// APIs. HMAC sign/verify lives in the server-only `lib/quick-score-token.ts`.
+//
+// SCORING PHILOSOPHY (v2 — rewritten):
+// 65% of the score comes from things we can actually MEASURE from the audio
+// (pace over real speech time, filler density, restarts, hesitation pauses).
+// Only 35% comes from the model, judging one thing: whether the answer had
+// substance and structure. v1 put 60% of the weight on two model-invented
+// numbers ("clarity"/"confidence"), so the same recording could score 65 on one
+// run and 78 on the next. A number people are invited to compete over has to be
+// reproducible.
+
+export const SCORE_VERSION = 2
 
 export interface PromptDef {
   id: number
-  /** Short, shareable name that appears on the card: "I scored 68 on <topic>". */
+  /** Short, shareable name shown with the result: "I scored 68 on <topic>". */
   topic: string
   /** The task the user speaks to. Easy, everyday, doable in 30 seconds. */
   prompt: string
 }
 
 // 20 tasks anyone can talk to for 30 seconds — everyday life + workplace.
-// The `topic` is chosen to read well on a shared card. IDs are stable and go
-// into the signed token; never renumber an existing prompt, only append.
+// IDs are stable and go into the signed token; never renumber, only append.
 export const PROMPTS: PromptDef[] = [
   { id: 1, topic: 'Your Morning Routine', prompt: 'Walk us through your morning — from waking up to right now.' },
   { id: 2, topic: 'The Weekend Recap', prompt: 'Tell us about your last weekend. What did you get up to?' },
@@ -45,32 +54,52 @@ export function promptById(id: number): PromptDef | undefined {
   return PROMPTS.find((p) => p.id === id)
 }
 
-/** The result carried in the signed share token. Numbers + SHORT coaching
-    lines only — never the transcript or audio (those can be personal and must
-    not travel in a URL). The feedback lines are constructive, ≤~52 chars, and
-    are only ever rendered to the signed-in owner, never in the public image. */
+export type MascotMoodName = 'happy' | 'shy' | 'cheer' | 'oops'
+
+/** The result carried in the signed share token. Numbers + SHORT coaching lines
+    only — never the transcript or audio (those are personal and must not travel
+    in a URL). Feedback lines render only to the signed-in owner. */
 export interface QuickScore {
+  /** Scoring model version, so old links can be handled gracefully. */
+  v?: number
   promptId: number
   /** 0–100 composite — the one big number. */
   overall: number
-  /** Raw count of filler words detected. */
-  filler: number
-  /** Words per minute. */
+  // --- the four displayed dimensions, each already a 0–100 sub-score ---
+  pace: number
+  fluency: number
+  flow: number
+  content: number
+  // --- the raw measurements behind them, for honest captions ---
   wpm: number
-  clarity: number
-  confidence: number
+  filler: number
+  restarts: number
+  longPauses: number
+  /** Percentile vs real other takers, 1–99. Omitted when we lack real data. */
+  percentile?: number
   /** Up to 2 very short "you nailed this" lines. */
   strengths: string[]
-  /** Up to 2 very short "level up" lines. */
+  /** Up to 2 very short "work on this" lines. */
   improvements: string[]
 }
 
-// Filler set kept deliberately moderate. "so", "well", "right", "okay",
-// "actually" are excluded because they're legitimate words far more often than
-// they're crutches, and over-counting them would unfairly tank normal speech.
+// --- tunables, exported so the UI can show users what "good" looks like ------
+
+/** The band where speech is easiest to follow. Shown to users as the target. */
+export const PACE_TARGET = { min: 125, max: 165 }
+/** A silence longer than this mid-answer reads as hesitation. */
+export const PAUSE_THRESHOLD_SEC = 0.7
+/** Long pauses per minute at or below this are normal breathing, unpenalised. */
+export const PAUSE_ALLOWANCE_PER_MIN = 2
+
+// Filler set. DELIBERATELY EXCLUDES bare "like", "so", "well", "right", "okay",
+// "actually", "kind of" and "sort of" — they are legitimate words far more often
+// than crutches, and flagging them punished normal speech ("I like coffee",
+// "that kind of thing"). Only unambiguous hesitation sounds and stock filler
+// phrases are counted, so anything we flag is genuinely a filler.
 export const FILLER_WORDS = [
-  'um', 'uh', 'er', 'erm', 'ah', 'hmm', 'umm', 'uhh', 'mmm',
-  'like', 'basically', 'literally', 'you know', 'i mean', 'sort of', 'kind of',
+  'um', 'umm', 'uh', 'uhh', 'er', 'erm', 'ah', 'hmm', 'mmm', 'mhm',
+  'you know', 'i mean', 'kinda like', 'sorta like',
 ]
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -88,91 +117,135 @@ export function wordCount(transcript: string): number {
 }
 
 export function countFillers(transcript: string): number {
-  const text = ` ${transcript.toLowerCase()} `
+  const text = ` ${transcript.toLowerCase().replace(/[.,!?;:]/g, ' ')} `
   let total = 0
   for (const filler of FILLER_WORDS) {
     const re = new RegExp(`\\b${escapeRegExp(filler)}\\b`, 'g')
-    const matches = text.match(re)
-    if (matches) total += matches.length
+    total += (text.match(re) ?? []).length
   }
   return total
 }
 
-export function computeWpm(words: number, durationSec: number): number {
-  const secs = clamp(durationSec, 1, 120)
+/** Stutters and false starts: the same word twice in a row ("I I think", "the
+    the"). A real, measurable hesitation signal that needs no model. */
+export function countRestarts(transcript: string): number {
+  const words = transcript
+    .toLowerCase()
+    .replace(/[^a-z\s']/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+  let n = 0
+  for (let i = 1; i < words.length; i++) {
+    // No length guard: "I I think" is the single most common English stutter,
+    // and skipping one-letter words missed it entirely.
+    if (words[i] === words[i - 1]) n++
+  }
+  return n
+}
+
+export function computeWpm(words: number, speechSec: number): number {
+  const secs = clamp(speechSec, 1, 300)
   return Math.round((words / secs) * 60)
 }
 
-/** Ideal clear-speaking band is ~120–160 wpm; falls off outside it. */
+// --- the four sub-scores. Each uses the full range with only a small floor, so
+// the composite actually spreads instead of clustering everyone at ~70. -------
+
+/** Pace vs the easy-to-follow band. Honest: 83 wpm really is too slow. */
 export function paceScore(wpm: number): number {
-  if (wpm >= 120 && wpm <= 160) return 100
-  const dist = wpm < 120 ? 120 - wpm : wpm - 160
-  return clamp(Math.round(100 - dist * 1.4), 40, 100)
+  if (wpm >= PACE_TARGET.min && wpm <= PACE_TARGET.max) return 100
+  const dist = wpm < PACE_TARGET.min ? PACE_TARGET.min - wpm : wpm - PACE_TARGET.max
+  return clamp(Math.round(100 - dist * 1.5), 10, 100)
 }
 
-/** Penalises filler density (per 100 words) gently, with a floor. */
-export function fillerScore(fillerCount: number, words: number): number {
-  if (words <= 0) return 60
-  const ratePer100 = (fillerCount / words) * 100
-  return clamp(Math.round(100 - ratePer100 * 3.5), 35, 100)
+/** Filler + stutter density per 100 words. Zero filler scores 100. */
+export function fluencyScore(fillerCount: number, restarts: number, words: number): number {
+  if (words <= 0) return 50
+  const fillerPer100 = (fillerCount / words) * 100
+  const restartPer100 = (restarts / words) * 100
+  return clamp(Math.round(100 - fillerPer100 * 4 - restartPer100 * 3), 5, 100)
 }
 
-/** The composite. Clarity + confidence come from the model; pace + filler are
-    computed here. Weighted 30/30/20/20. */
-export function overallScore(p: {
-  clarity: number
-  confidence: number
-  wpm: number
-  fillerCount: number
-  wordCount: number
-}): number {
-  const pace = paceScore(p.wpm)
-  const fill = fillerScore(p.fillerCount, p.wordCount)
-  const o = p.clarity * 0.3 + p.confidence * 0.3 + pace * 0.2 + fill * 0.2
+/** Hesitation: long silences per minute beyond a normal breathing allowance. */
+export function flowScore(longPauses: number, speechSec: number): number {
+  if (speechSec <= 0) return 50
+  const perMin = longPauses / (speechSec / 60)
+  if (perMin <= PAUSE_ALLOWANCE_PER_MIN) return 100
+  return clamp(Math.round(100 - (perMin - PAUSE_ALLOWANCE_PER_MIN) * 9), 10, 100)
+}
+
+/** The composite. Measured signals carry 65%, the model's content call 35%.
+    Weighted pace 20 / fluency 25 / flow 20 / content 35. */
+export function overallScore(p: { pace: number; fluency: number; flow: number; content: number }): number {
+  const o = p.pace * 0.2 + p.fluency * 0.25 + p.flow * 0.2 + p.content * 0.35
   return clamp(Math.round(o), 0, 100)
 }
 
-/** The fun "rank" for the result screen: a colour, an encouraging label and an
-    emoji, all driven by the one number. Kept positive at every tier — the card
-    gets shared, so no tier should feel like a punishment. Hexes mirror the
-    design tokens (green / blue / orange / coral). */
-export function scoreTier(overall: number): { color: string; label: string; emoji: string } {
-  if (overall >= 85) return { color: '#3fce6f', label: 'Outstanding', emoji: '🔥' }
-  if (overall >= 75) return { color: '#3fce6f', label: 'Strong', emoji: '💪' }
-  if (overall >= 65) return { color: '#1cb0f6', label: 'Solid', emoji: '✨' }
-  if (overall >= 50) return { color: '#f5a623', label: 'Getting there', emoji: '🌱' }
-  return { color: '#ff6f61', label: 'Rough start', emoji: '🎯' }
+/** The rank shown with the number. Every tier is written to be survivable — the
+    result gets shared, so no tier should read as humiliating. */
+export function scoreTier(overall: number): {
+  color: string
+  label: string
+  emoji: string
+  mood: MascotMoodName
+} {
+  // Thresholds are deliberately high at the top: three of the four dimensions
+  // saturate at 100 for competent speech, so without this the "Exceptional"
+  // tier would be handed to anyone merely good — and a top tier everyone earns
+  // is worth nothing to share.
+  if (overall >= 92) return { color: '#3fce6f', label: 'Exceptional', emoji: '🔥', mood: 'cheer' }
+  if (overall >= 80) return { color: '#3fce6f', label: 'Sharp', emoji: '💪', mood: 'cheer' }
+  if (overall >= 66) return { color: '#1cb0f6', label: 'Solid', emoji: '✨', mood: 'happy' }
+  if (overall >= 50) return { color: '#f5a623', label: 'Getting there', emoji: '🌱', mood: 'happy' }
+  return { color: '#ff6f61', label: 'Rough start', emoji: '🎯', mood: 'shy' }
 }
 
-/** Short verdict word (the tier label). */
-export function verdict(overall: number): string {
-  return scoreTier(overall).label
+/** Colour a sub-score by PERFORMANCE, not by category. This is what stops a
+    perfect result rendering as a full red bar. */
+export function metricColor(value: number): string {
+  if (value >= 80) return '#3fce6f'
+  if (value >= 60) return '#1cb0f6'
+  if (value >= 40) return '#f5a623'
+  return '#ff6f61'
 }
 
 /** Normalise a coaching line: single-spaced, trimmed, hard length cap. */
-export function tidyFeedback(s: string, max = 52): string {
+export function tidyFeedback(s: string, max = 46): string {
   const t = (s ?? '').trim().replace(/\s+/g, ' ').replace(/[.]+$/, '')
   return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t
 }
 
-// Deterministic, metric-grounded feedback. These are always accurate because
-// they read the real numbers — the model only adds the content-level line on
-// top. Each returns an optional "good" (a strength) and "improve" (a fix).
+// Deterministic, metric-grounded feedback. Always true, because it reads the
+// real measurements — the model only adds the content line on top.
 
 export function paceFeedback(wpm: number): { good?: string; improve?: string } {
-  if (wpm >= 120 && wpm <= 160) return { good: 'Great, steady speaking pace' }
-  if (wpm < 105) return { improve: 'Pick up the pace a little' }
-  if (wpm > 175) return { improve: 'Slow down — you rushed it' }
+  if (wpm >= PACE_TARGET.min && wpm <= PACE_TARGET.max) return { good: 'Steady, easy-to-follow pace' }
+  if (wpm < 100) return { improve: `Speed up — ${wpm} wpm is slow` }
+  if (wpm < PACE_TARGET.min) return { improve: 'A touch faster would land better' }
+  if (wpm > 190) return { improve: `Slow down — ${wpm} wpm is a sprint` }
+  return { improve: 'Ease off the pace slightly' }
+}
+
+export function fluencyFeedback(
+  fillerCount: number,
+  restarts: number,
+  words: number,
+): { good?: string; improve?: string } {
+  if (words <= 0) return {}
+  if (fillerCount === 0 && restarts === 0) return { good: 'No filler, no stumbles' }
+  if (fillerCount >= 4) return { improve: `Cut the filler — ${fillerCount} of them` }
+  if (restarts >= 3) return { improve: 'Fewer restarts mid-sentence' }
+  if (fillerCount <= 1) return { good: 'Barely any filler words' }
   return {}
 }
 
-export function fillerFeedback(fillerCount: number, words: number): { good?: string; improve?: string } {
-  if (words <= 0) return {}
-  const per100 = (fillerCount / words) * 100
-  if (fillerCount === 0) return { good: 'Zero filler words — crisp' }
-  if (per100 >= 8 || fillerCount >= 4) return { improve: `Trim filler words (you said ${fillerCount})` }
-  if (per100 <= 3) return { good: 'Barely any filler words' }
-  return {}
+export function flowFeedback(longPauses: number, speechSec: number): { good?: string; improve?: string } {
+  if (speechSec <= 0) return {}
+  const perMin = longPauses / (speechSec / 60)
+  if (longPauses === 0) return { good: 'Kept going without stalling' }
+  if (perMin > 6) return { improve: `${longPauses} long pauses broke the flow` }
+  if (perMin <= PAUSE_ALLOWANCE_PER_MIN) return { good: 'Natural pauses, no stalling' }
+  return { improve: 'Fewer long pauses mid-answer' }
 }
 
 /** First `n` unique, non-empty, tidied lines. */
@@ -185,4 +258,29 @@ export function pickLines(lines: (string | undefined)[], n = 2): string[] {
     if (out.length >= n) break
   }
   return out
+}
+
+/** Older (v1) tokens lack the v2 fields. Fill them in so old share links keep
+    rendering instead of crashing, without inventing precise-looking numbers. */
+export function normaliseScore(
+  raw: Partial<QuickScore> & { clarity?: number; confidence?: number },
+): QuickScore {
+  const n = (x: unknown, fallback = 0) => (typeof x === 'number' && Number.isFinite(x) ? x : fallback)
+  const legacyContent = Math.round((n(raw.clarity, 60) + n(raw.confidence, 60)) / 2)
+  return {
+    v: n(raw.v, 1),
+    promptId: n(raw.promptId, 1),
+    overall: clamp(n(raw.overall, 0), 0, 100),
+    pace: clamp(n(raw.pace, paceScore(n(raw.wpm, 130))), 0, 100),
+    fluency: clamp(n(raw.fluency, 70), 0, 100),
+    flow: clamp(n(raw.flow, 70), 0, 100),
+    content: clamp(n(raw.content, legacyContent), 0, 100),
+    wpm: n(raw.wpm, 0),
+    filler: n(raw.filler, 0),
+    restarts: n(raw.restarts, 0),
+    longPauses: n(raw.longPauses, 0),
+    percentile: typeof raw.percentile === 'number' ? clamp(Math.round(raw.percentile), 1, 99) : undefined,
+    strengths: Array.isArray(raw.strengths) ? raw.strengths.slice(0, 2) : [],
+    improvements: Array.isArray(raw.improvements) ? raw.improvements.slice(0, 2) : [],
+  }
 }

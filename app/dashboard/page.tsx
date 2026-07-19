@@ -1,6 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/admin'
+import { verifyScore } from '@/lib/quick-score-token'
+import { promptById } from '@/lib/quick-score'
+import { ResultModal } from '@/components/quickscore/ResultModal'
 import { computeStreak, weekStickers, stickersThisWeek, practicedToday } from '@/lib/streaks'
 import { DashboardClient, type CategoryStat } from '@/components/dashboard/DashboardClient'
 import { OnboardingGate } from '@/components/dashboard/OnboardingGate'
@@ -56,7 +59,11 @@ const CATEGORY_META: Record<string, { name: string; desc: string; icon: string; 
 
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-')
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ score?: string }>
+}) {
   const supabase = await createClient()
 
   const {
@@ -159,7 +166,35 @@ export default async function DashboardPage() {
   const firstName = fullName.trim().split(/\s+/)[0] || 'there'
   const initial = (firstName[0] || user.email?.[0] || 'A').toUpperCase()
 
+  // A brand-new user arriving from the landing 30-second test carries their
+  // signed result in ?score=. Verified server-side so a tampered token simply
+  // shows nothing rather than rendering an invented number.
+  const sp = await searchParams
+  const quick = sp.score ? verifyScore(sp.score) : null
+  const quickTopic = quick ? (promptById(quick.promptId)?.topic ?? 'your speaking') : ''
+
   return (
+    <>
+    {quick && (
+      <ResultModal
+        overall={quick.overall}
+        topic={quickTopic}
+        pace={quick.pace}
+        fluency={quick.fluency}
+        flow={quick.flow}
+        content={quick.content}
+        wpm={quick.wpm}
+        filler={quick.filler}
+        restarts={quick.restarts}
+        longPauses={quick.longPauses}
+        percentile={quick.percentile}
+        strengths={quick.strengths}
+        improvements={quick.improvements}
+        isOwner
+        shareText={`I scored ${quick.overall} on ${quickTopic} in Locuta's 30-second speaking test. Beat me.`}
+        shareUrl={`/s/${sp.score}`}
+      />
+    )}
     <DashboardClient
       userId={user.id}
       firstName={firstName}
@@ -178,5 +213,6 @@ export default async function DashboardPage() {
       trial={trial}
       promo={promo}
     />
+    </>
   )
 }

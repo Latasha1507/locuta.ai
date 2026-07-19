@@ -4,19 +4,26 @@ import {
   promptById,
   wordCount,
   countFillers,
+  countRestarts,
   computeWpm,
+  paceScore,
+  fluencyScore,
+  flowScore,
   overallScore,
   paceFeedback,
-  fillerFeedback,
+  fluencyFeedback,
+  flowFeedback,
   pickLines,
+  PAUSE_THRESHOLD_SEC,
+  SCORE_VERSION,
   type QuickScore,
 } from '@/lib/quick-score'
 import { signScore } from '@/lib/quick-score-token'
+import { recordResult, percentileFor } from '@/lib/quick-score-stats'
 
 // PUBLIC endpoint — no auth. Scores a ~30s anonymous recording and returns a
 // signed token ONLY. The number itself is never returned here: the reveal is
-// gated behind signup (…/s/<token> after account creation). Cost per call is
-// ~$0.0035 (Whisper + gpt-4o-mini), and it's IP-throttled + size-capped.
+// gated behind signup. IP-throttled and size-capped.
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,7 +40,7 @@ function getOpenAI(): OpenAI {
 
 // Best-effort in-memory throttle. On serverless this is per-instance and resets
 // on cold start — enough to blunt casual hammering. A durable limiter (Upstash)
-// is the follow-up if this actually gets abused.
+// is the follow-up if this is actually abused.
 const hits = new Map<string, number[]>()
 const WINDOW_MS = 60_000
 const MAX_PER_WINDOW = 6
@@ -46,37 +53,74 @@ function rateLimited(ip: string): boolean {
   return recent.length > MAX_PER_WINDOW
 }
 
-interface Analysis {
-  clarity: number
-  confidence: number
-  /** ONE content-level thing they did well (model's words). */
-  didWell: string
-  /** ONE content-level fix (model's words). */
-  improve: string
+/** Whisper word-level timing. The SDK's verbose type doesn't always declare
+    `words`, so we read it defensively. */
+interface WhisperWord {
+  word: string
+  start: number
+  end: number
 }
 
-// The one model call. Beyond clarity/confidence it returns a single, concrete
-// "did well" and "improve" line — the qualitative half of the score. Kept to
-// gpt-4o-mini and a tight JSON schema for cost and consistency.
-async function analyze(transcript: string, task: string): Promise<Analysis> {
+interface SpeechTiming {
+  /** Seconds of actual speaking, first word to last — excludes dead air. */
+  speechSec: number
+  /** Silences longer than PAUSE_THRESHOLD_SEC between consecutive words. */
+  longPauses: number
+  /** True when we had real word timings rather than a fallback. */
+  measured: boolean
+}
+
+/**
+ * Derive speech time and hesitation pauses from word timestamps.
+ *
+ * This is why the route asks Whisper for verbose_json: the old version computed
+ * wpm as words ÷ the *recording* length taken from the browser. Someone who
+ * recorded 30s but spoke for 12 was scored as a slow speaker, and long silences
+ * — the clearest hesitation signal there is — were invisible.
+ */
+function timingFrom(words: WhisperWord[] | undefined, fallbackSec: number): SpeechTiming {
+  if (!words || words.length < 2) {
+    return { speechSec: Math.max(1, fallbackSec), longPauses: 0, measured: false }
+  }
+  const first = words[0].start
+  const last = words[words.length - 1].end
+  let longPauses = 0
+  for (let i = 1; i < words.length; i++) {
+    if (words[i].start - words[i - 1].end > PAUSE_THRESHOLD_SEC) longPauses++
+  }
+  const speechSec = Math.max(1, last - first)
+  return { speechSec, longPauses, measured: true }
+}
+
+/**
+ * The one model call. It now judges exactly ONE thing — whether the answer had
+ * substance and structure for the task — instead of inventing separate
+ * "clarity" and "confidence" numbers that were 60% of the old score and not
+ * reproducible between runs. Everything else is measured.
+ */
+async function judgeContent(transcript: string, task: string): Promise<{ content: number; didWell: string; improve: string }> {
   try {
     const res = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
-      temperature: 0.3,
+      temperature: 0.2,
       max_tokens: 140,
       response_format: { type: 'json_object' },
       messages: [
         {
           role: 'system',
           content:
-            'You are a warm, sharp speaking coach scoring a ~30 second spoken answer. Return STRICT JSON: ' +
-            '{"clarity": <0-100>, "confidence": <0-100>, "did_well": "<text>", "improve": "<text>"}. ' +
-            'clarity = how easy the answer is to follow — structure, articulation, staying on task. ' +
-            'confidence = how assured and decisive the delivery reads from the words — few hedges, a clear stance. ' +
-            'did_well = ONE specific thing they did well, max 6 words, encouraging, no ending period. ' +
-            'improve = ONE concrete, kind, actionable fix, max 6 words, no ending period. ' +
-            'Judge the content and structure of the answer, not pronunciation. ' +
-            'Be fair but discriminating; most genuine first attempts land 55–80. No prose outside the JSON.',
+            'You score the CONTENT of a ~30 second spoken answer. Return STRICT JSON: ' +
+            '{"content": <0-100>, "did_well": "<text>", "improve": "<text>"}. ' +
+            'content = did they actually answer the task, with a clear point and some structure ' +
+            '(a beginning, a middle and an end) rather than drifting or trailing off. ' +
+            'Do NOT judge delivery, pace, filler words, hesitation or pronunciation — those are ' +
+            'measured separately from the audio. Judge only substance and structure. ' +
+            'Use the FULL range: 90+ only for a genuinely well-structured, specific answer; ' +
+            '70 for a decent answer that rambles a little; 40 for vague or off-task; ' +
+            'below 25 for barely addressing the task. ' +
+            'did_well = ONE specific thing about their content, max 6 words, no ending period. ' +
+            'improve = ONE concrete fix to their content, max 6 words, no ending period. ' +
+            'No prose outside the JSON.',
         },
         { role: 'user', content: `Task: ${task}\n\nTranscript: "${transcript}"` },
       ],
@@ -86,14 +130,14 @@ async function analyze(transcript: string, task: string): Promise<Analysis> {
     const clamp = (x: unknown) => Math.max(0, Math.min(100, Math.round(Number(x) || 0)))
     const str = (x: unknown) => (typeof x === 'string' ? x : '')
     return {
-      clarity: clamp(parsed.clarity),
-      confidence: clamp(parsed.confidence),
+      content: clamp(parsed.content),
       didWell: str(parsed.did_well),
       improve: str(parsed.improve),
     }
   } catch {
-    // Model or JSON failure shouldn't break the tool — neutral fallback.
-    return { clarity: 60, confidence: 60, didWell: '', improve: '' }
+    // A model failure shouldn't break the tool. 60 is a neutral middle that
+    // doesn't flatter or punish, and the measured 65% still does its job.
+    return { content: 60, didWell: '', improve: '' }
   }
 }
 
@@ -110,7 +154,7 @@ export async function POST(request: NextRequest) {
     const form = await request.formData()
     const audio = form.get('audio')
     const promptId = Number.parseInt(String(form.get('promptId') ?? ''), 10)
-    const duration = Number(form.get('duration') ?? 0)
+    const clientDuration = Number(form.get('duration') ?? 0)
 
     if (!(audio instanceof File) || audio.size === 0) {
       return NextResponse.json({ error: 'no_audio', message: 'No recording received.' }, { status: 400 })
@@ -124,17 +168,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'bad_prompt', message: 'Unknown prompt.' }, { status: 400 })
     }
 
-    // Whisper, forced English (the product is English-only).
-    const transcription = await getOpenAI().audio.transcriptions.create({
+    // Whisper with WORD timestamps — gives real speech time and pause data.
+    const transcription = (await getOpenAI().audio.transcriptions.create({
       file: audio,
       model: 'whisper-1',
       language: 'en',
-    })
+      response_format: 'verbose_json',
+      timestamp_granularities: ['word'],
+    })) as unknown as { text?: string; words?: WhisperWord[]; duration?: number }
+
     const transcript = (transcription.text ?? '').trim()
     const words = wordCount(transcript)
 
-    // Too little speech to score fairly — ask them to try again rather than
-    // hand back a meaningless number.
+    // Too little speech to score fairly — ask for another go rather than hand
+    // back a meaningless number.
     if (words < 5) {
       return NextResponse.json(
         { error: 'too_short', message: "We couldn't hear enough — record again and speak up a little." },
@@ -142,40 +189,58 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const timing = timingFrom(transcription.words, transcription.duration ?? clientDuration)
     const filler = countFillers(transcript)
-    const wpm = computeWpm(words, duration)
-    const { clarity, confidence, didWell, improve } = await analyze(transcript, prompt.prompt)
-    const overall = overallScore({ clarity, confidence, wpm, fillerCount: filler, wordCount: words })
+    const restarts = countRestarts(transcript)
+    const wpm = computeWpm(words, timing.speechSec)
 
-    // Blend the model's content feedback with the metric-grounded lines. Lead
-    // with the model line (most coaching-like), then the deterministic ones.
-    const pace = paceFeedback(wpm)
-    const fill = fillerFeedback(filler, words)
-    const strengths = pickLines([didWell, fill.good, pace.good])
-    const improvements = pickLines([improve, fill.improve, pace.improve])
-    // Never hand back an empty section — a gentle default keeps it human.
+    const { content, didWell, improve } = await judgeContent(transcript, prompt.prompt)
+
+    const pace = paceScore(wpm)
+    const fluency = fluencyScore(filler, restarts, words)
+    // Without real word timings we can't see pauses; scoring a 0 there would
+    // hand out a free 100. Fall back to a neutral 70 so the dimension neither
+    // rewards nor punishes what we couldn't measure.
+    const flow = timing.measured ? flowScore(timing.longPauses, timing.speechSec) : 70
+    const overall = overallScore({ pace, fluency, flow, content })
+
+    // Metric-grounded lines first — they're always true because they read the
+    // real measurements. The model's content line rides on top.
+    const paceFb = paceFeedback(wpm)
+    const fluFb = fluencyFeedback(filler, restarts, words)
+    const flowFb = timing.measured ? flowFeedback(timing.longPauses, timing.speechSec) : {}
+
+    const strengths = pickLines([fluFb.good, paceFb.good, flowFb.good, didWell])
+    const improvements = pickLines([fluFb.improve, paceFb.improve, flowFb.improve, improve])
     if (strengths.length === 0) strengths.push('You showed up and spoke')
     if (improvements.length === 0) improvements.push('Keep practising to lock it in')
 
+    // Percentile against PREVIOUS takers, computed before recording this one so
+    // the user isn't compared against themselves. Undefined until we have a
+    // real sample — we show nothing rather than a made-up number.
+    const percentile = await percentileFor(overall)
+    void recordResult(overall, prompt.id)
+
     const score: QuickScore = {
+      v: SCORE_VERSION,
       promptId: prompt.id,
       overall,
-      filler,
+      pace,
+      fluency,
+      flow,
+      content,
       wpm,
-      clarity,
-      confidence,
+      filler,
+      restarts,
+      longPauses: timing.longPauses,
+      percentile,
       strengths,
       improvements,
     }
 
-    // Return the SIGNED TOKEN (carries everything for the gated reveal) plus a
-    // tiny PREVIEW — one strength + one fix — so the pre-signup card can show a
-    // genuine sneak peek of the coaching while the number stays locked.
-    return NextResponse.json({
-      ok: true,
-      token: signScore(score),
-      preview: { didWell: strengths[0], improve: improvements[0] },
-    })
+    // Return ONLY the signed token. No score, no coaching preview — the reveal
+    // is the whole reason someone creates an account.
+    return NextResponse.json({ ok: true, token: signScore(score) })
   } catch (err) {
     console.error('quick-score error:', err)
     return NextResponse.json(
