@@ -54,7 +54,7 @@ export default async function PathsPage({
 
   const [activeMap, promo, ...otherMaps] = await Promise.all([
     loadCategoryMap(supabase, user.id, activeCategoryName, admin),
-    loadFounderPromo(supabase, user.id, user.created_at),
+    loadFounderPromo(supabase, user.id),
     // Progress counts for the tabs of the OTHER categories.
     ...Object.values(CATEGORY_MAP)
       .filter((n) => n !== activeCategoryName)

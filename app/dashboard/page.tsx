@@ -1,13 +1,14 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/admin'
+import { loadFounderPromo } from '@/lib/founder-promo'
 import { verifyScore } from '@/lib/quick-score-token'
 import { promptById } from '@/lib/quick-score'
 import { ResultModal } from '@/components/quickscore/ResultModal'
-import { computeStreak, weekStickers, stickersThisWeek, practicedToday } from '@/lib/streaks'
+import { totalPracticeDays, computeStreak, weekStickers, stickersThisWeek, practicedToday } from '@/lib/streaks'
 import { DashboardClient, type CategoryStat } from '@/components/dashboard/DashboardClient'
 import { OnboardingGate } from '@/components/dashboard/OnboardingGate'
-import { type FounderPromo } from '@/components/dashboard/SidebarPromo'
+
 import { lc } from '@/components/landing/tokens'
 
 // Server component: all data is fetched on the server in parallel and the page
@@ -84,7 +85,7 @@ export default async function DashboardPage({
   }
 
   // Everything below is fetched in parallel, on the server, in one round trip.
-  const [progressRes, lessonsRes, sessionsRes, adminFlag, promoSettingsRes, bookingRes] = await Promise.all([
+  const [progressRes, lessonsRes, sessionsRes, adminFlag, promo] = await Promise.all([
     supabase
       .from('user_progress')
       .select('category, completed, best_score')
@@ -99,9 +100,9 @@ export default async function DashboardPage({
       .gte('created_at', new Date(Date.now() - 400 * 864e5).toISOString())
       .order('created_at', { ascending: false }),
     isAdmin().catch(() => false),
-    // Founder feedback call: real slot count + whether this user already booked.
-    supabase.from('founder_call_settings').select('total_slots, slots_used').eq('id', 1).maybeSingle(),
-    supabase.from('founder_call_bookings').select('id').eq('user_id', user.id).maybeSingle(),
+    // Slots, prior booking and the session count all come from one place so
+    // the dashboard can't disagree with the other sidebar pages.
+    loadFounderPromo(supabase, user.id),
   ])
 
   const progress = progressRes.data ?? []
@@ -149,18 +150,7 @@ export default async function DashboardPage({
     profile?.trial_sessions_used === 0 &&
     Date.now() - new Date(profile.trial_started_at as string).getTime() < 300_000
 
-  // Founder feedback call. Gated on MIN_DAYS_FOR_FEEDBACK_CALL (see SidebarPromo)
-  // age — feedback from someone who has used Locuta for two days isn't worth a
-  // free year, and the call slots are scarce.
-  const settings = promoSettingsRes.data
-  const daysUsed = Math.floor((Date.now() - new Date(user.created_at).getTime()) / 864e5)
-  const promo: FounderPromo | null = settings
-    ? {
-        slotsRemaining: Math.max(0, (settings.total_slots as number) - (settings.slots_used as number)),
-        hasBooked: !!bookingRes.data,
-        daysUsed,
-      }
-    : null
+
 
   const fullName = (profile?.full_name as string) || (user.user_metadata?.full_name as string) || ''
   const firstName = fullName.trim().split(/\s+/)[0] || 'there'
@@ -205,6 +195,7 @@ export default async function DashboardPage({
       stickers={weekStickers(timestamps)}
       stickersThisWeek={stickersThisWeek(timestamps)}
       lessonsCompleted={lessonsCompleted}
+      daysPractised={totalPracticeDays(timestamps)}
       lessonsTotal={lessons.length}
       bestScore={bestScore}
       categories={categories}

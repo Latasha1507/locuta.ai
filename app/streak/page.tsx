@@ -32,7 +32,7 @@ export default async function StreakPage() {
       .select('created_at, category, tone')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false }),
-    loadFounderPromo(supabase, user.id, user.created_at),
+    loadFounderPromo(supabase, user.id),
   ])
 
   const sessions = sessionsRes.data ?? []

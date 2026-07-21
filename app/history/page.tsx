@@ -67,7 +67,7 @@ export default async function HistoryPage({
       .eq('user_id', user.id)
       .not('feedback', 'is', null)
       .order('created_at', { ascending: true }),
-    loadFounderPromo(supabase, user.id, user.created_at),
+    loadFounderPromo(supabase, user.id),
   ])
 
   const rows = pageRes.data ?? []

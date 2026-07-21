@@ -33,7 +33,7 @@ export default async function SettingsPage() {
 
   const [profileRes, promo] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
-    loadFounderPromo(supabase, user.id, user.created_at),
+    loadFounderPromo(supabase, user.id),
   ])
 
   const profile = profileRes.data as Record<string, unknown> | null
