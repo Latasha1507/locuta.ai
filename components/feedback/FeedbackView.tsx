@@ -118,7 +118,7 @@ export function FeedbackView(d: FeedbackData) {
       <main className="mx-auto flex w-full max-w-[1300px] flex-col gap-3 px-4 pb-12 pt-5 lg:gap-4 lg:px-8 lg:pt-6">
         {/* HEADER */}
         <div
-          className="flex items-center gap-4 p-4 lg:px-7 lg:py-5"
+          className="flex items-center gap-4 p-3 lg:px-6 lg:py-3"
           style={{
             background: d.passed ? 'linear-gradient(135deg,#eafaef,#dff5e6)' : 'linear-gradient(135deg,#fff4e6,#ffe9d2)',
             border: `2px solid ${d.passed ? '#cdeacf' : '#f6d9ae'}`,
@@ -146,17 +146,39 @@ export function FeedbackView(d: FeedbackData) {
             <Icon name="arrow" size={18} color={lc.greenDark} />
           </Link>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 11, letterSpacing: '0.1em', color: '#7fa98a' }}>
-              {d.categoryName.toUpperCase()} · MODULE {d.moduleId} · LESSON {d.lessonId}
+            {/* Eyebrow + result pill on one line, matching the practice page, so
+                the header is two lines not three. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 11, letterSpacing: '0.1em', color: '#7fa98a' }}>
+                {d.categoryName.toUpperCase()} · MODULE {d.moduleId} · LESSON {d.lessonId}
+              </span>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontFamily: fontDisplay,
+                  fontWeight: 800,
+                  fontSize: 11,
+                  color: d.passed ? lc.greenDark : '#b06d17',
+                  background: '#fff',
+                  border: `2px solid ${d.passed ? '#c7edd2' : '#f0d3a6'}`,
+                  padding: '2px 9px',
+                  borderRadius: 999,
+                }}
+              >
+                <Icon name={d.passed ? 'check' : 'target'} size={11} color={d.passed ? lc.greenDark : '#b06d17'} />
+                {d.passed ? 'Passed' : 'Keep going'} · {d.tone} coach
+              </span>
             </div>
             <h1
-              className="text-[22px] lg:text-[28px]"
-              style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-0.5px', lineHeight: 1.1, margin: '2px 0 0' }}
+              className="text-[19px] lg:text-[23px]"
+              style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.1, margin: '4px 0 0' }}
             >
               {d.lessonTitle}
             </h1>
           </div>
-          <div className="hidden shrink-0 lg:block" style={{ transform: 'scale(.7)' }}>
+          <div className="hidden shrink-0 sm:block" style={{ transform: 'scale(.5)', transformOrigin: 'center right', margin: '-14px 0' }}>
             <Mascot mood={d.passed ? 'cheer' : 'oops'} />
           </div>
         </div>
@@ -448,9 +470,68 @@ export function FeedbackView(d: FeedbackData) {
             )}
           </div>
         </div>
+
+        {/* ACTION BAR — the three things you can do next, always reachable at the
+            end of the page: continue, retry, or go back. Previously the only
+            navigation was small inline links buried mid-page. */}
+        <div
+          className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+          style={{ marginTop: 4 }}
+        >
+          <Link
+            href={d.nextHref}
+            style={{
+              ...actionBtn,
+              background: lc.green,
+              color: '#fff',
+              boxShadow: `0 5px 0 ${lc.greenDark}`,
+            }}
+          >
+            Next lesson
+            <Icon name="arrow" size={16} color="#fff" />
+          </Link>
+          <Link
+            href={d.retryHref}
+            style={{
+              ...actionBtn,
+              background: '#fff',
+              color: lc.greenDark,
+              border: `2px solid ${lc.green}`,
+              boxShadow: `0 5px 0 #cfe9c6`,
+            }}
+          >
+            <Icon name="arrow" size={16} color={lc.greenDark} style={{ transform: 'scaleX(-1)' }} />
+            Practice again
+          </Link>
+          <Link
+            href={`/category/${d.categoryId}/modules?tone=${encodeURIComponent(d.tone)}&module=${d.moduleId}`}
+            style={{
+              ...actionBtn,
+              background: '#fff',
+              color: lc.muted,
+              border: `2px solid ${lc.cardBorder}`,
+              boxShadow: `0 5px 0 ${lc.cardBorder}`,
+            }}
+          >
+            Back to lessons
+          </Link>
+        </div>
       </main>
     </div>
   )
+}
+
+const actionBtn: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  padding: '14px 18px',
+  borderRadius: 16,
+  fontFamily: fontDisplay,
+  fontWeight: 800,
+  fontSize: 14,
+  textDecoration: 'none',
 }
 
 function Card({

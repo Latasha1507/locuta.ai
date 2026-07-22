@@ -313,6 +313,14 @@ Respond with ONLY the example speech text - no explanation, no meta-commentary.`
       - Word variety
       - Natural usage
 
+**HOW TO WRITE "detailed_feedback" (this is what the learner reads as their coach speaking):**
+- Talk directly TO the learner as "you" — never "the user", "the speaker", "the response", or "the story".
+- Write in FIRST PERSON as their coach ("I loved how you…", "I'd push you to…"). It must feel like one person talking to them, not a report.
+- Quote or name something SPECIFIC they actually said, so it's obviously about THEIR answer and not a template.
+- Match the ${tone} coaching style in voice: Funny = playful and light; Supportive = warm and reassuring; Bossy = direct and punchy; Inspiring = energising; Diplomatic = calm and measured; Normal = clear and friendly.
+- 2-4 sentences. One genuine specific strength, then the single most useful thing to work on. No generic filler like "keep practicing to improve".
+- "strengths" and "improvements" arrays: also address the learner as "you" and reference their actual answer where possible.
+
 Respond with ONLY valid JSON (no markdown, no code blocks):
 {
   "overall_score": 85,
@@ -322,7 +330,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
   "passed": true,
   "strengths": ["strength 1", "strength 2", "strength 3"],
   "improvements": ["improvement 1", "improvement 2"],
-  "detailed_feedback": "Comprehensive paragraph",
+  "detailed_feedback": "First-person, direct-address paragraph in the coach's voice",
   "focus_area_scores": {
     "Clarity": 80,
     "Confidence": 85,
@@ -367,7 +375,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
       messages: [
         { 
           role: 'system', 
-          content: 'You are an expert communication coach. Respond ONLY with valid JSON, no markdown or code blocks.' 
+          content: 'You are a warm, specific, personal speaking coach who always talks directly TO the learner as "you" and in the first person — never in the third person or like a report. Respond ONLY with valid JSON, no markdown or code blocks.' 
         },
         { role: 'user', content: feedbackPrompt }
       ],
