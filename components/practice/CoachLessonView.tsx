@@ -50,6 +50,20 @@ const DIFF_COLOR: Record<LessonItem['difficulty'], string> = {
   Advanced: lc.coral,
 }
 
+/**
+ * A completed lesson's colour comes from HOW WELL it was done, not a flat green.
+ * This is the engagement lever on this screen: a wall of identical green ticks
+ * says "you did stuff"; a gold row for a 90 and a green row for a 72 lets the
+ * user FEEL the difference and gives them a reason to replay the weaker ones.
+ * The score is the reward, so it drives the colour and gets shown big.
+ */
+function scoreTier(score: number): { name: string; main: string; soft: string; ink: string; icon: string } {
+  if (score >= 90) return { name: 'Nailed it', main: '#f5b301', soft: '#fff6de', ink: '#8a6100', icon: 'trophy' }
+  if (score >= 80) return { name: 'Great', main: lc.green, soft: '#e7f8ec', ink: lc.greenDark, icon: 'star' }
+  if (score >= 70) return { name: 'Passed', main: lc.blue, soft: '#e4f4ff', ink: '#0f7fb8', icon: 'check' }
+  return { name: 'Done', main: '#9aa891', soft: '#f0f3ec', ink: '#6f7d66', icon: 'check' }
+}
+
 export function CoachLessonView(d: CoachLessonData) {
   const [tone, setTone] = useState(d.initialTone)
   const [poked, setPoked] = useState(false)
@@ -86,6 +100,19 @@ export function CoachLessonView(d: CoachLessonData) {
       className="min-h-screen"
       style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}
     >
+      {/* Row interaction states. Rows had NO hover or keyboard-focus feedback
+          at all — a clickable list that never reacts feels dead. The cue here
+          is deliberately colour-only (a background tint, the chevron waking
+          up, a focus ring): movement is reserved for CTA buttons. !important
+          is needed because the row backgrounds are inline styles. */}
+      <style>{`
+        .lsn-row{transition:background-color .12s ease;}
+        .lsn-row:not(.lsn-active):hover{background:#f7faf5!important;}
+        .lsn-row.lsn-active:hover{background:#eaf8ee!important;}
+        .lsn-row .lsn-chev{opacity:.35;transition:opacity .12s ease;}
+        .lsn-row:hover .lsn-chev{opacity:1;}
+        .lsn-row:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(63,206,111,.45)!important;}
+      `}</style>
 
       <main className="mx-auto flex max-w-[1080px] flex-col gap-[18px] px-4 pb-11 pt-5 lg:gap-[22px] lg:px-8 lg:pb-14 lg:pt-7">
         {/* HERO BANNER */}
@@ -415,14 +442,17 @@ export function CoachLessonView(d: CoachLessonData) {
             {d.lessons.map((l) => {
               const isNext = l.levelNumber === d.nextLevel && !l.locked
               const dc = DIFF_COLOR[l.difficulty]
+              // Done rows are coloured by their score; unscored-but-done falls
+              // back to the lowest tier so it still reads as complete.
+              const tier = l.done ? scoreTier(l.bestScore ?? 60) : null
 
               const inner = (
                 <>
                   <span
                     style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 12,
+                      width: 44,
+                      height: 44,
+                      borderRadius: 13,
                       flex: 'none',
                       display: 'flex',
                       alignItems: 'center',
@@ -430,13 +460,13 @@ export function CoachLessonView(d: CoachLessonData) {
                       fontFamily: fontDisplay,
                       fontWeight: 800,
                       fontSize: 17,
-                      background: l.done ? lc.green : l.locked ? '#f0f3ec' : isNext ? lc.green : '#eef4e8',
-                      color: l.done || isNext ? '#fff' : '#7d8a75',
-                      boxShadow: l.done || isNext ? `0 3px 0 ${lc.greenDark}` : 'none',
+                      background: tier ? tier.main : l.locked ? '#f0f3ec' : isNext ? lc.green : '#eef4e8',
+                      color: tier || isNext ? '#fff' : '#7d8a75',
+                      boxShadow: tier ? `0 3px 0 ${tier.ink}` : isNext ? `0 3px 0 ${lc.greenDark}` : 'none',
                     }}
                   >
-                    {l.done ? (
-                      <Icon name="check" size={17} color="#fff" />
+                    {tier ? (
+                      <Icon name={tier.icon} size={20} color="#fff" />
                     ) : l.locked ? (
                       <Icon name="lock" size={16} color="#b7c2ad" />
                     ) : (
@@ -473,20 +503,25 @@ export function CoachLessonView(d: CoachLessonData) {
                           START HERE
                         </span>
                       )}
-                      {l.done && l.bestScore !== null && (
+                      {l.done && l.bestScore !== null && tier && (
                         <span
                           style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
                             fontFamily: fontDisplay,
                             fontWeight: 800,
-                            fontSize: 10,
-                            color: lc.greenDark,
-                            background: '#e7f8ec',
-                            padding: '2px 8px',
+                            fontSize: 11,
+                            color: tier.ink,
+                            background: tier.soft,
+                            border: `1.5px solid ${tier.main}`,
+                            padding: '2px 9px 2px 7px',
                             borderRadius: 999,
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          BEST {l.bestScore}
+                          <Icon name={tier.icon} size={12} color={tier.main} />
+                          {tier.name} · {l.bestScore}
                         </span>
                       )}
                     </span>
@@ -520,19 +555,26 @@ export function CoachLessonView(d: CoachLessonData) {
                         <Icon name="clock" size={12} color="#a3b099" />
                         {l.durationSec} sec
                       </span>
+                      {/* Difficulty was a filled pill on EVERY row — the same
+                          word repeated eight times per module, each one a green
+                          chip fighting the tier badges for attention. Repeated
+                          identical info is metadata, not a highlight: now it's
+                          part of the muted meta line, with a small colour dot
+                          keeping the beginner/intermediate/advanced coding. */}
                       <span
                         style={{
-                          fontFamily: fontDisplay,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          fontSize: 11.5,
+                          color: '#8a9a80',
                           fontWeight: 800,
-                          fontSize: 10,
-                          letterSpacing: '0.03em',
-                          textTransform: 'uppercase',
-                          color: dc,
-                          background: `${dc}1c`,
-                          padding: '3px 9px',
-                          borderRadius: 999,
                         }}
                       >
+                        <span
+                          aria-hidden="true"
+                          style={{ width: 7, height: 7, borderRadius: '50%', background: dc, flex: 'none' }}
+                        />
                         {l.difficulty}
                       </span>
                     </span>
@@ -562,7 +604,14 @@ export function CoachLessonView(d: CoachLessonData) {
                         Start
                         <Icon name="arrow" size={14} color={lc.greenDark} />
                       </>
-                    ) : null}
+                    ) : (
+                      // Quiet rows still need an "I'm tappable" cue. A faint
+                      // chevron sits at low opacity and brightens on hover —
+                      // affordance without another word competing with Start.
+                      <span className="lsn-chev" aria-hidden="true" style={{ display: 'inline-flex' }}>
+                        <Icon name="arrow" size={14} color="#9fb096" />
+                      </span>
+                    )}
                   </span>
                 </>
               )
@@ -573,8 +622,18 @@ export function CoachLessonView(d: CoachLessonData) {
                 gap: 14,
                 background: isNext ? '#f2fbf4' : '#fff',
                 border: `2px solid ${isNext ? lc.green : lc.cardBorder}`,
+                // A completed lesson wears a coloured left edge in its score-tier
+                // colour — the "achievement border" that makes done rows read as
+                // wins at a glance instead of blank white cards. Active still
+                // owns the full green treatment; todo stays plain and quiet.
+                borderLeft: tier ? `6px solid ${tier.main}` : `2px solid ${isNext ? lc.green : lc.cardBorder}`,
                 borderRadius: 18,
-                padding: '14px 16px',
+                // The 6px achievement border is 4px thicker than the normal 2px
+                // edge. Without compensating, content on done rows sat 4px
+                // further right than todo rows and titles didn't line up down
+                // the list. Padding absorbs the difference so every title sits
+                // on the same vertical line.
+                padding: tier ? '14px 16px 14px 12px' : '14px 16px',
                 boxShadow: `0 4px 0 ${isNext ? lc.greenDark : lc.cardBorder}`,
                 opacity: l.locked ? 0.72 : 1,
                 textDecoration: 'none',
@@ -607,7 +666,7 @@ export function CoachLessonView(d: CoachLessonData) {
                 <Link
                   key={l.levelNumber}
                   href={href(l.levelNumber)}
-                 
+                  className={isNext ? 'lsn-row lsn-active' : 'lsn-row'}
                   style={cardStyle}
                 >
                   {inner}
