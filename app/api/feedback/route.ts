@@ -1,7 +1,7 @@
 // app/api/feedback/route.ts
 import { createClient } from '@/lib/supabase/server'
 import { checkSessionLimitServer } from '@/lib/check-session-limit-server'
-import { uploadAudio, userRecordingPath } from '@/lib/audio-storage'
+import { uploadAudio, userRecordingPath, exampleAudioPath } from '@/lib/audio-storage'
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
@@ -256,7 +256,6 @@ Respond with ONLY the example speech text - no explanation, no meta-commentary.`
     const aiAudioBuffer = Buffer.from(await aiAudioResponse.arrayBuffer())
     const aiAudioBase64 = aiAudioBuffer.toString('base64')
     console.log('✅ AI audio generated')
-
     // Step 4: Generate comprehensive feedback
     console.log('💬 Generating feedback...')
     
@@ -492,6 +491,23 @@ Be encouraging but honest. If non-English content detected, reduce overall score
       console.error('⚠️ Failed to store user recording (non-critical):', e)
     }
 
+    // Upload the coach's spoken example to storage and keep a real URL. Until
+    // now this audio was generated then only stored as base64 under a column
+    // the feedback page never read, so the coach player never appeared. A URL
+    // streams from the CDN and is what the compare UI actually uses.
+    let exampleAudioUrl = ''
+    try {
+      const url = await uploadAudio(
+        supabase,
+        exampleAudioPath(user.id, sessionId),
+        aiAudioBuffer,
+        'audio/mpeg',
+      )
+      if (url) exampleAudioUrl = url
+    } catch (e) {
+      console.error('⚠️ Failed to store coach example audio (non-critical):', e)
+    }
+
     const { data: sessionData, error: insertError } = await supabase
       .from('sessions')
       .insert({
@@ -505,6 +521,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
         user_audio_url: userAudioUrl,
         ai_example_text: aiExampleText,
         ai_example_audio: aiAudioBase64,
+        ai_example_audio_url: exampleAudioUrl,
         feedback: feedback,
         overall_score: feedback.overall_score,
         status: 'completed',

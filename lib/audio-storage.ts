@@ -35,6 +35,14 @@ export function userRecordingPath(userId: string, sessionId: string): string {
 }
 
 /**
+ * Path for the AI coach's spoken example for a given session. Per-session
+ * because the example is a rewrite of THIS user's answer, not a shared asset.
+ */
+export function exampleAudioPath(userId: string, sessionId: string): string {
+  return `examples/${userId}/${sessionId}.mp3`
+}
+
+/**
  * Deterministic path for a personalised greeting ("Hello, Latasha.").
  * Keyed by a hash of the name so we never put a user's name in a public URL,
  * and so two users called Latasha share one object instead of paying for two

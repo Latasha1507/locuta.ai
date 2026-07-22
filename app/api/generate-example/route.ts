@@ -67,14 +67,37 @@ export async function POST(request: NextRequest) {
 
     if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
 
-    // Already generated — hand it straight back.
+    // Already generated — hand it straight back. If this is an old session
+    // that only has base64 (from before audio moved to storage), heal it here:
+    // upload those bytes once, save the URL, and return a streamable link so
+    // the compare player works for old sessions too.
     if (session.ai_example_text && (session.ai_example_audio_url || session.ai_example_audio)) {
+      let audioUrl: string = session.ai_example_audio_url || ''
+      if (!audioUrl && session.ai_example_audio) {
+        try {
+          const admin = createAdminClient()
+          const healed = await uploadAudio(
+            admin,
+            `examples/${session.user_id}/${session.id}.mp3`,
+            Buffer.from(session.ai_example_audio, 'base64'),
+          )
+          if (healed) {
+            audioUrl = healed
+            await admin
+              .from('sessions')
+              .update({ ai_example_audio_url: healed, ai_example_audio: '' })
+              .eq('id', session.id)
+          }
+        } catch (e) {
+          console.error('⚠️ base64->URL backfill failed (non-critical):', e)
+        }
+      }
       return NextResponse.json({
         success: true,
         alreadyGenerated: true,
         text: session.ai_example_text,
-        audioUrl: session.ai_example_audio_url || '',
-        audio: session.ai_example_audio_url ? '' : session.ai_example_audio,
+        audioUrl,
+        audio: audioUrl ? '' : session.ai_example_audio,
         processingTime: Date.now() - started,
       })
     }

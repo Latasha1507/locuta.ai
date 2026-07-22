@@ -411,10 +411,11 @@ export function FeedbackView(d: FeedbackData) {
               </p>
 
               {/* SIDE-BY-SIDE AUDIO COMPARE — the user's own recording next to
-                  the coach version, so they can hear the difference directly.
-                  Only shows the coach side once the example has been generated
-                  (that's what carries example.audioUrl). */}
-              {(d.userAudioUrl || example.audioUrl) && (
+                  the coach version. Shown whenever any of the three exists:
+                  user audio, coach audio, or coach TEXT (old sessions have the
+                  text but their audio still lives as base64 — the button in
+                  the coach tile fetches/heals it on demand). */}
+              {(d.userAudioUrl || example.audioUrl || example.text) && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" style={{ marginBottom: 14 }}>
                   <div
                     style={{
@@ -455,9 +456,31 @@ export function FeedbackView(d: FeedbackData) {
                     {example.audioUrl ? (
                       <audio controls preload="none" src={example.audioUrl} style={{ width: '100%' }} />
                     ) : (
-                      <p style={{ fontSize: 12, color: lc.faint, fontWeight: 700, margin: 0 }}>
-                        Generate the polished version below to hear it.
-                      </p>
+                      <button
+                        type="button"
+                        onClick={generateExample}
+                        disabled={exLoading}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 7,
+                          background: exLoading ? '#a8ddb9' : lc.green,
+                          color: '#fff',
+                          border: 0,
+                          padding: '9px 12px',
+                          borderRadius: 10,
+                          fontFamily: fontDisplay,
+                          fontWeight: 800,
+                          fontSize: 12,
+                          cursor: exLoading ? 'wait' : 'pointer',
+                          boxShadow: `0 3px 0 ${exLoading ? '#8fc9a1' : lc.greenDark}`,
+                        }}
+                      >
+                        <Icon name="play" size={13} color="#fff" />
+                        {exLoading ? 'LOADING…' : 'HEAR IT'}
+                      </button>
                     )}
                   </div>
                 </div>
