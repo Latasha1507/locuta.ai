@@ -430,13 +430,13 @@ export function CoachLessonView(d: CoachLessonData) {
                       fontFamily: fontDisplay,
                       fontWeight: 800,
                       fontSize: 17,
-                      background: l.done ? '#cfe0c4' : l.locked ? '#f0f3ec' : isNext ? lc.green : '#eef4e8',
-                      color: l.done ? lc.greenDark : isNext ? '#fff' : '#7d8a75',
-                      boxShadow: isNext ? `0 3px 0 ${lc.greenDark}` : 'none',
+                      background: l.done ? lc.green : l.locked ? '#f0f3ec' : isNext ? lc.green : '#eef4e8',
+                      color: l.done || isNext ? '#fff' : '#7d8a75',
+                      boxShadow: l.done || isNext ? `0 3px 0 ${lc.greenDark}` : 'none',
                     }}
                   >
                     {l.done ? (
-                      <Icon name="check" size={17} color={lc.greenDark} />
+                      <Icon name="check" size={17} color="#fff" />
                     ) : l.locked ? (
                       <Icon name="lock" size={16} color="#b7c2ad" />
                     ) : (
@@ -547,38 +547,36 @@ export function CoachLessonView(d: CoachLessonData) {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 5,
-                      color: l.locked ? '#b7c2ad' : isNext ? lc.greenDark : lc.green,
+                      color: l.locked ? '#b7c2ad' : lc.greenDark,
                     }}
                   >
+                    {/* Only the current lesson gets an action label. Done and
+                        other open lessons are still tappable (the whole card is
+                        the link) — they just don't shout "Review"/"Open", which
+                        cluttered the list and nudged re-grinding passed lessons.
+                        The bright green "Start" is the one call to action. */}
                     {l.locked ? (
                       'Locked'
-                    ) : (
+                    ) : isNext ? (
                       <>
-                        {l.done ? 'Review' : isNext ? 'Start' : 'Open'}
-                        <Icon name="arrow" size={14} color={isNext ? lc.greenDark : lc.green} />
+                        Start
+                        <Icon name="arrow" size={14} color={lc.greenDark} />
                       </>
-                    )}
+                    ) : null}
                   </span>
                 </>
               )
 
-              // Three distinct card states so the eye can sort them instantly:
-              //   done   → muted, settled-back (a soft grey-green, slightly faded)
-              //   isNext → the bright green focus, the one thing to act on
-              //   todo   → plain white, waiting
-              // Before, done lessons were plain white like untouched ones, so a
-              // finished path was a wall of identical cards with only a tiny tick
-              // to tell them apart.
               const cardStyle: React.CSSProperties = {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 14,
-                background: l.done ? '#f4f7f1' : isNext ? '#f2fbf4' : '#fff',
-                border: `2px solid ${l.done ? '#dfe7d8' : isNext ? lc.green : lc.cardBorder}`,
+                background: isNext ? '#f2fbf4' : '#fff',
+                border: `2px solid ${isNext ? lc.green : lc.cardBorder}`,
                 borderRadius: 18,
                 padding: '14px 16px',
-                boxShadow: `0 4px 0 ${l.done ? '#dfe7d8' : isNext ? lc.greenDark : lc.cardBorder}`,
-                opacity: l.locked ? 0.72 : l.done ? 0.9 : 1,
+                boxShadow: `0 4px 0 ${isNext ? lc.greenDark : lc.cardBorder}`,
+                opacity: l.locked ? 0.72 : 1,
                 textDecoration: 'none',
                 color: 'inherit',
                 width: '100%',
