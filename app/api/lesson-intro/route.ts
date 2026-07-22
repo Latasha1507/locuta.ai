@@ -69,21 +69,27 @@ const TONE_CHARACTERISTICS: Record<string, { goal: string; style: string; delive
   }
 }
 
-// ⭐ NEW: Generate personalized greeting separately
+// Generate a personalized, time-aware greeting, cached separately from the
+// (name-free) lesson content so one user's name is never served to another.
 async function generatePersonalGreeting(
   userName: string | null,
   tone: string,
+  daypart: 'morning' | 'afternoon' | 'evening',
   supabaseAdmin: SupabaseClient,
 ) {
   if (!userName) {
     return { text: '', audio: '', audioUrl: '' }
   }
 
-  const greetingText = `Hello, ${userName}.`
-  const path = greetingPath(userName, tone)
+  // "Good morning, Latasha. Welcome back." — a real coach opens with the time
+  // of day and the person's name; it's the cheapest thing that makes the whole
+  // page feel like it's speaking to *them*.
+  const timeWord = daypart === 'morning' ? 'Good morning' : daypart === 'evening' ? 'Good evening' : 'Good afternoon'
+  const greetingText = `${timeWord}, ${userName}. Welcome back.`
+  const path = greetingPath(userName, tone, daypart)
 
-  // Two people called "Latasha" on the Supportive coach share one object.
-  // A ~50ms existence check beats a ~700ms TTS call we've already paid for.
+  // Two people called "Latasha" on the Supportive coach, same daypart, share
+  // one object. A ~50ms existence check beats a ~700ms TTS call.
   if (await audioExists(supabaseAdmin, path)) {
     return { text: greetingText, audio: '', audioUrl: publicUrl(supabaseAdmin, path) }
   }
@@ -104,6 +110,44 @@ async function generatePersonalGreeting(
     // Only fall back to base64 if the upload failed.
     audio: audioUrl ? '' : buffer.toString('base64'),
     audioUrl: audioUrl ?? '',
+  }
+}
+
+
+// Generate a short, concrete WORKED EXAMPLE of a good answer to the task —
+// an actual spoken response a learner could model, not abstract tips. This is
+// task-specific (not user-specific), so it caches once per lesson+tone and is
+// free on every subsequent hit. Kept separate from the coach intro so each can
+// be cached and reused independently.
+async function generateWorkedExample(
+  lessonTitle: string,
+  practicePrompt: string,
+  lessonExplanation: string,
+): Promise<string> {
+  try {
+    const completion = await getOpenAI().chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You write a single short model answer that a learner could say out loud to complete a speaking task. ' +
+            'Write ONLY the spoken answer itself — first person, natural, 45-70 words, no preamble, no quotation marks, ' +
+            'no "here is an example", no coaching. It must actually satisfy the task and lightly demonstrate the lesson skill.',
+        },
+        {
+          role: 'user',
+          content: `Lesson: ${lessonTitle}\nSkill: ${lessonExplanation}\nTask: ${practicePrompt}\n\nWrite one model spoken answer.`,
+        },
+      ],
+      temperature: 0.8,
+      max_tokens: 160,
+    })
+    return completion.choices[0]?.message?.content?.trim() || ''
+  } catch (e) {
+    // An example is a nice-to-have; never fail the lesson over it.
+    console.error('⚠️ Worked-example generation failed (non-critical):', e)
+    return ''
   }
 }
 
@@ -135,6 +179,11 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const { tone, categoryId, moduleId, lessonId } = body
+    // The client sends its local time-of-day; the server can't know the user's
+    // timezone. Validated to the three buckets so a bad value can't poison the
+    // greeting cache path.
+    const daypart: 'morning' | 'afternoon' | 'evening' =
+      body.daypart === 'morning' || body.daypart === 'evening' ? body.daypart : 'afternoon'
 
     const categoryName = CATEGORY_MAP[categoryId]
     if (!categoryName) {
@@ -196,7 +245,25 @@ export async function POST(request: Request) {
         }
       }
 
-      const greeting = await generatePersonalGreeting(userName, tone, supabaseAdmin)
+      const greeting = await generatePersonalGreeting(userName, tone, daypart, supabaseAdmin)
+
+      // The worked example is cached on the row. Rows created before this
+      // column existed won't have one yet — generate it once, store it, and
+      // every later visitor gets it free. It's task-specific, not per-user.
+      let workedExample: string = cachedIntro.practice_example_ai || ''
+      if (!workedExample) {
+        workedExample = await generateWorkedExample(
+          cachedIntro.lesson_title || '',
+          cachedIntro.practice_prompt || '',
+          cachedIntro.intro_text || '',
+        )
+        if (workedExample) {
+          await supabaseAdmin
+            .from('cached_lesson_intros')
+            .update({ practice_example_ai: workedExample })
+            .eq('id', cachedIntro.id)
+        }
+      }
 
       return NextResponse.json({
         // Preferred: a streaming URL. base64 stays only as a fallback for rows
@@ -209,7 +276,7 @@ export async function POST(request: Request) {
         transcript: cachedIntro.intro_text,
         lessonTitle: cachedIntro.lesson_title,
         practice_prompt: cachedIntro.practice_prompt,
-        practice_example: '',
+        practice_example: workedExample,
       })
     }
 
@@ -268,8 +335,8 @@ Focus Areas: ${Array.isArray(lesson.feedback_focus_areas) ? lesson.feedback_focu
 
 Remember: You're a ${tone} coach. Start DIRECTLY with the content (no greeting). ${toneChar.goal}. ${toneChar.style}`
 
-    // ⭐ Run in parallel: lesson content generation + personalized greeting
-    const [completion, greeting] = await Promise.all([
+    // ⭐ Run in parallel: lesson content + personalized greeting + worked example
+    const [completion, greeting, workedExample] = await Promise.all([
       getOpenAI().chat.completions.create({
         model: 'gpt-4o',
         messages: [
@@ -279,7 +346,12 @@ Remember: You're a ${tone} coach. Start DIRECTLY with the content (no greeting).
         temperature: 0.85,
         max_tokens: 300
       }),
-      generatePersonalGreeting(userName, tone, supabaseAdmin)
+      generatePersonalGreeting(userName, tone, daypart, supabaseAdmin),
+      generateWorkedExample(
+        lesson.level_title || '',
+        lesson.practice_prompt || '',
+        lesson.lesson_explanation || '',
+      ),
     ])
 
     const lessonContent = completion.choices[0].message.content || ''
@@ -327,6 +399,7 @@ Remember: You're a ${tone} coach. Start DIRECTLY with the content (no greeting).
           intro_audio_url: audioUrl, // streams from the CDN
           intro_audio_base64: audioBase64, // fallback only; '' when the upload worked
           practice_prompt: practicePrompt,
+          practice_example_ai: workedExample,
           lesson_title: levelTitle,
           generation_count: 1
         })
@@ -348,7 +421,7 @@ Remember: You're a ${tone} coach. Start DIRECTLY with the content (no greeting).
       lessonTitle: lesson.level_title || 'Lesson',
       moduleTitle: lesson.module_title || 'Module',
       practice_prompt: lesson.practice_prompt || 'Practice speaking clearly and confidently.',
-      practice_example: lesson.practice_example || ''
+      practice_example: workedExample || lesson.practice_example || ''
     })
 
   } catch (error) {

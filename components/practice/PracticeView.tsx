@@ -76,6 +76,10 @@ export function PracticeView(d: PracticeData) {
   const [introAudio, setIntroAudio] = useState('')
   const [greetingAudio, setGreetingAudio] = useState('')
   const [introTranscript, setIntroTranscript] = useState('')
+  const [greetingText, setGreetingText] = useState('')
+  // Worked example arrives with the coach audio. Seeded from the server prop so
+  // it can render instantly when already known.
+  const [coachExample, setCoachExample] = useState(d.practiceExample || '')
 
   const [rec, setRec] = useState<'idle' | 'recording' | 'done'>('idle')
   const [elapsed, setElapsed] = useState(0)
@@ -154,6 +158,10 @@ export function PracticeView(d: PracticeData) {
   const loadIntro = useCallback(async () => {
     setIntroLoading(true)
     try {
+      // The server can't know the user's timezone, so the client computes its
+      // own time-of-day for the "Good morning/afternoon/evening" greeting.
+      const h = new Date().getHours()
+      const daypart = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'
       const res = await fetch('/api/lesson-intro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -162,6 +170,7 @@ export function PracticeView(d: PracticeData) {
           categoryId: d.categoryId,
           moduleId: d.moduleId,
           lessonId: d.lessonId,
+          daypart,
         }),
       })
 
@@ -180,6 +189,8 @@ export function PracticeView(d: PracticeData) {
       setGreetingAudio(data.greetingAudioUrl || data.greetingAudio || '')
       setIntroAudio(data.audioUrl || data.audioBase64 || '')
       setIntroTranscript(data.transcript || '')
+      setGreetingText(data.greetingText || '')
+      if (data.practice_example) setCoachExample(data.practice_example)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Try again.')
       trackError({
@@ -400,6 +411,25 @@ export function PracticeView(d: PracticeData) {
 
   return (
     <div className="min-h-screen" style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}>
+      {/* Page micro-interactions. The user spends most of their time here, so
+          the surfaces should feel alive without being distracting — cards ease
+          in on load, the coach card breathes a soft aura while audio plays, and
+          the mic has a live pulse. No celebration/confetti: that belongs on the
+          feedback page, not here. All disabled under prefers-reduced-motion. */}
+      <style>{`
+        @keyframes pv-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+        .lsn-card{animation:pv-in .4s cubic-bezier(.2,.7,.3,1) both}
+        .lsn-card:nth-of-type(1){animation-delay:.02s}
+        .lsn-card:nth-of-type(2){animation-delay:.09s}
+        .lsn-card:nth-of-type(3){animation-delay:.16s}
+        /* Coach card gently glows while its audio is actually playing — a
+           "someone is speaking to you" cue, tied to real state, not decoration. */
+        @keyframes pv-aura{0%,100%{box-shadow:0 5px 0 ${lc.cardBorder},0 0 0 0 rgba(63,206,111,.0)}50%{box-shadow:0 5px 0 ${lc.cardBorder},0 0 22px 0 rgba(63,206,111,.22)}}
+        .pv-speaking{animation:pv-aura 2.4s ease-in-out infinite}
+        @media (prefers-reduced-motion:reduce){
+          .lsn-card,.pv-speaking{animation:none}
+        }
+      `}</style>
 
       <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-3 px-4 pb-10 pt-4 lg:gap-4 lg:px-8 lg:pb-8 lg:pt-5">
         {/* HEADER */}
@@ -497,149 +527,24 @@ export function PracticeView(d: PracticeData) {
             screen, no scrolling. Stacks on mobile. */}
         <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-4">
 
-        {/* LEFT COLUMN — the lesson: task first, then the coach briefing */}
+        {/* LEFT COLUMN — hear it, read it, see a model answer. The order mirrors
+            how you'd actually learn: the coach greets you and explains, you can
+            re-read at your own pace, then you see one concrete example of a good
+            answer before you try your own. */}
         <div className="flex flex-col gap-3 lg:gap-4">
 
-        {/* THE LESSON — the actual teaching content, straight from the DB.
-            This is server-rendered, so it is readable at 0ms. It used to be
-            missing entirely: the only way to learn what a lesson was about was
-            to wait for the AI coach audio to generate. You cannot ask someone
-            to record an answer to a lesson they have not been taught. The audio
-            below is an optional way to *hear* this same content, not the only
-            way to get it. */}
-        {hasLesson && (
-          <section
-            className="p-[18px] lg:px-6 lg:py-5"
-            style={{
-              background: '#fff',
-              border: `2px solid ${lc.cardBorder}`,
-              borderRadius: 20,
-              boxShadow: `0 5px 0 ${lc.cardBorder}`,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <Icon name="bulb" size={20} color={lc.blue} />
-              <span
-                style={{
-                  fontFamily: fontDisplay,
-                  fontWeight: 800,
-                  fontSize: 11,
-                  letterSpacing: '0.1em',
-                  color: lc.blue,
-                }}
-              >
-                THE LESSON
-              </span>
-            </div>
-
-            {/* Capped height with its own scrollbar: a long explanation must not
-                push the mic below the fold. */}
-            <div
-              style={{
-                maxHeight: 190,
-                overflowY: 'auto',
-                fontSize: 14.5,
-                lineHeight: 1.6,
-                color: '#4a5645',
-                fontWeight: 600,
-                paddingRight: 6,
-              }}
-            >
-              {lessonText
-                ? lessonText
-                    .split(/\n+/)
-                    .filter(Boolean)
-                    .map((para, i) => (
-                      <p key={i} style={{ margin: '0 0 10px' }}>
-                        {para}
-                      </p>
-                    ))
-                : introLoading && (
-                    // Only reachable when a lesson row has no explanation AND no
-                    // example — a content gap, not a normal state.
-                    <p style={{ margin: '0 0 10px', color: lc.faint, fontWeight: 700 }}>
-                      Your coach is writing this lesson…
-                    </p>
-                  )}
-
-              {d.practiceExample && (
-                <div
-                  style={{
-                    background: '#f4f8ff',
-                    border: '2px solid #d8e6fb',
-                    borderRadius: 12,
-                    padding: '10px 12px',
-                    marginTop: 4,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontFamily: fontDisplay,
-                      fontWeight: 800,
-                      fontSize: 10,
-                      letterSpacing: '0.08em',
-                      color: lc.blue,
-                      marginBottom: 4,
-                    }}
-                  >
-                    EXAMPLE
-                  </div>
-                  <div style={{ fontSize: 13.5, lineHeight: 1.5, color: '#41556b', fontStyle: 'italic' }}>
-                    {d.practiceExample}
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* TASK — server-rendered, on screen the instant the page paints. */}
+        {/* 1 — COACH AUDIO (top of the left column). Loads by itself; a quiet
+            placeholder shows while it comes, never a button to press first. */}
         <section
-          className="p-[18px] lg:px-6 lg:py-5"
-          style={{ background: '#eef8ea', border: '2px solid #cfe9c6', borderRadius: 20, boxShadow: '0 5px 0 #d8ecd0' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <Icon name="target" size={20} color={lc.greenDark} />
-            <span
-              style={{
-                fontFamily: fontDisplay,
-                fontWeight: 800,
-                fontSize: 11,
-                letterSpacing: '0.1em',
-                color: lc.greenDark,
-              }}
-            >
-              YOUR TASK
-            </span>
-            <span
-              style={{
-                marginLeft: 'auto',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                fontSize: 11.5,
-                fontWeight: 800,
-                color: '#6d8a66',
-              }}
-            >
-              <Icon name="clock" size={12} color="#6d8a66" />
-              ~{d.expectedDurationSec}s
-            </span>
-          </div>
-          <p style={{ fontSize: 15, lineHeight: 1.55, color: '#33482e', fontWeight: 700, margin: 0 }}>
-            {d.practicePrompt}
-          </p>
-        </section>
-
-        {/* COACH BRIEFING — loads by itself in the background. */}
-        <section
-          className="p-[18px] lg:p-6"
+          className={`lsn-card p-[18px] lg:p-6${audio.isPlaying ? ' pv-speaking' : ''}`}
           style={{ background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 22, boxShadow: `0 5px 0 ${lc.cardBorder}` }}
         >
-          <StepHead icon="chat" title="Prefer to listen?" subtitle={`Hear the lesson above in your ${d.tone} coach's voice`} />
+          <StepHead
+            icon="chat"
+            title={greetingText ? greetingText : `Your ${d.tone} coach`}
+            subtitle={greetingText ? `A quick word from your ${d.tone} coach, then the lesson.` : `Press play to hear this lesson in your ${d.tone} coach's voice.`}
+          />
 
-          {/* No gate: the audio loads by itself. While it's coming, we show a
-              quiet placeholder — never a button the user has to press first. */}
           {introTranscript || audio.duration > 0 ? (
             <AudioPlayer audio={audio} transcript={introTranscript} />
           ) : introLoading ? (
@@ -683,7 +588,7 @@ export function PracticeView(d: PracticeData) {
               }}
             >
               <span style={{ fontSize: 13, fontWeight: 700, color: lc.muted }}>
-                Coach audio didn&apos;t load. The lesson below still works.
+                Coach audio didn&apos;t load. The written lesson below still works.
               </span>
               <button
                 type="button"
@@ -707,12 +612,121 @@ export function PracticeView(d: PracticeData) {
           )}
         </section>
 
+        {/* 2 — WRITTEN LESSON (below the audio). Same content, readable at your
+            own pace. Server-rendered so it's there at 0ms. */}
+        {hasLesson && (
+          <section
+            className="lsn-card p-[18px] lg:px-6 lg:py-5"
+            style={{ background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 20, boxShadow: `0 5px 0 ${lc.cardBorder}` }}
+          >
+            <StepHead icon="book" title="The lesson" subtitle="Read it through before you record." />
+            <div
+              style={{
+                maxHeight: 220,
+                overflowY: 'auto',
+                fontSize: 14.5,
+                lineHeight: 1.65,
+                color: '#4a5645',
+                fontWeight: 600,
+                paddingRight: 6,
+                marginTop: 4,
+              }}
+            >
+              {lessonText
+                ? lessonText
+                    .split(/\n+/)
+                    .filter(Boolean)
+                    .map((para, i) => (
+                      <p key={i} style={{ margin: '0 0 10px' }}>
+                        {para}
+                      </p>
+                    ))
+                : introLoading && (
+                    <p style={{ margin: '0 0 10px', color: lc.faint, fontWeight: 700 }}>
+                      Your coach is writing this lesson…
+                    </p>
+                  )}
+            </div>
+          </section>
+        )}
+
+        {/* 3 — WORKED EXAMPLE (bottom of the left column). A real model answer to
+            THIS task — what a good response actually sounds like — so the user
+            isn't guessing what "good" means before they record. AI-generated,
+            cached per lesson. */}
+        {(coachExample || introLoading) && (
+          <section
+            className="lsn-card p-[18px] lg:px-6 lg:py-5"
+            style={{
+              background: 'linear-gradient(135deg,#f3f9ff,#eef5ff)',
+              border: '2px solid #d5e6fb',
+              borderRadius: 20,
+              boxShadow: '0 5px 0 #dce9fb',
+            }}
+          >
+            <StepHead icon="star" iconColor={lc.blue} title="Here's one way to do it" subtitle="A model answer for this task — yours can be totally different." />
+            {coachExample ? (
+              <div
+                style={{
+                  position: 'relative',
+                  marginTop: 4,
+                  padding: '12px 14px 12px 18px',
+                  background: '#fff',
+                  border: '2px solid #dcecfb',
+                  borderRadius: 14,
+                  fontSize: 14.5,
+                  lineHeight: 1.6,
+                  color: '#3c4f63',
+                  fontStyle: 'italic',
+                  fontWeight: 600,
+                }}
+              >
+                <span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 4, borderRadius: 4, background: lc.blue }} />
+                {coachExample}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, color: lc.faint, fontWeight: 700, fontSize: 13 }}>
+                <span
+                  style={{
+                    width: 18, height: 18, borderRadius: '50%',
+                    border: `3px solid #d5e6fb`, borderTopColor: lc.blue,
+                    animation: 'lp-spin .8s linear infinite', flex: 'none',
+                  }}
+                />
+                Writing an example for you…
+              </div>
+            )}
+          </section>
+        )}
+
         </div>
 
-        {/* RIGHT COLUMN — the recorder, always in view next to the task */}
-        <div className="lg:sticky lg:top-4">
+        {/* RIGHT COLUMN — task on top, recorder below, both in view together */}
+        <div className="lg:sticky lg:top-4 flex flex-col gap-3 lg:gap-4">
 
-        {/* STEP 3 — RECORD */}
+        {/* TASK — sits directly above the mic so the instruction and the button
+            to answer it are one glance apart. Server-rendered, on screen the
+            instant the page paints. */}
+        <section
+          className="lsn-card p-[18px] lg:px-6 lg:py-5"
+          style={{ background: '#eef8ea', border: '2px solid #cfe9c6', borderRadius: 20, boxShadow: '0 5px 0 #d8ecd0' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <Icon name="target" size={20} color={lc.greenDark} />
+            <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 11, letterSpacing: '0.1em', color: lc.greenDark }}>
+              YOUR TASK
+            </span>
+            <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 800, color: '#6d8a66' }}>
+              <Icon name="clock" size={12} color="#6d8a66" />
+              ~{d.expectedDurationSec}s
+            </span>
+          </div>
+          <p style={{ fontSize: 15, lineHeight: 1.55, color: '#33482e', fontWeight: 700, margin: 0 }}>
+            {d.practicePrompt}
+          </p>
+        </section>
+
+        {/* RECORD */}
         <section
           className="p-[18px] lg:p-6"
           style={{ background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 22, boxShadow: `0 5px 0 ${lc.cardBorder}` }}
@@ -988,7 +1002,7 @@ function StepNum({ n }: { n: number }) {
   )
 }
 
-function StepHead({ n, icon, title, subtitle }: { n?: number; icon?: string; title: string; subtitle: string }) {
+function StepHead({ n, icon, iconColor, title, subtitle }: { n?: number; icon?: string; iconColor?: string; title: string; subtitle: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
       {typeof n === 'number' ? (
@@ -999,14 +1013,14 @@ function StepHead({ n, icon, title, subtitle }: { n?: number; icon?: string; tit
             width: 32,
             height: 32,
             borderRadius: 10,
-            background: '#eef4e8',
+            background: iconColor ? `${iconColor}1c` : '#eef4e8',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flex: 'none',
           }}
         >
-          <Icon name={icon ?? 'chat'} size={17} color={lc.greenDark} />
+          <Icon name={icon ?? 'chat'} size={17} color={iconColor ?? lc.greenDark} />
         </span>
       )}
       <div>

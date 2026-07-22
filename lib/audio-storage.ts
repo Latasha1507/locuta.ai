@@ -31,13 +31,15 @@ export function introPath(category: string, moduleNumber: number, levelNumber: n
  * and so two users called Latasha share one object instead of paying for two
  * TTS calls.
  */
-export function greetingPath(firstName: string, tone: string): string {
+export function greetingPath(firstName: string, tone: string, daypart = 'day'): string {
   const key = crypto
     .createHash('sha256')
     .update(firstName.trim().toLowerCase())
     .digest('hex')
     .slice(0, 16)
-  return `greetings/${tone.toLowerCase()}/${key}.mp3`
+  // Daypart is part of the path so "Good morning, Latasha" and "Good evening,
+  // Latasha" are separate cached objects rather than one overwriting the other.
+  return `greetings/${tone.toLowerCase()}/${daypart}/${key}.mp3`
 }
 
 /** Public CDN URL for an object already in the bucket. */
