@@ -57,8 +57,24 @@ export function SidebarPromo({ promo }: { promo: FounderPromo }) {
           boxShadow: eligible ? '0 5px 0 rgba(47,165,82,.4)' : 'none',
         }}
       >
-        <div style={{ fontSize: 22, lineHeight: 1 }} aria-hidden="true">
-          <Icon name="gift" size={22} color="#fff" />
+        {/* The card centres its TEXT, but an SVG is a block element and ignores
+            text-align — which left the icon jammed in the top-left corner. It
+            needs its own centred flex container. A soft disc also gives it a
+            little presence instead of floating loose. */}
+        <div style={{ display: 'flex', justifyContent: 'center' }} aria-hidden="true">
+          <span
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              background: eligible ? 'rgba(255,255,255,.22)' : '#e4efdb',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="gift" size={20} color={eligible ? '#fff' : lc.greenDark} />
+          </span>
         </div>
         <div
           style={{
@@ -129,8 +145,9 @@ export function SidebarPromo({ promo }: { promo: FounderPromo }) {
             >
               <div style={{ height: '100%', width: `${pct}%`, background: lc.green, borderRadius: 4 }} />
             </div>
-            <div style={{ fontSize: 10.5, color: lc.faint, fontWeight: 700, marginTop: 7, lineHeight: 1.35 }}>
-              Complete {REQUIRED_SESSIONS} sessions to unlock a 1:1 with the founder.
+            <div style={{ fontSize: 10.5, color: lc.faint, fontWeight: 700, marginTop: 7, lineHeight: 1.4 }}>
+              Complete {REQUIRED_SESSIONS} sessions to unlock a 1:1 with the founder and{' '}
+              <strong style={{ color: lc.greenDark }}>1 year free</strong>.
             </div>
           </>
         )}
