@@ -114,30 +114,79 @@ async function generatePersonalGreeting(
 }
 
 
-// Generate a short, concrete WORKED EXAMPLE of a good answer to the task —
-// an actual spoken response a learner could model, not abstract tips. This is
-// task-specific (not user-specific), so it caches once per lesson+tone and is
-// free on every subsequent hit. Kept separate from the coach intro so each can
-// be cached and reused independently.
+// Map module number to the learner's proficiency. Module 1 is a beginner; the
+// example must be simple enough that a beginner could actually SAY it. Later
+// modules can raise the bar. A learning tool whose examples are written at C2
+// level teaches nobody — the model answer has to sit just above where the
+// learner already is, not far above it.
+function proficiencyForModule(moduleNumber: number): { level: string; guidance: string } {
+  if (moduleNumber <= 1) {
+    return {
+      level: 'beginner (CEFR A2-B1)',
+      guidance:
+        'Use simple, everyday words a beginner English learner would know. Short sentences (8-14 words). ' +
+        'NO literary or advanced vocabulary (avoid words like "bustling", "shimmered", "enveloped", "vibrant", "aroma"). ' +
+        'Plain concrete details a real person would say out loud. Sound like a confident beginner, not a novelist.',
+    }
+  }
+  if (moduleNumber <= 3) {
+    return {
+      level: 'intermediate (CEFR B1-B2)',
+      guidance:
+        'Clear everyday language with a little more variety. Medium sentences. A few descriptive words are fine, ' +
+        'but keep it natural and speakable, not literary. Sound like a comfortable intermediate speaker.',
+    }
+  }
+  return {
+    level: 'advanced (CEFR B2-C1)',
+    guidance:
+      'More expressive language and varied sentences are welcome, but it must still sound like natural spoken English ' +
+      'a person would actually say — never purple or over-written.',
+  }
+}
+
+// Short tone brief so the example matches the coach the user picked. Choose the
+// Funny coach and the example should be genuinely light; a flat neutral example
+// would undercut the vibe they selected.
+const EXAMPLE_TONE_BRIEF: Record<string, string> = {
+  Funny: 'Make it genuinely light and a bit funny — a small joke or playful aside is good. Still complete the task.',
+  Supportive: 'Warm, gentle, encouraging in feel.',
+  Inspiring: 'A little uplifting and energised, but not over the top.',
+  Bossy: 'Direct, punchy, confident and to the point.',
+  Diplomatic: 'Calm, measured, polished.',
+  Normal: 'Clear, friendly, everyday.',
+}
+
+// Generate a short WORKED EXAMPLE pitched at the learner's LEVEL and in the
+// coach's TONE. Task-specific, so it caches per (lesson x tone) — and because
+// proficiency comes from the module (part of that key), level and tone are both
+// already distinct cache entries.
 async function generateWorkedExample(
   lessonTitle: string,
   practicePrompt: string,
   lessonExplanation: string,
+  moduleNumber: number,
+  tone: string,
 ): Promise<string> {
   try {
+    const prof = proficiencyForModule(moduleNumber)
+    const toneBrief = EXAMPLE_TONE_BRIEF[tone] || EXAMPLE_TONE_BRIEF['Normal']
     const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
           content:
-            'You write a single short model answer that a learner could say out loud to complete a speaking task. ' +
-            'Write ONLY the spoken answer itself — first person, natural, 45-70 words, no preamble, no quotation marks, ' +
-            'no "here is an example", no coaching. It must actually satisfy the task and lightly demonstrate the lesson skill.',
+            'You write a single short model answer that a LANGUAGE LEARNER could say out loud to complete a speaking task. ' +
+            'The learner is here to improve, so the example must be at THEIR level — achievable, not intimidating. ' +
+            `Proficiency: ${prof.level}. ${prof.guidance} ` +
+            `Tone: ${toneBrief} ` +
+            'Write ONLY the spoken answer itself — first person, natural, 40-60 words, no preamble, no quotation marks, ' +
+            'no "here is an example", no coaching notes. It must satisfy the task and lightly demonstrate the lesson skill.',
         },
         {
           role: 'user',
-          content: `Lesson: ${lessonTitle}\nSkill: ${lessonExplanation}\nTask: ${practicePrompt}\n\nWrite one model spoken answer.`,
+          content: `Lesson: ${lessonTitle}\nSkill: ${lessonExplanation}\nTask: ${practicePrompt}\n\nWrite one model spoken answer at the stated level and tone.`,
         },
       ],
       temperature: 0.8,
@@ -145,7 +194,6 @@ async function generateWorkedExample(
     })
     return completion.choices[0]?.message?.content?.trim() || ''
   } catch (e) {
-    // An example is a nice-to-have; never fail the lesson over it.
     console.error('⚠️ Worked-example generation failed (non-critical):', e)
     return ''
   }
@@ -247,20 +295,25 @@ export async function POST(request: Request) {
 
       const greeting = await generatePersonalGreeting(userName, tone, daypart, supabaseAdmin)
 
-      // The worked example is cached on the row. Rows created before this
-      // column existed won't have one yet — generate it once, store it, and
-      // every later visitor gets it free. It's task-specific, not per-user.
-      let workedExample: string = cachedIntro.practice_example_ai || ''
+      // The worked example is cached on the row. Regenerate if it's missing OR
+      // if it predates the proficiency/tone rewrite — old examples were written
+      // at one flat (too-high) level. The tag is stored inline so we don't need
+      // another column; it's stripped before the example is ever shown.
+      const EXAMPLE_VERSION = 'v2'
+      const raw: string = cachedIntro.practice_example_ai || ''
+      let workedExample = raw.startsWith(`[${EXAMPLE_VERSION}]`) ? raw.slice(`[${EXAMPLE_VERSION}]`.length) : ''
       if (!workedExample) {
         workedExample = await generateWorkedExample(
           cachedIntro.lesson_title || '',
           cachedIntro.practice_prompt || '',
           cachedIntro.intro_text || '',
+          parseInt(moduleId),
+          tone,
         )
         if (workedExample) {
           await supabaseAdmin
             .from('cached_lesson_intros')
-            .update({ practice_example_ai: workedExample })
+            .update({ practice_example_ai: `[${EXAMPLE_VERSION}]${workedExample}` })
             .eq('id', cachedIntro.id)
         }
       }
@@ -351,6 +404,8 @@ Remember: You're a ${tone} coach. Start DIRECTLY with the content (no greeting).
         lesson.level_title || '',
         lesson.practice_prompt || '',
         lesson.lesson_explanation || '',
+        parseInt(moduleId),
+        tone,
       ),
     ])
 
@@ -399,7 +454,7 @@ Remember: You're a ${tone} coach. Start DIRECTLY with the content (no greeting).
           intro_audio_url: audioUrl, // streams from the CDN
           intro_audio_base64: audioBase64, // fallback only; '' when the upload worked
           practice_prompt: practicePrompt,
-          practice_example_ai: workedExample,
+          practice_example_ai: workedExample ? `[v2]${workedExample}` : null,
           lesson_title: levelTitle,
           generation_count: 1
         })

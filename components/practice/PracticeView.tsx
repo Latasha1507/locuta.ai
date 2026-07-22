@@ -397,8 +397,6 @@ export function PracticeView(d: PracticeData) {
   //                                        explanation (content gap)
   // The task alone is NOT a lesson: asking someone to perform "Show Don't Tell"
   // without telling them what it means is how you lose a user on lesson one.
-  const lessonText = d.lessonExplanation || introTranscript || ''
-  const hasLesson = !!(lessonText || d.practiceExample || introLoading)
 
   const recording = rec === 'recording'
   const captured = rec === 'done' && !!audioBlob
@@ -431,10 +429,10 @@ export function PracticeView(d: PracticeData) {
         }
       `}</style>
 
-      <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-3 px-4 pb-10 pt-4 lg:gap-4 lg:px-8 lg:pb-8 lg:pt-5">
+      <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-3 px-4 pb-6 pt-3 lg:gap-3 lg:px-8 lg:pb-5 lg:pt-4">
         {/* HEADER */}
         <div
-          className="flex items-center gap-4 p-4 lg:px-6 lg:py-[18px]"
+          className="flex items-center gap-4 p-3 lg:px-6 lg:py-3"
           style={{
             background: 'linear-gradient(135deg,#eafaef,#dff5e6)',
             border: '2px solid #cdeacf',
@@ -527,10 +525,8 @@ export function PracticeView(d: PracticeData) {
             screen, no scrolling. Stacks on mobile. */}
         <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-4">
 
-        {/* LEFT COLUMN — hear it, read it, see a model answer. The order mirrors
-            how you'd actually learn: the coach greets you and explains, you can
-            re-read at your own pace, then you see one concrete example of a good
-            answer before you try your own. */}
+        {/* LEFT COLUMN — listen. Just the coach: hear the lesson in your coach's
+            voice. Everything you act on (example, task, mic) is on the right. */}
         <div className="flex flex-col gap-3 lg:gap-4">
 
         {/* 1 — COACH AUDIO (top of the left column). Loads by itself; a quiet
@@ -612,48 +608,15 @@ export function PracticeView(d: PracticeData) {
           )}
         </section>
 
-        {/* 2 — WRITTEN LESSON (below the audio). Same content, readable at your
-            own pace. Server-rendered so it's there at 0ms. */}
-        {hasLesson && (
-          <section
-            className="lsn-card p-[18px] lg:px-6 lg:py-5"
-            style={{ background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 20, boxShadow: `0 5px 0 ${lc.cardBorder}` }}
-          >
-            <StepHead icon="book" title="The lesson" subtitle="Read it through before you record." />
-            <div
-              style={{
-                maxHeight: 220,
-                overflowY: 'auto',
-                fontSize: 14.5,
-                lineHeight: 1.65,
-                color: '#4a5645',
-                fontWeight: 600,
-                paddingRight: 6,
-                marginTop: 4,
-              }}
-            >
-              {lessonText
-                ? lessonText
-                    .split(/\n+/)
-                    .filter(Boolean)
-                    .map((para, i) => (
-                      <p key={i} style={{ margin: '0 0 10px' }}>
-                        {para}
-                      </p>
-                    ))
-                : introLoading && (
-                    <p style={{ margin: '0 0 10px', color: lc.faint, fontWeight: 700 }}>
-                      Your coach is writing this lesson…
-                    </p>
-                  )}
-            </div>
-          </section>
-        )}
 
-        {/* 3 — WORKED EXAMPLE (bottom of the left column). A real model answer to
-            THIS task — what a good response actually sounds like — so the user
-            isn't guessing what "good" means before they record. AI-generated,
-            cached per lesson. */}
+        </div>
+
+        {/* RIGHT COLUMN — everything the user acts on: example, then task, then mic */}
+        <div className="lg:sticky lg:top-4 flex flex-col gap-2.5 lg:gap-3">
+
+        {/* EXAMPLE (top of the right column) — a model answer at the learner's own
+            level and in their coach's tone, so they see an achievable target
+            before they read the task and record. */}
         {(coachExample || introLoading) && (
           <section
             className="lsn-card p-[18px] lg:px-6 lg:py-5"
@@ -699,12 +662,7 @@ export function PracticeView(d: PracticeData) {
           </section>
         )}
 
-        </div>
-
-        {/* RIGHT COLUMN — task on top, recorder below, both in view together */}
-        <div className="lg:sticky lg:top-4 flex flex-col gap-3 lg:gap-4">
-
-        {/* TASK — sits directly above the mic so the instruction and the button
+        {/* TASK — below the example, directly above the mic so the instruction and button
             to answer it are one glance apart. Server-rendered, on screen the
             instant the page paints. */}
         <section
@@ -728,7 +686,7 @@ export function PracticeView(d: PracticeData) {
 
         {/* RECORD */}
         <section
-          className="p-[18px] lg:p-6"
+          className="p-[18px] lg:px-6 lg:py-5"
           style={{ background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 22, boxShadow: `0 5px 0 ${lc.cardBorder}` }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -764,7 +722,7 @@ export function PracticeView(d: PracticeData) {
 
           {/* Waveform — driven by the real mic level while recording */}
           <div
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 60, margin: '8px 0 22px' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 46, margin: '4px 0 14px' }}
             aria-hidden="true"
           >
             {WAVE.map((h, i) => {
@@ -831,7 +789,7 @@ export function PracticeView(d: PracticeData) {
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
             <button
               type="button"
               onClick={toggleRecord}
@@ -839,8 +797,8 @@ export function PracticeView(d: PracticeData) {
               aria-label={recording ? 'Stop recording' : 'Start recording'}
               style={{
                 position: 'relative',
-                width: 104,
-                height: 104,
+                width: 92,
+                height: 92,
                 borderRadius: '50%',
                 border: 0,
                 cursor: submitting ? 'not-allowed' : 'pointer',
