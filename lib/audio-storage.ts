@@ -26,6 +26,15 @@ export function introPath(category: string, moduleNumber: number, levelNumber: n
 }
 
 /**
+ * Path for a user's own practice recording, so it can be played back on the
+ * feedback page next to the coach version. Keyed by session id (unique) under
+ * the user's id, so recordings are namespaced per user and never collide.
+ */
+export function userRecordingPath(userId: string, sessionId: string): string {
+  return `recordings/${userId}/${sessionId}.webm`
+}
+
+/**
  * Deterministic path for a personalised greeting ("Hello, Latasha.").
  * Keyed by a hash of the name so we never put a user's name in a public URL,
  * and so two users called Latasha share one object instead of paying for two
@@ -65,9 +74,10 @@ export async function uploadAudio(
   supabase: SupabaseClient,
   path: string,
   buffer: Buffer,
+  contentType = 'audio/mpeg',
 ): Promise<string | null> {
   const { error } = await supabase.storage.from(AUDIO_BUCKET).upload(path, buffer, {
-    contentType: 'audio/mpeg',
+    contentType,
     upsert: true,
     // Immutable: the object at a given path never changes meaning, so let the
     // CDN and the browser keep it for a year.

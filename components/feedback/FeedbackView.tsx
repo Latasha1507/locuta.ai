@@ -26,7 +26,11 @@ export interface FeedbackData {
   detailedFeedback: string
   /** 2-3 lesson-relevant words to expand vocabulary. May be empty. */
   wordsToLearn: { word: string; meaning: string; example: string }[]
+  /** Before/after corrections from the user's own sentences. May be empty. */
+  grammarFixes: { before: string; after: string; why: string }[]
   transcript: string
+  /** The user's own recording, for side-by-side compare. May be empty. */
+  userAudioUrl: string
   exampleText: string
   exampleAudioUrl: string
   /** First time this level has ever been passed → the sticker is new. */
@@ -257,50 +261,46 @@ export function FeedbackView(d: FeedbackData) {
               </div>
             </section>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <Link
-                href={d.passed ? d.nextHref : d.retryHref}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 9,
-                  background: lc.green,
-                  color: '#fff',
-                  padding: 15,
-                  borderRadius: 15,
-                  fontFamily: fontDisplay,
-                  fontWeight: 800,
-                  fontSize: 14.5,
-                  textDecoration: 'none',
-                  boxShadow: `0 5px 0 ${lc.greenDark}`,
-                }}
-              >
-                <Icon name={d.passed ? 'arrow' : 'mic'} size={17} color="#fff" />
-                {d.passed ? 'NEXT LESSON' : 'TRY AGAIN'}
-              </Link>
-              {d.passed && (
-                <Link
-                  href={d.retryHref}
-                  style={{
-                    display: 'block',
-                    textAlign: 'center',
-                    background: '#fff',
-                    color: lc.ink,
-                    border: `2px solid ${lc.cardBorder}`,
-                    padding: 13,
-                    borderRadius: 14,
-                    fontFamily: fontDisplay,
-                    fontWeight: 800,
-                    fontSize: 13.5,
-                    textDecoration: 'none',
-                    boxShadow: `0 4px 0 ${lc.cardBorder}`,
-                  }}
-                >
-                  Practise this again
-                </Link>
-              )}
-            </div>
+            {/* Coach read moved into the LEFT column so it isn't stacked under
+                everything else on the right, and so both columns carry weight.
+                (Nav buttons removed here — the persistent action bar at the
+                bottom of the page already does Next / Practice again / Back.) */}
+            <Card title={`Your ${d.tone} coach's read`} icon="chat" iconColor={lc.purple}>
+              <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4a5645', fontWeight: 600, margin: 0 }}>
+                {d.detailedFeedback}
+              </p>
+            </Card>
+
+            {/* Words to learn — also on the left, under the coach read */}
+            {d.wordsToLearn && d.wordsToLearn.length > 0 && (
+              <Card title="Words to learn" icon="book" iconColor={lc.blue}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {d.wordsToLearn.slice(0, 3).map((w, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        background: '#f3f9ff',
+                        border: '2px solid #d5e6fb',
+                        borderRadius: 14,
+                        padding: '12px 14px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 15, color: '#0f7fb8' }}>
+                          {w.word}
+                        </span>
+                        <span style={{ fontSize: 13, color: lc.muted, fontWeight: 600 }}>{w.meaning}</span>
+                      </div>
+                      {w.example && (
+                        <p style={{ margin: '6px 0 0', fontSize: 13, color: '#3c4f63', fontWeight: 600, fontStyle: 'italic' }}>
+                          &ldquo;{w.example}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
           </div>
 
           {/* RIGHT — the detail */}
@@ -367,41 +367,35 @@ export function FeedbackView(d: FeedbackData) {
               </Card>
             </div>
 
-            {/* Coach's read */}
-            {d.detailedFeedback && (
-              <Card title={`Your ${d.tone} coach's read`} icon="chat" iconColor={lc.purple}>
-                <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4a5645', fontWeight: 600, margin: 0 }}>
-                  {d.detailedFeedback}
-                </p>
-              </Card>
-            )}
-
-            {/* WORDS TO LEARN — 2-3 words pitched at this learner's level to
-                grow vocabulary, each with a plain-English meaning and an example
-                sentence. Only shown when the coach actually returned some. */}
-            {d.wordsToLearn && d.wordsToLearn.length > 0 && (
-              <Card title="Words to learn" icon="book" iconColor={lc.blue}>
+            {/* GRAMMAR FIXES — a small before/after from the user's OWN words.
+                Concrete and personal: "you said X, the cleaner version is Y".
+                Only shown when the coach found real mistakes. */}
+            {d.grammarFixes && d.grammarFixes.length > 0 && (
+              <Card title="Quick grammar fixes" icon="check" iconColor={lc.blue}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {d.wordsToLearn.slice(0, 3).map((w, i) => (
+                  {d.grammarFixes.slice(0, 3).map((g, i) => (
                     <div
                       key={i}
                       style={{
-                        background: '#f3f9ff',
-                        border: '2px solid #d5e6fb',
+                        border: `2px solid ${lc.cardBorder}`,
                         borderRadius: 14,
-                        padding: '12px 14px',
+                        overflow: 'hidden',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 15, color: '#0f7fb8' }}>
-                          {w.word}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '9px 12px', background: '#fff6f2' }}>
+                        <Icon name="mic" size={13} color={lc.coral} style={{ marginTop: 2, flexShrink: 0 }} />
+                        <span style={{ fontSize: 13.5, color: '#8a5a4e', fontWeight: 600, textDecoration: 'line-through', textDecorationColor: '#e8a798' }}>
+                          {g.before}
                         </span>
-                        <span style={{ fontSize: 13, color: lc.muted, fontWeight: 600 }}>{w.meaning}</span>
                       </div>
-                      {w.example && (
-                        <p style={{ margin: '6px 0 0', fontSize: 13, color: '#3c4f63', fontWeight: 600, fontStyle: 'italic' }}>
-                          &ldquo;{w.example}&rdquo;
-                        </p>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '9px 12px', background: '#f2fbf4' }}>
+                        <Icon name="check" size={13} color={lc.greenDark} style={{ marginTop: 2, flexShrink: 0 }} />
+                        <span style={{ fontSize: 13.5, color: '#33482e', fontWeight: 700 }}>{g.after}</span>
+                      </div>
+                      {g.why && (
+                        <div style={{ padding: '6px 12px', fontSize: 11.5, color: lc.faint, fontWeight: 700, background: '#fff' }}>
+                          {g.why}
+                        </div>
                       )}
                     </div>
                   ))}
@@ -416,16 +410,61 @@ export function FeedbackView(d: FeedbackData) {
                 your details, rewritten the way a strong speaker would deliver it, in your {d.tone} coach&apos;s voice.
               </p>
 
+              {/* SIDE-BY-SIDE AUDIO COMPARE — the user's own recording next to
+                  the coach version, so they can hear the difference directly.
+                  Only shows the coach side once the example has been generated
+                  (that's what carries example.audioUrl). */}
+              {(d.userAudioUrl || example.audioUrl) && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" style={{ marginBottom: 14 }}>
+                  <div
+                    style={{
+                      background: '#fff6f2',
+                      border: '2px solid #ffdccf',
+                      borderRadius: 14,
+                      padding: '12px 13px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 9 }}>
+                      <Icon name="mic" size={15} color={lc.coral} />
+                      <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 12.5, color: '#c0392b' }}>
+                        You said it
+                      </span>
+                    </div>
+                    {d.userAudioUrl ? (
+                      <audio controls preload="none" src={d.userAudioUrl} style={{ width: '100%' }} />
+                    ) : (
+                      <p style={{ fontSize: 12, color: lc.faint, fontWeight: 700, margin: 0 }}>
+                        Recording not available for this attempt.
+                      </p>
+                    )}
+                  </div>
+                  <div
+                    style={{
+                      background: '#f2fbf4',
+                      border: '2px solid #cfe9c6',
+                      borderRadius: 14,
+                      padding: '12px 13px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 9 }}>
+                      <Icon name="crown" size={15} color={lc.greenDark} />
+                      <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 12.5, color: lc.greenDark }}>
+                        Coach version
+                      </span>
+                    </div>
+                    {example.audioUrl ? (
+                      <audio controls preload="none" src={example.audioUrl} style={{ width: '100%' }} />
+                    ) : (
+                      <p style={{ fontSize: 12, color: lc.faint, fontWeight: 700, margin: 0 }}>
+                        Generate the polished version below to hear it.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {example.text ? (
                 <div style={{ animation: 'lp-rise .4s ease both' }}>
-                  {example.audioUrl && (
-                    <audio
-                      controls
-                      preload="none"
-                      src={example.audioUrl}
-                      style={{ width: '100%', marginBottom: 12 }}
-                    />
-                  )}
                   <div
                     style={{
                       background: '#f2fbf4',

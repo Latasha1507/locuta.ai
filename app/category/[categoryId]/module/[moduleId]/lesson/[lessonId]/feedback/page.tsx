@@ -148,7 +148,15 @@ export default async function FeedbackPage({
             )
           : []
       }
+      grammarFixes={
+        Array.isArray(feedback.grammar_fixes)
+          ? (feedback.grammar_fixes as { before: string; after: string; why: string }[]).filter(
+              (g) => g && g.before && g.after,
+            )
+          : []
+      }
       transcript={String(session.user_transcript ?? '')}
+      userAudioUrl={String(session.user_audio_url ?? '')}
       exampleText={String(session.ai_example_text ?? '')}
       exampleAudioUrl={String(session.ai_example_audio_url ?? '')}
       newlyCompleted={newlyCompleted}

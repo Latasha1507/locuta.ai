@@ -1,6 +1,7 @@
 // app/api/feedback/route.ts
 import { createClient } from '@/lib/supabase/server'
 import { checkSessionLimitServer } from '@/lib/check-session-limit-server'
+import { uploadAudio, userRecordingPath } from '@/lib/audio-storage'
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
@@ -368,10 +369,15 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
   },
   "words_to_learn": [
     {"word": "vivid", "meaning": "producing a strong, clear picture in the mind", "example": "She gave a vivid description of the beach."}
+  ],
+  "grammar_fixes": [
+    {"before": "I go to beach yesterday", "after": "I went to the beach yesterday", "why": "past tense + missing article"}
   ]
 }
 
-WORDS TO LEARN: pick 2-3 useful words that would genuinely help THIS learner say what they were trying to say, pitched at their level (Level ${levelNumber}). Prefer words that upgrade something they actually attempted. "meaning" must be a short plain-English definition (max ~10 words). "example" is one short natural sentence using the word. If the response is very strong and there's nothing useful to add, return fewer or an empty array — never pad with words they clearly already know.
+GRAMMAR_FIXES: pull 1-3 SHORT phrases the learner ACTUALLY said that had a grammar mistake, and show the corrected version. "before" must be their real words (quote from the transcript), "after" is the fix, "why" is a 2-5 word reason (e.g. "past tense", "missing article", "subject-verb agreement"). If their grammar was clean, return an empty array — never invent mistakes.
+
+WORDS_TO_LEARN: pick 2-3 useful words that would genuinely help THIS learner say what they were trying to say, pitched at their level (Level ${levelNumber}). "meaning" is a short plain-English definition (max ~10 words). "example" is one short natural sentence using the word. If the response is already strong, return fewer or an empty array — never pad with words they clearly already know.
 
 Be encouraging but honest. If non-English content detected, reduce overall score significantly.`
 
@@ -440,6 +446,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
         improvements: ['Practice more', 'Focus on task requirements'],
         detailed_feedback: 'Keep practicing to improve your speaking skills.',
         words_to_learn: [],
+        grammar_fixes: [],
         focus_area_scores: { Clarity: 70, Confidence: 70, Delivery: 70 },
         linguistic_analysis: {
           grammar: { score: 70, issues: [], suggestions: [] },
@@ -467,6 +474,24 @@ Be encouraging but honest. If non-English content detected, reduce overall score
     console.log('💾 Attempting to save session...')
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
+    // Persist the user's OWN recording so it can be replayed on the feedback
+    // page beside the coach version. The blob was already read for Whisper;
+    // we upload the same bytes. Non-fatal: if it fails, the compare UI simply
+    // falls back to "recording unavailable" rather than blocking feedback.
+    let userAudioUrl = ''
+    try {
+      const audioBuffer = Buffer.from(await audioFile.arrayBuffer())
+      const url = await uploadAudio(
+        supabase,
+        userRecordingPath(user.id, sessionId),
+        audioBuffer,
+        audioFile.type || 'audio/webm',
+      )
+      if (url) userAudioUrl = url
+    } catch (e) {
+      console.error('⚠️ Failed to store user recording (non-critical):', e)
+    }
+
     const { data: sessionData, error: insertError } = await supabase
       .from('sessions')
       .insert({
@@ -477,6 +502,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
         level_number: levelNumber,
         tone: tone,
         user_transcript: userTranscript,
+        user_audio_url: userAudioUrl,
         ai_example_text: aiExampleText,
         ai_example_audio: aiAudioBase64,
         feedback: feedback,
