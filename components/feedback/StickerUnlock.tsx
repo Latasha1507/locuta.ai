@@ -234,39 +234,50 @@ export function StickerUnlock({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Link
-            href={nextHref}
+          {/* Primary = SEE MY FEEDBACK. The user just recorded; the thing they
+              actually want is to see how they did, not to skip past it. This
+              button dismisses the popup, revealing the full feedback already
+              rendered behind it. "Next lesson" stays available but quiet — it's
+              the action for *after* they've read their feedback. */}
+          <button
+            type="button"
+            onClick={onClose}
             style={{
-              display: 'block',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              width: '100%',
               background: lc.green,
               color: '#fff',
+              border: 0,
               padding: 14,
               borderRadius: 15,
               fontFamily: fontDisplay,
               fontWeight: 800,
               fontSize: 14.5,
-              textDecoration: 'none',
+              cursor: 'pointer',
               boxShadow: `0 5px 0 ${lc.greenDark}`,
             }}
           >
-            NEXT LESSON
-          </Link>
-          <button
-            type="button"
-            onClick={onClose}
+            <Icon name="target" size={16} color="#fff" />
+            SEE MY FEEDBACK
+          </button>
+          <Link
+            href={nextHref}
             style={{
-              background: 'none',
-              border: 0,
+              display: 'block',
               padding: 8,
-              cursor: 'pointer',
+              textAlign: 'center',
               fontFamily: fontDisplay,
               fontWeight: 800,
               fontSize: 13,
               color: lc.faint,
+              textDecoration: 'none',
             }}
           >
-            See my feedback
-          </button>
+            Skip to next lesson →
+          </Link>
         </div>
       </div>
     </div>

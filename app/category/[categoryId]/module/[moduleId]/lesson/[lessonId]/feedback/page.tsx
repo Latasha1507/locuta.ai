@@ -141,6 +141,13 @@ export default async function FeedbackPage({
       strengths={(feedback.strengths ?? []) as string[]}
       improvements={(feedback.improvements ?? []) as string[]}
       detailedFeedback={String(feedback.detailed_feedback ?? '')}
+      wordsToLearn={
+        Array.isArray(feedback.words_to_learn)
+          ? (feedback.words_to_learn as { word: string; meaning: string; example: string }[]).filter(
+              (w) => w && w.word,
+            )
+          : []
+      }
       transcript={String(session.user_transcript ?? '')}
       exampleText={String(session.ai_example_text ?? '')}
       exampleAudioUrl={String(session.ai_example_audio_url ?? '')}

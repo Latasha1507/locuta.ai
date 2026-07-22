@@ -365,8 +365,13 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
     "is_english_only": true,
     "non_english_words_detected": [],
     "language_score_penalty": 0
-  }
+  },
+  "words_to_learn": [
+    {"word": "vivid", "meaning": "producing a strong, clear picture in the mind", "example": "She gave a vivid description of the beach."}
+  ]
 }
+
+WORDS TO LEARN: pick 2-3 useful words that would genuinely help THIS learner say what they were trying to say, pitched at their level (Level ${levelNumber}). Prefer words that upgrade something they actually attempted. "meaning" must be a short plain-English definition (max ~10 words). "example" is one short natural sentence using the word. If the response is very strong and there's nothing useful to add, return fewer or an empty array — never pad with words they clearly already know.
 
 Be encouraging but honest. If non-English content detected, reduce overall score significantly.`
 
@@ -434,6 +439,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
         strengths: ['Good effort', 'Clear speaking', 'Engaged with task'],
         improvements: ['Practice more', 'Focus on task requirements'],
         detailed_feedback: 'Keep practicing to improve your speaking skills.',
+        words_to_learn: [],
         focus_area_scores: { Clarity: 70, Confidence: 70, Delivery: 70 },
         linguistic_analysis: {
           grammar: { score: 70, issues: [], suggestions: [] },

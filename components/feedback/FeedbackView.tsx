@@ -24,6 +24,8 @@ export interface FeedbackData {
   strengths: string[]
   improvements: string[]
   detailedFeedback: string
+  /** 2-3 lesson-relevant words to expand vocabulary. May be empty. */
+  wordsToLearn: { word: string; meaning: string; example: string }[]
   transcript: string
   exampleText: string
   exampleAudioUrl: string
@@ -371,6 +373,39 @@ export function FeedbackView(d: FeedbackData) {
                 <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4a5645', fontWeight: 600, margin: 0 }}>
                   {d.detailedFeedback}
                 </p>
+              </Card>
+            )}
+
+            {/* WORDS TO LEARN — 2-3 words pitched at this learner's level to
+                grow vocabulary, each with a plain-English meaning and an example
+                sentence. Only shown when the coach actually returned some. */}
+            {d.wordsToLearn && d.wordsToLearn.length > 0 && (
+              <Card title="Words to learn" icon="book" iconColor={lc.blue}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {d.wordsToLearn.slice(0, 3).map((w, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        background: '#f3f9ff',
+                        border: '2px solid #d5e6fb',
+                        borderRadius: 14,
+                        padding: '12px 14px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 15, color: '#0f7fb8' }}>
+                          {w.word}
+                        </span>
+                        <span style={{ fontSize: 13, color: lc.muted, fontWeight: 600 }}>{w.meaning}</span>
+                      </div>
+                      {w.example && (
+                        <p style={{ margin: '6px 0 0', fontSize: 13, color: '#3c4f63', fontWeight: 600, fontStyle: 'italic' }}>
+                          &ldquo;{w.example}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </Card>
             )}
 
