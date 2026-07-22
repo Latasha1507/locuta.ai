@@ -1,31 +1,45 @@
 'use client'
 
-import { useState } from 'react'
-import FounderCallModal from '@/components/FounderCallModal'
 import { lc, fontDisplay } from '@/components/landing/tokens'
 import { Icon } from '@/components/ui/icons'
+
+/** Where the 1:1 is booked. Cal.com already collects name and email, which is
+    why there is no longer an in-app form in front of it. */
+export const FOUNDER_CALL_URL = 'https://cal.com/latasha-ukey/founder-feedback'
 
 export interface FounderPromo {
   /** Slots left, straight from founder_call_settings. */
   slotsRemaining: number
   /** Whether this user has already booked their call. */
   hasBooked: boolean
-  /** Days since the account was created. */
-  daysUsed: number
+  /** Scored practice sessions this user has completed. */
+  sessionsCompleted: number
 }
 
-/** Feedback is only useful from users who have actually used the product. */
-export const MIN_DAYS_FOR_FEEDBACK_CALL = 15
+/**
+ * One criterion, deliberately. The point of the call is to hear from someone
+ * who has genuinely lived in the product and formed opinions about it — not to
+ * reward loyalty or push conversion. 50 scored sessions is enough reps of the
+ * core loop (record → score → feedback) to have real views on all of it.
+ *
+ * Previously this gated on days since signup, which measured nothing: a user
+ * could register, never return, and qualify on day 15. The exact person we
+ * wanted to filter out was the easiest one to pass.
+ *
+ * At the trial's 10 sessions/day cap this is reachable in five days, so an
+ * engaged user hits it DURING their 14-day trial and sees the offer while
+ * they're still deciding whether to pay — a far better moment than after.
+ */
+export const REQUIRED_SESSIONS = 50
 
 export function SidebarPromo({ promo }: { promo: FounderPromo }) {
-  const [open, setOpen] = useState(false)
-
   // Nothing to offer: no slots left, or they've already had their call.
   if (promo.hasBooked || promo.slotsRemaining <= 0) return null
 
-  const daysToGo = MIN_DAYS_FOR_FEEDBACK_CALL - promo.daysUsed
-  const eligible = daysToGo <= 0
-  const pct = Math.min(100, Math.round((promo.daysUsed / MIN_DAYS_FOR_FEEDBACK_CALL) * 100))
+  const done = Math.min(promo.sessionsCompleted, REQUIRED_SESSIONS)
+  const toGo = Math.max(0, REQUIRED_SESSIONS - promo.sessionsCompleted)
+  const eligible = toGo === 0
+  const pct = Math.round((done / REQUIRED_SESSIONS) * 100)
 
   return (
     <>
@@ -56,7 +70,7 @@ export function SidebarPromo({ promo }: { promo: FounderPromo }) {
             lineHeight: 1.15,
           }}
         >
-          Get 1 year FREE
+          Become a founding user
         </div>
         <div
           style={{
@@ -66,16 +80,22 @@ export function SidebarPromo({ promo }: { promo: FounderPromo }) {
             marginTop: 3,
           }}
         >
+          {/* The offer alone read as a discount ad. What actually makes someone
+              claim an early spot is being told their input shapes the product —
+              the free year is the thank-you, not the pitch. */}
           {eligible
-            ? `Only ${promo.slotsRemaining} early ${promo.slotsRemaining === 1 ? 'spot' : 'spots'} left`
-            : `Unlocks in ${daysToGo} ${daysToGo === 1 ? 'day' : 'days'}`}
+            ? `Shape what we build · 1 year free · ${promo.slotsRemaining} ${promo.slotsRemaining === 1 ? 'spot' : 'spots'} left`
+            : `${done} of ${REQUIRED_SESSIONS} sessions · ${toGo} to unlock`}
         </div>
 
         {eligible ? (
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
+          <a
+            href={FOUNDER_CALL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
+              display: 'block',
+              textDecoration: 'none',
               marginTop: 12,
               width: '100%',
               background: '#fff',
@@ -90,8 +110,8 @@ export function SidebarPromo({ promo }: { promo: FounderPromo }) {
               boxShadow: '0 3px 0 rgba(0,0,0,.14)',
             }}
           >
-            Claim offer
-          </button>
+            Book my 1:1
+          </a>
         ) : (
           <>
             <div
@@ -110,19 +130,12 @@ export function SidebarPromo({ promo }: { promo: FounderPromo }) {
               <div style={{ height: '100%', width: `${pct}%`, background: lc.green, borderRadius: 4 }} />
             </div>
             <div style={{ fontSize: 10.5, color: lc.faint, fontWeight: 700, marginTop: 7, lineHeight: 1.35 }}>
-              Keep practising — we want your feedback once you know Locuta well.
+              Complete {REQUIRED_SESSIONS} sessions to unlock a 1:1 with the founder.
             </div>
           </>
         )}
       </div>
 
-      {open && (
-        <FounderCallModal
-          slotsRemaining={promo.slotsRemaining}
-          onClose={() => setOpen(false)}
-          onBooked={() => setOpen(false)}
-        />
-      )}
     </>
   )
 }

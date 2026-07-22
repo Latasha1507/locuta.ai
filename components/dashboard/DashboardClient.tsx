@@ -35,6 +35,7 @@ export interface DashboardData {
   stickersThisWeek: number
   lessonsCompleted: number
   lessonsTotal: number
+  daysPractised: number
   bestScore: number
   categories: CategoryStat[]
   nextHref: string
@@ -73,11 +74,14 @@ export function DashboardClient(d: DashboardData) {
       delay: 0,
     },
     {
-      label: 'Lessons complete',
-      value: d.lessonsCompleted,
-      suffix: ` / ${d.lessonsTotal}`,
-      hint: isNewUser ? 'Every expert started at 0' : 'Keep going',
-      icon: 'book',
+      // Deliberately NOT a lesson count. "1 / 300" framed the product as a
+      // backlog to grind through and made a real first session look like 0.3%
+      // of nothing. Days practised only ever goes up — a streak can break, but
+      // this number can't be taken away, which is the better thing to show.
+      label: 'Days practised',
+      value: d.daysPractised,
+      hint: d.daysPractised === 0 ? 'Today can be day one' : d.daysPractised === 1 ? 'Day one done' : 'Every one of these counts',
+      icon: 'check',
       color: lc.blue,
       delay: 0.06,
     },
@@ -116,7 +120,7 @@ export function DashboardClient(d: DashboardData) {
               className="text-[26px] lg:text-[32px]"
               style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-0.5px', lineHeight: 1.05, margin: 0 }}
             >
-              Welcome back, {d.firstName} <Icon name="wave" size={26} color="#3fce6f" style={{ display: 'inline-block', verticalAlign: '-4px' }} />
+              Welcome back, {d.firstName}
             </h1>
             <p style={{ fontSize: 14.5, color: lc.muted, fontWeight: 600, margin: '4px 0 0' }}>
               Ready to improve your speaking skills today?
@@ -159,26 +163,6 @@ export function DashboardClient(d: DashboardData) {
               <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 14, color: '#c07d08' }}>
                 {d.streak}
               </span>
-            </span>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                background: lc.green,
-                color: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontFamily: fontDisplay,
-                fontWeight: 800,
-                fontSize: 18,
-                boxShadow: `0 3px 0 ${lc.greenDark}`,
-                flex: 'none',
-              }}
-            >
-              {d.initial}
             </span>
           </div>
         </div>
