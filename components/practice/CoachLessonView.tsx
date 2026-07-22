@@ -112,6 +112,22 @@ export function CoachLessonView(d: CoachLessonData) {
         .lsn-row .lsn-chev{opacity:.35;transition:opacity .12s ease;}
         .lsn-row:hover .lsn-chev{opacity:1;}
         .lsn-row:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(63,206,111,.45)!important;}
+        /* Duolingo's current-node pulse, adapted: a soft ring breathes out of
+           the active lesson's tile. Movement marks THE action — this is the
+           one place on the list allowed to move. */
+        @keyframes lsn-pulse{
+          0%{box-shadow:0 3px 0 ${lc.greenDark},0 0 0 0 rgba(63,206,111,.55);}
+          70%{box-shadow:0 3px 0 ${lc.greenDark},0 0 0 11px rgba(63,206,111,0);}
+          100%{box-shadow:0 3px 0 ${lc.greenDark},0 0 0 0 rgba(63,206,111,0);}
+        }
+        .lsn-pulse{animation:lsn-pulse 2.2s ease-out infinite;}
+        /* Rows cascade in once on load — the list feels alive for a moment,
+           then gets out of the way. Not a hover effect; an entrance. */
+        @keyframes lsn-in{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:none;}}
+        .lsn-anim{animation:lsn-in .34s ease both;}
+        @media (prefers-reduced-motion:reduce){
+          .lsn-pulse,.lsn-anim{animation:none;}
+        }
       `}</style>
 
       <main className="mx-auto flex max-w-[1080px] flex-col gap-[18px] px-4 pb-11 pt-5 lg:gap-[22px] lg:px-8 lg:pb-14 lg:pt-7">
@@ -419,27 +435,62 @@ export function CoachLessonView(d: CoachLessonData) {
             )}
           </div>
 
-          {d.moduleTitle && (
-            <div
-              style={{
-                fontFamily: fontDisplay,
-                fontWeight: 800,
-                fontSize: 13,
-                color: lc.greenDark,
-                background: '#eafaef',
-                border: '2px solid #c7edd2',
-                borderRadius: 999,
-                padding: '5px 13px',
-                display: 'inline-block',
-                marginBottom: 14,
-              }}
-            >
-              {d.moduleTitle}
-            </div>
-          )}
+          {d.moduleTitle && (() => {
+            // Duolingo-style chunked progress: countable segments beat a
+            // percentage. "2 to go" is a goal; "75%" is a statistic. The strip
+            // lives on the module chip so the goal sits right above the list
+            // it describes. A finished module turns gold and earns a crown —
+            // completing something should LOOK like an event.
+            const doneInModule = d.lessons.filter((x) => x.done).length
+            const moduleSize = d.lessons.length
+            const moduleComplete = moduleSize > 0 && doneInModule === moduleSize
+            const toGo = moduleSize - doneInModule
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    fontFamily: fontDisplay,
+                    fontWeight: 800,
+                    fontSize: 13,
+                    color: moduleComplete ? '#8a6100' : lc.greenDark,
+                    background: moduleComplete ? '#fff6de' : '#eafaef',
+                    border: `2px solid ${moduleComplete ? '#f5d87a' : '#c7edd2'}`,
+                    borderRadius: 999,
+                    padding: '5px 13px',
+                  }}
+                >
+                  {moduleComplete && <Icon name="crown" size={14} color="#f5b301" />}
+                  {d.moduleTitle}
+                </div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'inline-flex', gap: 3 }} aria-hidden="true">
+                    {d.lessons.map((x, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          width: 14,
+                          height: 7,
+                          borderRadius: 4,
+                          background: x.done ? (moduleComplete ? '#f5b301' : lc.green) : '#dde7d6',
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <span style={{ fontSize: 11.5, fontWeight: 800, color: moduleComplete ? '#b8860b' : '#7d8a75' }}>
+                    {moduleComplete
+                      ? 'Module complete!'
+                      : `${doneInModule}/${moduleSize} · ${toGo} to go`}
+                  </span>
+                </div>
+              </div>
+            )
+          })()}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-            {d.lessons.map((l) => {
+            {d.lessons.map((l, rowIdx) => {
               const isNext = l.levelNumber === d.nextLevel && !l.locked
               const dc = DIFF_COLOR[l.difficulty]
               // Done rows are coloured by their score; unscored-but-done falls
@@ -449,6 +500,7 @@ export function CoachLessonView(d: CoachLessonData) {
               const inner = (
                 <>
                   <span
+                    className={isNext ? 'lsn-pulse' : undefined}
                     style={{
                       width: 44,
                       height: 44,
@@ -650,12 +702,13 @@ export function CoachLessonView(d: CoachLessonData) {
                   <div
                     key={l.levelNumber}
                     aria-disabled="true"
+                    className="lsn-anim"
                     title={
                       d.lockedReason === 'plan'
                         ? 'Upgrade to unlock the rest of this path'
                         : 'Finish the previous module to unlock this'
                     }
-                    style={{ ...cardStyle, cursor: 'not-allowed' }}
+                    style={{ ...cardStyle, cursor: 'not-allowed', animationDelay: `${rowIdx * 45}ms` }}
                   >
                     {inner}
                   </div>
@@ -666,8 +719,8 @@ export function CoachLessonView(d: CoachLessonData) {
                 <Link
                   key={l.levelNumber}
                   href={href(l.levelNumber)}
-                  className={isNext ? 'lsn-row lsn-active' : 'lsn-row'}
-                  style={cardStyle}
+                  className={isNext ? 'lsn-row lsn-active lsn-anim' : 'lsn-row lsn-anim'}
+                  style={{ ...cardStyle, animationDelay: `${rowIdx * 45}ms` }}
                 >
                   {inner}
                 </Link>
