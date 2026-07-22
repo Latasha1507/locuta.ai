@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
 import { Icon } from '@/components/ui/icons'
-import { Mascot } from '@/components/landing/Mascot'
+import { Mascot, type MascotMood } from '@/components/landing/Mascot'
 import { StickerUnlock } from './StickerUnlock'
 
 export interface FeedbackData {
@@ -185,7 +185,9 @@ export function FeedbackView(d: FeedbackData) {
             </h1>
           </div>
           <div className="hidden shrink-0 sm:block" style={{ transform: 'scale(.5)', transformOrigin: 'center right', margin: '-14px 0' }}>
-            <Mascot mood={d.passed ? 'cheer' : 'oops'} />
+            {/* 'cheer' has flat dash-eyes + a big dark mouth — reads creepy at small
+                sizes. 'happy' is the cute one: round blinking eyes and a smile. */}
+            <Mascot mood={d.passed ? 'happy' : 'oops'} />
           </div>
         </div>
 
@@ -265,7 +267,7 @@ export function FeedbackView(d: FeedbackData) {
                 everything else on the right, and so both columns carry weight.
                 (Nav buttons removed here — the persistent action bar at the
                 bottom of the page already does Next / Practice again / Back.) */}
-            <Card title={`Your ${d.tone} coach's read`} icon="chat" iconColor={lc.purple}>
+            <Card title={`Your ${d.tone} coach's read`} icon="chat" iconColor={lc.purple} mascot="happy">
               <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4a5645', fontWeight: 600, margin: 0 }}>
                 {d.detailedFeedback}
               </p>
@@ -273,7 +275,7 @@ export function FeedbackView(d: FeedbackData) {
 
             {/* Words to learn — also on the left, under the coach read */}
             {d.wordsToLearn && d.wordsToLearn.length > 0 && (
-              <Card title="Words to learn" icon="book" iconColor={lc.blue}>
+              <Card title="Words to learn" icon="book" iconColor={lc.blue} mascot="shy">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {d.wordsToLearn.slice(0, 3).map((w, i) => (
                     <div
@@ -301,77 +303,12 @@ export function FeedbackView(d: FeedbackData) {
                 </div>
               </Card>
             )}
-          </div>
-
-          {/* RIGHT — the detail */}
-          <div className="flex flex-col gap-3 lg:gap-4">
-            {/* Focus areas */}
-            {focusEntries.length > 0 && (
-              <Card title="How you scored" icon="target" iconColor={lc.blue}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {focusEntries.map(([name, val], i) => (
-                    <Bar key={name} label={name} value={Number(val) || 0} delay={i * 0.08} visible={scoreVisible} />
-                  ))}
-                </div>
-              </Card>
-            )}
-
-            {/* Strengths / improvements */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4">
-              <Card title="What worked" icon="star" iconColor={lc.green}>
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 9 }}>
-                  {(d.strengths.length ? d.strengths : ['You showed up and spoke. That is the hard part.']).map((s, i) => (
-                    <li
-                      key={i}
-                      style={{
-                        display: 'flex',
-                        gap: 9,
-                        fontSize: 13.5,
-                        lineHeight: 1.45,
-                        color: '#4a5645',
-                        fontWeight: 600,
-                        animation: `lp-rise .4s ease ${0.1 + i * 0.07}s both`,
-                      }}
-                    >
-                      <span style={{ color: lc.green, flex: 'none', marginTop: 2 }}>
-                        <Icon name="check" size={13} color={lc.green} />
-                      </span>
-                      {s}
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-
-              <Card title="Work on this" icon="bulb" iconColor={lc.orange}>
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 9 }}>
-                  {(d.improvements.length ? d.improvements : ['Keep going — more reps will sharpen this.']).map((s, i) => (
-                    <li
-                      key={i}
-                      style={{
-                        display: 'flex',
-                        gap: 9,
-                        fontSize: 13.5,
-                        lineHeight: 1.45,
-                        color: '#4a5645',
-                        fontWeight: 600,
-                        animation: `lp-rise .4s ease ${0.1 + i * 0.07}s both`,
-                      }}
-                    >
-                      <span style={{ flex: 'none', marginTop: 2 }}>
-                        <Icon name="bolt" size={13} color={lc.orange} />
-                      </span>
-                      {s}
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            </div>
 
             {/* GRAMMAR FIXES — a small before/after from the user's OWN words.
                 Concrete and personal: "you said X, the cleaner version is Y".
                 Only shown when the coach found real mistakes. */}
             {d.grammarFixes && d.grammarFixes.length > 0 && (
-              <Card title="Quick grammar fixes" icon="check" iconColor={lc.blue}>
+              <Card title="Quick grammar fixes" icon="check" iconColor={lc.blue} mascot="oops">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {d.grammarFixes.slice(0, 3).map((g, i) => (
                     <div
@@ -403,8 +340,74 @@ export function FeedbackView(d: FeedbackData) {
               </Card>
             )}
 
+          </div>
+
+          {/* RIGHT — the detail */}
+          <div className="flex flex-col gap-3 lg:gap-4">
+            {/* Focus areas */}
+            {focusEntries.length > 0 && (
+              <Card title="How you scored" icon="target" iconColor={lc.blue} mascot="cheer">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {focusEntries.map(([name, val], i) => (
+                    <Bar key={name} label={name} value={Number(val) || 0} delay={i * 0.08} visible={scoreVisible} />
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {/* Strengths / improvements */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4">
+              <Card title="What worked" icon="star" iconColor={lc.green} mascot="happy">
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  {(d.strengths.length ? d.strengths : ['You showed up and spoke. That is the hard part.']).map((s, i) => (
+                    <li
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        gap: 9,
+                        fontSize: 13.5,
+                        lineHeight: 1.45,
+                        color: '#4a5645',
+                        fontWeight: 600,
+                        animation: `lp-rise .4s ease ${0.1 + i * 0.07}s both`,
+                      }}
+                    >
+                      <span style={{ color: lc.green, flex: 'none', marginTop: 2 }}>
+                        <Icon name="check" size={13} color={lc.green} />
+                      </span>
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+
+              <Card title="Work on this" icon="bulb" iconColor={lc.orange} mascot="oops">
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  {(d.improvements.length ? d.improvements : ['Keep going — more reps will sharpen this.']).map((s, i) => (
+                    <li
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        gap: 9,
+                        fontSize: 13.5,
+                        lineHeight: 1.45,
+                        color: '#4a5645',
+                        fontWeight: 600,
+                        animation: `lp-rise .4s ease ${0.1 + i * 0.07}s both`,
+                      }}
+                    >
+                      <span style={{ flex: 'none', marginTop: 2 }}>
+                        <Icon name="bolt" size={13} color={lc.orange} />
+                      </span>
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </div>
+
             {/* THE MODEL ANSWER — the user's own attempt, done properly */}
-            <Card title="Your answer, done properly" icon="crown" iconColor={lc.green}>
+            <Card title="Your answer, done properly" icon="crown" iconColor={lc.green} mascot="cheer">
               <p style={{ fontSize: 12.5, color: lc.faint, fontWeight: 700, margin: '-4px 0 12px', lineHeight: 1.45 }}>
                 Not a generic sample — this is <strong style={{ color: lc.greenDark }}>your</strong> answer, your topic and
                 your details, rewritten the way a strong speaker would deliver it, in your {d.tone} coach&apos;s voice.
@@ -432,11 +435,18 @@ export function FeedbackView(d: FeedbackData) {
                       </span>
                     </div>
                     {d.userAudioUrl ? (
-                      <audio controls preload="none" src={d.userAudioUrl} style={{ width: '100%' }} />
+                      <ComparePlayer src={d.userAudioUrl} caption={d.transcript} accent={lc.coral} accentDark={lc.coralDark} />
                     ) : (
-                      <p style={{ fontSize: 12, color: lc.faint, fontWeight: 700, margin: 0 }}>
-                        Recording not available for this attempt.
-                      </p>
+                      <>
+                        <p style={{ fontSize: 12, color: lc.faint, fontWeight: 700, margin: 0 }}>
+                          Recording not available for this attempt.
+                        </p>
+                        {d.transcript && (
+                          <p style={{ margin: '8px 0 0', fontSize: 12.5, lineHeight: 1.55, color: '#4a5645', fontWeight: 600, fontStyle: 'italic', maxHeight: 130, overflowY: 'auto' }}>
+                            &ldquo;{d.transcript}&rdquo;
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                   <div
@@ -454,7 +464,7 @@ export function FeedbackView(d: FeedbackData) {
                       </span>
                     </div>
                     {example.audioUrl ? (
-                      <audio controls preload="none" src={example.audioUrl} style={{ width: '100%' }} />
+                      <ComparePlayer src={example.audioUrl} caption={example.text} accent={lc.green} accentDark={lc.greenDark} />
                     ) : (
                       <button
                         type="button"
@@ -486,26 +496,7 @@ export function FeedbackView(d: FeedbackData) {
                 </div>
               )}
 
-              {example.text ? (
-                <div style={{ animation: 'lp-rise .4s ease both' }}>
-                  <div
-                    style={{
-                      background: '#f2fbf4',
-                      border: '2px solid #cfe9c6',
-                      borderRadius: 14,
-                      padding: '14px 16px',
-                      fontSize: 14,
-                      lineHeight: 1.6,
-                      color: '#33482e',
-                      fontWeight: 600,
-                      maxHeight: 220,
-                      overflowY: 'auto',
-                    }}
-                  >
-                    {example.text}
-                  </div>
-                </div>
-              ) : (
+              {example.text ? null : (
                 <>
                   <button
                     type="button"
@@ -540,24 +531,6 @@ export function FeedbackView(d: FeedbackData) {
                 </>
               )}
             </Card>
-
-            {/* What you said */}
-            {d.transcript && (
-              <Card title="What you said" icon="mic" iconColor={lc.coral} collapsible>
-                <p
-                  style={{
-                    fontSize: 13.5,
-                    lineHeight: 1.6,
-                    color: lc.muted,
-                    fontWeight: 600,
-                    margin: 0,
-                    fontStyle: 'italic',
-                  }}
-                >
-                  &ldquo;{d.transcript}&rdquo;
-                </p>
-              </Card>
-            )}
 
             {d.sessionsRemainingToday <= 3 && d.sessionsRemainingToday < 9999 && (
               <p style={{ textAlign: 'center', fontSize: 12.5, color: lc.faint, fontWeight: 700 }}>
@@ -635,12 +608,16 @@ function Card({
   title,
   icon,
   iconColor,
+  mascot,
   children,
   collapsible = false,
 }: {
   title: string
   icon: string
   iconColor: string
+  /** When set, a tiny mascot with this expression replaces the icon —
+      personality instead of another flat glyph. */
+  mascot?: MascotMood
   children: React.ReactNode
   collapsible?: boolean
 }) {
@@ -668,7 +645,7 @@ function Card({
           fontFamily: 'inherit',
         }}
       >
-        <Icon name={icon} size={19} color={iconColor} />
+        {mascot ? <MiniMascot mood={mascot} /> : <Icon name={icon} size={19} color={iconColor} />}
         <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 15.5, color: lc.ink, flex: 1 }}>{title}</span>
         {collapsible && (
           <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 17, color: lc.faint }}>
@@ -678,6 +655,170 @@ function Card({
       </button>
       {open && children}
     </section>
+  )
+}
+
+/** The full 132x120 mascot scaled into an icon-sized slot. It keeps its idle
+    bob, so card headers feel alive instead of stamped. */
+function MiniMascot({ mood }: { mood: MascotMood }) {
+  return (
+    <span aria-hidden="true" style={{ width: 38, height: 34, flex: 'none', display: 'inline-block', position: 'relative' }}>
+      <span style={{ position: 'absolute', top: 0, left: 0, transform: 'scale(0.28)', transformOrigin: 'top left' }}>
+        <Mascot mood={mood} />
+      </span>
+    </span>
+  )
+}
+
+/**
+ * Chunky audio player for the side-by-side compare. Native <audio> can't be
+ * styled, so this is ours: press-style play button, seekable progress bar, and
+ * a transcript "caption" that slides open WHILE the audio plays (and can be
+ * pinned with the Aa toggle). The caption replaces the big static text blocks
+ * that used to eat half the page.
+ */
+function ComparePlayer({
+  src,
+  caption,
+  accent,
+  accentDark,
+}: {
+  src: string
+  caption: string
+  accent: string
+  accentDark: string
+}) {
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [time, setTime] = useState(0)
+  const [dur, setDur] = useState(0)
+  const [pinned, setPinned] = useState(false)
+
+  const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`
+
+  const toggle = () => {
+    const a = audioRef.current
+    if (!a) return
+    if (a.paused) void a.play()
+    else a.pause()
+  }
+  const seek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const a = audioRef.current
+    if (!a || !dur) return
+    const r = e.currentTarget.getBoundingClientRect()
+    a.currentTime = ((e.clientX - r.left) / r.width) * dur
+  }
+
+  const showCaption = (playing || pinned) && !!caption
+
+  return (
+    <div>
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="none"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => setDur(e.currentTarget.duration || 0)}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={playing ? 'Pause' : 'Play'}
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: '50%',
+            border: 0,
+            flex: 'none',
+            background: accent,
+            boxShadow: `0 4px 0 ${accentDark}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          {playing ? (
+            <span style={{ width: 13, height: 13, borderRadius: 3, background: '#fff' }} />
+          ) : (
+            <Icon name="play" size={16} color="#fff" />
+          )}
+        </button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            role="slider"
+            aria-label="Seek"
+            aria-valuemin={0}
+            aria-valuemax={Math.round(dur)}
+            aria-valuenow={Math.round(time)}
+            onClick={seek}
+            style={{ height: 10, background: 'rgba(0,0,0,.08)', borderRadius: 6, cursor: 'pointer', overflow: 'hidden' }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: dur ? `${(time / dur) * 100}%` : '0%',
+                background: accent,
+                borderRadius: 6,
+                transition: playing ? 'none' : 'width .2s ease',
+              }}
+            />
+          </div>
+          <div style={{ fontSize: 10.5, fontWeight: 800, color: lc.faint, marginTop: 4 }}>
+            {fmt(time)} / {dur ? fmt(dur) : '–:––'}
+          </div>
+        </div>
+        {caption && (
+          <button
+            type="button"
+            onClick={() => setPinned((v) => !v)}
+            aria-pressed={pinned}
+            aria-label="Show transcript"
+            title="Show transcript"
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 9,
+              flex: 'none',
+              border: `2px solid ${pinned ? accent : lc.cardBorder}`,
+              background: pinned ? `${accent}22` : '#fff',
+              fontFamily: fontDisplay,
+              fontWeight: 800,
+              fontSize: 11,
+              color: pinned ? accentDark : lc.muted,
+              cursor: 'pointer',
+            }}
+          >
+            Aa
+          </button>
+        )}
+      </div>
+      {showCaption && (
+        <p
+          style={{
+            margin: '10px 0 0',
+            padding: '9px 11px',
+            background: 'rgba(255,255,255,.75)',
+            border: `2px solid ${lc.cardBorder}`,
+            borderRadius: 10,
+            fontSize: 12.5,
+            lineHeight: 1.55,
+            color: '#4a5645',
+            fontWeight: 600,
+            fontStyle: 'italic',
+            maxHeight: 150,
+            overflowY: 'auto',
+            animation: 'lp-rise .25s ease both',
+          }}
+        >
+          {caption}
+        </p>
+      )}
+    </div>
   )
 }
 

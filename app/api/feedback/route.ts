@@ -376,7 +376,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
 
 GRAMMAR_FIXES: pull 1-3 SHORT phrases the learner ACTUALLY said that had a grammar mistake, and show the corrected version. "before" must be their real words (quote from the transcript), "after" is the fix, "why" is a 2-5 word reason (e.g. "past tense", "missing article", "subject-verb agreement"). If their grammar was clean, return an empty array — never invent mistakes.
 
-WORDS_TO_LEARN: pick 2-3 useful words that would genuinely help THIS learner say what they were trying to say, pitched at their level (Level ${levelNumber}). "meaning" is a short plain-English definition (max ~10 words). "example" is one short natural sentence using the word. If the response is already strong, return fewer or an empty array — never pad with words they clearly already know.
+WORDS_TO_LEARN: return 3 useful words (2 minimum — a single word looks broken in the UI) that would genuinely help THIS learner say what they were trying to say, pitched at their level (Level ${levelNumber}). "meaning" is a short plain-English definition (max ~10 words). "example" is one short natural sentence using the word. Only return fewer than 2 if the response is exceptional; never pad with words they clearly already know.
 
 Be encouraging but honest. If non-English content detected, reduce overall score significantly.`
 
