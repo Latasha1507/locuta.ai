@@ -461,44 +461,48 @@ export function PracticeView(d: PracticeData) {
           </Link>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontFamily: fontDisplay,
-                fontWeight: 800,
-                fontSize: 11,
-                letterSpacing: '0.1em',
-                color: '#7fa98a',
-              }}
-            >
-              {d.categoryName.toUpperCase()} · MODULE {d.moduleId} · LESSON {d.lessonId}
+            {/* Eyebrow + tone on ONE line so the header is two lines, not three.
+                The coach pill sat under the title before, forcing extra height. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span
+                style={{
+                  fontFamily: fontDisplay,
+                  fontWeight: 800,
+                  fontSize: 11,
+                  letterSpacing: '0.1em',
+                  color: '#7fa98a',
+                }}
+              >
+                {d.categoryName.toUpperCase()} · MODULE {d.moduleId} · LESSON {d.lessonId}
+              </span>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontFamily: fontDisplay,
+                  fontWeight: 800,
+                  fontSize: 11,
+                  color: lc.greenDark,
+                  background: '#fff',
+                  border: '2px solid #c7edd2',
+                  padding: '2px 9px',
+                  borderRadius: 999,
+                }}
+              >
+                <Icon name="chat" size={11} color={lc.greenDark} />
+                {d.tone} coach
+              </span>
             </div>
             <h1
               className="text-[19px] lg:text-[23px]"
-              style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.1, margin: '3px 0 6px' }}
+              style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.1, margin: '4px 0 0' }}
             >
               {d.lessonTitle}
             </h1>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                fontFamily: fontDisplay,
-                fontWeight: 800,
-                fontSize: 11,
-                color: lc.greenDark,
-                background: '#fff',
-                border: '2px solid #c7edd2',
-                padding: '3px 9px',
-                borderRadius: 999,
-              }}
-            >
-              <Icon name="chat" size={11} color={lc.greenDark} />
-              {d.tone} coach
-            </span>
           </div>
 
-          <div className="hidden shrink-0 sm:block" style={{ transform: 'scale(.62)', transformOrigin: 'center right' }}>
+          <div className="hidden shrink-0 sm:block" style={{ transform: 'scale(.5)', transformOrigin: 'center right', margin: '-14px 0' }}>
             <Mascot mood={mood} />
           </div>
         </div>
@@ -686,10 +690,10 @@ export function PracticeView(d: PracticeData) {
 
         {/* RECORD */}
         <section
-          className="p-[18px] lg:px-6 lg:py-5"
+          className="p-[18px] lg:px-6 lg:py-4"
           style={{ background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 22, boxShadow: `0 5px 0 ${lc.cardBorder}` }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
             <StepNum n={1} />
             <div style={{ flex: 1 }}>
               <h2 style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 16.5, lineHeight: 1, margin: 0 }}>
@@ -722,7 +726,7 @@ export function PracticeView(d: PracticeData) {
 
           {/* Waveform — driven by the real mic level while recording */}
           <div
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 46, margin: '4px 0 14px' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 34, margin: '2px 0 10px' }}
             aria-hidden="true"
           >
             {WAVE.map((h, i) => {
@@ -789,7 +793,7 @@ export function PracticeView(d: PracticeData) {
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <button
               type="button"
               onClick={toggleRecord}
@@ -797,8 +801,8 @@ export function PracticeView(d: PracticeData) {
               aria-label={recording ? 'Stop recording' : 'Start recording'}
               style={{
                 position: 'relative',
-                width: 92,
-                height: 92,
+                width: 76,
+                height: 76,
                 borderRadius: '50%',
                 border: 0,
                 cursor: submitting ? 'not-allowed' : 'pointer',
@@ -806,7 +810,7 @@ export function PracticeView(d: PracticeData) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: `0 6px 0 ${recording ? lc.coralDark : lc.greenDark}`,
+                boxShadow: `0 5px 0 ${recording ? lc.coralDark : lc.greenDark}`,
               }}
             >
               {recording && (
@@ -824,9 +828,9 @@ export function PracticeView(d: PracticeData) {
               )}
               <span style={{ position: 'relative', zIndex: 1, display: 'flex' }}>
                 {recording ? (
-                  <span style={{ width: 26, height: 26, borderRadius: 6, background: '#fff' }} />
+                  <span style={{ width: 22, height: 22, borderRadius: 6, background: '#fff' }} />
                 ) : (
-                  <Icon name="mic" size={34} color="#fff" />
+                  <Icon name="mic" size={28} color="#fff" />
                 )}
               </span>
             </button>
@@ -835,7 +839,7 @@ export function PracticeView(d: PracticeData) {
               style={{
                 fontFamily: fontDisplay,
                 fontWeight: 800,
-                fontSize: 26,
+                fontSize: 22,
                 lineHeight: 1,
                 letterSpacing: '0.5px',
                 color: recording ? lc.coral : captured ? lc.green : '#c2cdb6',
