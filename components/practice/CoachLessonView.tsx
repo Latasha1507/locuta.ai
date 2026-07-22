@@ -430,13 +430,13 @@ export function CoachLessonView(d: CoachLessonData) {
                       fontFamily: fontDisplay,
                       fontWeight: 800,
                       fontSize: 17,
-                      background: l.done ? lc.green : l.locked ? '#f0f3ec' : isNext ? lc.green : '#eef4e8',
-                      color: l.done || isNext ? '#fff' : '#7d8a75',
-                      boxShadow: l.done || isNext ? `0 3px 0 ${lc.greenDark}` : 'none',
+                      background: l.done ? '#cfe0c4' : l.locked ? '#f0f3ec' : isNext ? lc.green : '#eef4e8',
+                      color: l.done ? lc.greenDark : isNext ? '#fff' : '#7d8a75',
+                      boxShadow: isNext ? `0 3px 0 ${lc.greenDark}` : 'none',
                     }}
                   >
                     {l.done ? (
-                      <Icon name="check" size={17} color="#fff" />
+                      <Icon name="check" size={17} color={lc.greenDark} />
                     ) : l.locked ? (
                       <Icon name="lock" size={16} color="#b7c2ad" />
                     ) : (
@@ -554,7 +554,7 @@ export function CoachLessonView(d: CoachLessonData) {
                       'Locked'
                     ) : (
                       <>
-                        {l.done ? 'Retry' : isNext ? 'Start' : 'Open'}
+                        {l.done ? 'Review' : isNext ? 'Start' : 'Open'}
                         <Icon name="arrow" size={14} color={isNext ? lc.greenDark : lc.green} />
                       </>
                     )}
@@ -562,16 +562,23 @@ export function CoachLessonView(d: CoachLessonData) {
                 </>
               )
 
+              // Three distinct card states so the eye can sort them instantly:
+              //   done   → muted, settled-back (a soft grey-green, slightly faded)
+              //   isNext → the bright green focus, the one thing to act on
+              //   todo   → plain white, waiting
+              // Before, done lessons were plain white like untouched ones, so a
+              // finished path was a wall of identical cards with only a tiny tick
+              // to tell them apart.
               const cardStyle: React.CSSProperties = {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 14,
-                background: isNext ? '#f2fbf4' : '#fff',
-                border: `2px solid ${isNext ? lc.green : lc.cardBorder}`,
+                background: l.done ? '#f4f7f1' : isNext ? '#f2fbf4' : '#fff',
+                border: `2px solid ${l.done ? '#dfe7d8' : isNext ? lc.green : lc.cardBorder}`,
                 borderRadius: 18,
                 padding: '14px 16px',
-                boxShadow: `0 4px 0 ${isNext ? lc.greenDark : lc.cardBorder}`,
-                opacity: l.locked ? 0.72 : 1,
+                boxShadow: `0 4px 0 ${l.done ? '#dfe7d8' : isNext ? lc.greenDark : lc.cardBorder}`,
+                opacity: l.locked ? 0.72 : l.done ? 0.9 : 1,
                 textDecoration: 'none',
                 color: 'inherit',
                 width: '100%',
@@ -602,7 +609,7 @@ export function CoachLessonView(d: CoachLessonData) {
                 <Link
                   key={l.levelNumber}
                   href={href(l.levelNumber)}
-                  className="transition-transform duration-150 hover:-translate-y-[3px]"
+                 
                   style={cardStyle}
                 >
                   {inner}
@@ -627,7 +634,9 @@ export function CoachLessonView(d: CoachLessonData) {
               }}
             >
               <span style={{ fontSize: 13.5, fontWeight: 700, color: '#8a6100' }}>
-                Your trial covers Module 1. Upgrade to open every module in this path.
+                {d.lessons.some((l) => !l.locked)
+                  ? 'Your trial covers Module 1. Upgrade to open every module in this path.'
+                  : 'Your trial has ended. Upgrade to keep practising every module in this path.'}
               </span>
               <Link
                 href="/pricing"

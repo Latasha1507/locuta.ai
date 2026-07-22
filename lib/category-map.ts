@@ -144,11 +144,16 @@ export async function loadCategoryMap(
   const modules: ModuleNode[] = moduleNumbers.map((m) => {
     let locked = false
     let lockedReason: 'plan' | 'sequence' | null = null
-    if (!isAdmin && m > 1) {
+    if (!isAdmin) {
       if (!hasFullAccess) {
+        // No active trial and no subscription: EVERYTHING is locked, Module 1
+        // included. Previously only m > 1 was gated, which left every Module 1
+        // lesson clickable for expired users — they'd open a lesson, trigger
+        // the audio-generation API (real OpenAI spend), and get nothing back.
+        // Access control with a free hole in it isn't access control.
         locked = true
         lockedReason = 'plan'
-      } else if (!moduleComplete(m - 1)) {
+      } else if (m > 1 && !moduleComplete(m - 1)) {
         locked = true
         lockedReason = 'sequence'
       }

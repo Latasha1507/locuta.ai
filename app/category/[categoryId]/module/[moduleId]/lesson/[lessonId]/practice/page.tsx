@@ -56,6 +56,18 @@ export default async function PracticePage({
   const lesson = lessonRes.data
   if (!lesson) notFound()
 
+  // HARD ACCESS GATE. checkSessionLimitServer already knows whether this user
+  // may run a session; if their trial is over and they haven't subscribed,
+  // bounce them to /pricing BEFORE rendering. Without this, an expired-trial
+  // user could open a lesson, the page would mount, and the audio-generation
+  // call would fire — real OpenAI spend for someone who can't use the result.
+  // NOTE: daily_limit is deliberately NOT redirected — that user still has
+  // access, they've just used today's sessions, and PracticeView shows that
+  // state (with the task still readable) rather than sending them to pricing.
+  if (!limit.allowed && limit.reason === 'trial_expired') {
+    redirect('/pricing?from=lesson')
+  }
+
   return (
     <PracticeView
       categoryId={categoryId}
