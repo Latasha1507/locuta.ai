@@ -30,8 +30,8 @@ export function introPath(category: string, moduleNumber: number, levelNumber: n
  * feedback page next to the coach version. Keyed by session id (unique) under
  * the user's id, so recordings are namespaced per user and never collide.
  */
-export function userRecordingPath(userId: string, sessionId: string): string {
-  return `recordings/${userId}/${sessionId}.webm`
+export function userRecordingPath(userId: string, sessionId: string, ext = 'webm'): string {
+  return `recordings/${userId}/${sessionId}.${ext}`
 }
 
 /**

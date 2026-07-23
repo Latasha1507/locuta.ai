@@ -51,6 +51,15 @@ export function StickerUnlock({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  // Auto-reveal the feedback after the celebration plays. The popup sits ON TOP
+  // of the already-rendered feedback, so requiring a "SEE MY FEEDBACK" tap made
+  // reaching the feedback a needless second click. It still auto-dismisses; the
+  // buttons remain for anyone who wants to reveal it sooner or skip ahead.
+  useEffect(() => {
+    const t = setTimeout(onClose, 3400)
+    return () => clearTimeout(t)
+  }, [onClose])
+
   return (
     <div
       role="dialog"
@@ -147,7 +156,7 @@ export function StickerUnlock({
               justifyContent: 'center',
               boxShadow: `0 7px 0 rgba(0,0,0,.16)`,
               animation: peeled
-                ? 'lp-sticker-peel .8s cubic-bezier(.34,1.56,.64,1) both'
+                ? 'lp-sticker-peel .8s cubic-bezier(.34,1.56,.64,1) both, lp-sticker-idle 2.8s ease-in-out .8s infinite'
                 : 'lp-sticker-land .5s cubic-bezier(.34,1.56,.64,1) both',
             }}
           >
@@ -229,7 +238,7 @@ export function StickerUnlock({
 
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
           <div style={{ transform: 'scale(.62)', transformOrigin: 'center', height: 76 }}>
-            <Mascot mood="cheer" />
+            <Mascot mood="happy" />
           </div>
         </div>
 

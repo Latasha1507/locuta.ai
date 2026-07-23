@@ -198,3 +198,9 @@ html {
   45%  { transform: translate(3px,-9px) rotate(-7deg) scale(1.07); }
   100% { transform: translate(0,-5px) rotate(-4deg) scale(1.04); }
 }
+/* Gentle float after the peel so the sticker keeps feeling alive, not static.
+   Starts from the peel's resting transform so there's no jump. */
+@keyframes lp-sticker-idle {
+  0%, 100% { transform: translate(0,-5px) rotate(-4deg) scale(1.04); }
+  50%      { transform: translate(0,-12px) rotate(-1deg) scale(1.06); }
+}

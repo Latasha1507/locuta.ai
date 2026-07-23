@@ -190,7 +190,10 @@ export function PracticeView(d: PracticeData) {
       setIntroAudio(data.audioUrl || data.audioBase64 || '')
       setIntroTranscript(data.transcript || '')
       setGreetingText(data.greetingText || '')
-      if (data.practice_example) setCoachExample(data.practice_example)
+      // Keep the FIRST example for the whole session. The server seeds one and
+      // this intro fetch can return a different one — swapping it mid-session is
+      // what made the "Here's one way to do it" example look like it rotated.
+      if (data.practice_example) setCoachExample((cur) => cur || data.practice_example)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Try again.')
       trackError({

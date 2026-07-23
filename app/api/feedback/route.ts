@@ -130,6 +130,13 @@ export async function POST(request: NextRequest) {
     // "audio/webm;codecs=opus" is rejected where "audio/webm" is accepted.
     const audioBytes = Buffer.from(await audioFile.arrayBuffer())
     const cleanAudioType = (audioFile.type || 'audio/webm').split(';')[0].trim() || 'audio/webm'
+    // Match the file extension to the real container (Safari records mp4, Chrome
+    // webm, some browsers ogg) so the stored object isn't mislabelled.
+    const audioExt = cleanAudioType.includes('mp4')
+      ? 'mp4'
+      : cleanAudioType.includes('ogg')
+        ? 'ogg'
+        : 'webm'
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -469,7 +476,7 @@ Be encouraging but honest.`
     try {
       const url = await uploadAudio(
         supabase,
-        userRecordingPath(user.id, sessionId),
+        userRecordingPath(user.id, sessionId, audioExt),
         audioBytes,
         cleanAudioType,
       )
