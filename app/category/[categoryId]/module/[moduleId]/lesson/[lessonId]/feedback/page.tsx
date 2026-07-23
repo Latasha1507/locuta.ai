@@ -157,6 +157,8 @@ export default async function FeedbackPage({
       }
       transcript={String(session.user_transcript ?? '')}
       userAudioUrl={String(session.user_audio_url ?? '')}
+      wpm={Number(feedback.speaking_wpm ?? 0)}
+      fillerCount={feedback.filler_count == null ? -1 : Number(feedback.filler_count)}
       exampleText={String(session.ai_example_text ?? '')}
       exampleAudioUrl={String(session.ai_example_audio_url ?? '')}
       newlyCompleted={newlyCompleted}

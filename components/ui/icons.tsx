@@ -36,7 +36,7 @@ export type IconName =
   // people & tone      (these replace 👋 🙌)
   | 'wave' | 'smile' | 'heart' | 'shield'
   // navigation & utility
-  | 'bolt' | 'grid' | 'clock' | 'arrow' | 'cog' | 'out' | 'share' | 'play'
+  | 'bolt' | 'grid' | 'clock' | 'arrow' | 'cog' | 'out' | 'share' | 'play' | 'replay'
 
 /** Hex (#rgb or #rrggbb) → rgba with the given alpha. Falls back to the raw
     value for named colours or existing rgb()/currentColor strings. */
@@ -186,6 +186,10 @@ const PATHS: Record<IconName, Parts> = {
   play: {
     body: 'M12 21.4a9.4 9.4 0 100-18.8 9.4 9.4 0 000 18.8z',
     line: 'M12 21.4a9.4 9.4 0 100-18.8 9.4 9.4 0 000 18.8zM10.2 8.8l5.4 3.2-5.4 3.2z',
+  },
+  // Restart-from-start: a near-full circular arrow with the arrowhead top-left.
+  replay: {
+    line: 'M3.6 12a8.4 8.4 0 1 0 2.5-6L3.4 8.6M3.4 3.8v4.8h4.8',
   },
 }
 
