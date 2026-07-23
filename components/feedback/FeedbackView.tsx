@@ -272,17 +272,7 @@ export function FeedbackView(d: FeedbackData) {
               </div>
             </section>
 
-            {/* Coach read moved into the LEFT column so it isn't stacked under
-                everything else on the right, and so both columns carry weight.
-                (Nav buttons removed here — the persistent action bar at the
-                bottom of the page already does Next / Practice again / Back.) */}
-            <Card title={`Your ${d.tone} coach's read`} icon="chat" iconColor={lc.purple} mascot="happy">
-              <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4a5645', fontWeight: 600, margin: 0 }}>
-                {d.detailedFeedback}
-              </p>
-            </Card>
-
-            {/* Words to learn — also on the left, under the coach read */}
+            {/* Words to learn — left column, under the score tiles */}
             {d.wordsToLearn && d.wordsToLearn.length > 0 && (
               <Card title="Words to learn" icon="book" iconColor={lc.blue} mascot="shy">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -414,6 +404,14 @@ export function FeedbackView(d: FeedbackData) {
                 </ul>
               </Card>
             </div>
+
+            {/* Your coach's read — right column, under What worked / Work on
+                this and above the model answer (per the requested layout). */}
+            <Card title={`Your ${d.tone} coach's read`} icon="chat" iconColor={lc.purple} mascot="happy">
+              <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4a5645', fontWeight: 600, margin: 0 }}>
+                {d.detailedFeedback}
+              </p>
+            </Card>
 
             {/* THE MODEL ANSWER — the user's own attempt, done properly */}
             <Card title="Your answer, done properly" icon="crown" iconColor={lc.green} mascot="cheer">

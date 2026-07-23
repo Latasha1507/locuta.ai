@@ -122,6 +122,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
     }
 
+    // Read the recording bytes ONCE, up front, and reuse them for the storage
+    // upload later. Reading audioFile.arrayBuffer() only AFTER Whisper has read
+    // the stream can silently come back empty — that's why user recordings were
+    // never saved. Also strip any ";codecs=opus" suffix from the type: Supabase
+    // Storage matches the bucket's allowed-MIME list on the bare type, so
+    // "audio/webm;codecs=opus" is rejected where "audio/webm" is accepted.
+    const audioBytes = Buffer.from(await audioFile.arrayBuffer())
+    const cleanAudioType = (audioFile.type || 'audio/webm').split(';')[0].trim() || 'audio/webm'
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -458,14 +467,22 @@ Be encouraging but honest.`
     // falls back to "recording unavailable" rather than blocking feedback.
     let userAudioUrl = ''
     try {
-      const audioBuffer = Buffer.from(await audioFile.arrayBuffer())
       const url = await uploadAudio(
         supabase,
         userRecordingPath(user.id, sessionId),
-        audioBuffer,
-        audioFile.type || 'audio/webm',
+        audioBytes,
+        cleanAudioType,
       )
-      if (url) userAudioUrl = url
+      if (url) {
+        userAudioUrl = url
+      } else {
+        // uploadAudio already logged the Supabase error; add a pointer to the
+        // most common cause so it's obvious in the logs.
+        console.error(
+          `⚠️ User recording upload returned no URL (type ${cleanAudioType}). ` +
+            'Check the lesson-audio bucket allows audio/webm, audio/mp4 and audio/ogg.',
+        )
+      }
     } catch (e) {
       console.error('⚠️ Failed to store user recording (non-critical):', e)
     }
