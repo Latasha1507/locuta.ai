@@ -2,6 +2,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { checkSessionLimitServer } from '@/lib/check-session-limit-server'
 import { uploadAudio, userRecordingPath, exampleAudioPath } from '@/lib/audio-storage'
+import { createAdminClient } from '@/lib/supabase/server-admin'
 import { analyzeSpeech, composeScore, type ModelScores } from '@/lib/speech-metrics'
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
@@ -213,38 +214,33 @@ export async function POST(request: NextRequest) {
       console.warn('⚠️ Non-English content detected, but proceeding with transcription')
     }
 
-    // Step 2: Generate AI example
-    console.log('🎯 Generating AI example response...')
-    const aiExamplePrompt = `You are demonstrating how to complete this speaking task perfectly for a Level ${levelNumber} learner.
+    // Step 2: Rewrite the LEARNER'S OWN answer, done well. This is "your answer,
+    // done properly" — NOT a generic sample. It must keep their topic, story and
+    // details (the card literally promises "this is your answer, rewritten"), so
+    // we feed it their transcript and forbid inventing a new topic.
+    console.log('🎯 Rewriting the learner\'s answer in the coach\'s voice...')
+    const aiExamplePrompt = `Rewrite THE LEARNER'S OWN answer the way a strong speaker would deliver it — SAME topic, SAME story, SAME details, just clearer, better structured and more confident. Do NOT invent a new topic or new facts; it must stay recognisably their answer.
 
-**Task:** ${lesson.practice_prompt}
+**The task they were answering:** ${lesson.practice_prompt}
+**Coaching voice (${tone}):** Funny = light and playful; Supportive = warm and encouraging; Inspiring = energising; Diplomatic = calm and measured; Bossy = direct and punchy; Normal = clear and friendly.
+**Level ${levelNumber}:** keep the vocabulary appropriate for this level.
 
-**Category:** ${categoryName}
-**Coaching Style:** ${tone}
-**Focus Areas:** ${lesson.feedback_focus_areas}
+**What the learner actually said:**
+"${userTranscript}"
 
-Create a natural, authentic example response that:
-1. Directly addresses the task
-2. Uses appropriate vocabulary for Level ${levelNumber}
-3. Demonstrates good pacing and natural flow
-4. Is 30-60 seconds when spoken (approximately 75-150 words)
-5. Sounds like real human speech, not scripted
-
-Respond with ONLY the example speech text - no explanation, no meta-commentary.`
+Rewrite it as natural spoken English in the FIRST PERSON, 30-60 seconds (~75-150 words), keeping their real details and story but fixing rambling, filler words and weak structure. Respond with ONLY the rewritten speech — no preamble, no meta-commentary.`
 
     const aiExampleResponse = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        { 
-          role: 'system', 
-          content: `You are an expert speaking coach creating demonstration examples. 
-          Speak naturally and authentically. Never say things like "As a language model..." 
-          or "Here's an example..." - just speak the example directly.` 
+        {
+          role: 'system',
+          content: `You are an expert speaking coach. You take a learner's own spoken answer and deliver THEIR answer, done properly — same content and story, better delivery. Never invent a new topic or new facts. Never say "As a language model" or "Here's an example" — just speak the rewritten answer directly.`,
         },
         { role: 'user', content: aiExamplePrompt }
       ],
-      temperature: 0.8,
-      max_tokens: 200,
+      temperature: 0.7,
+      max_tokens: 220,
     })
 
     const aiExampleText = aiExampleResponse.choices[0].message.content || 
@@ -468,14 +464,28 @@ Be encouraging but honest.`
     console.log('💾 Attempting to save session...')
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
+    // Upload audio with the SERVICE-ROLE client. The user recording was silently
+    // failing while the coach one succeeded — the most likely remaining cause is
+    // a Storage RLS policy that permits the `examples/` path prefix but not
+    // `recordings/`. The admin client bypasses Storage RLS; paths are
+    // server-derived from the authenticated user id, so it only ever writes to
+    // the user's own namespace. Falls back to the user client if the service key
+    // is somehow missing.
+    let storage = supabase
+    try {
+      storage = createAdminClient()
+    } catch (e) {
+      console.error('⚠️ Admin storage client unavailable, using user client:', e)
+    }
+
     // Persist the user's OWN recording so it can be replayed on the feedback
-    // page beside the coach version. The blob was already read for Whisper;
-    // we upload the same bytes. Non-fatal: if it fails, the compare UI simply
-    // falls back to "recording unavailable" rather than blocking feedback.
+    // page beside the coach version. Bytes were read up front (before Whisper
+    // consumed the stream). Non-fatal: if it fails, the compare UI falls back to
+    // "recording unavailable" rather than blocking feedback.
     let userAudioUrl = ''
     try {
       const url = await uploadAudio(
-        supabase,
+        storage,
         userRecordingPath(user.id, sessionId, audioExt),
         audioBytes,
         cleanAudioType,
@@ -501,7 +511,7 @@ Be encouraging but honest.`
     let exampleAudioUrl = ''
     try {
       const url = await uploadAudio(
-        supabase,
+        storage,
         exampleAudioPath(user.id, sessionId),
         aiAudioBuffer,
         'audio/mpeg',

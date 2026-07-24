@@ -472,7 +472,7 @@ export function FeedbackView(d: FeedbackData) {
                       active={activeCompare === 'coach'}
                       accent={lc.green}
                       icon="crown"
-                      title="AI coach example"
+                      title="Coach version"
                       subtitle="Same topic, improved delivery"
                     >
                       {example.audioUrl ? (
