@@ -353,6 +353,8 @@ export function PracticeView(d: PracticeData) {
         const body = await res.json().catch(() => ({}))
         setUpgradeReason(body.reason === 'trial_expired' ? 'trial_expired' : 'daily_limit')
         setShowUpgrade(true)
+        submittingRef.current = false
+        setSubmitting(false)
         return
       }
       if (!res.ok) {
@@ -378,6 +380,13 @@ export function PracticeView(d: PracticeData) {
       })
 
       teardown()
+      // DELIBERATELY leave `submitting` true here. router.push() only STARTS
+      // the navigation — the feedback page still has to render on the server.
+      // Resetting the flag flips the button back to "Get my feedback" while
+      // we're mid-navigation, which made people click a second time and submit
+      // a DUPLICATE session (another Whisper + GPT-4o charge, and another slot
+      // off their daily limit). The loading state now holds until this
+      // component unmounts on navigation.
       router.push(
         `/category/${d.categoryId}/module/${d.moduleId}/lesson/${d.lessonId}/feedback?session=${data.sessionId}`,
       )
@@ -388,7 +397,7 @@ export function PracticeView(d: PracticeData) {
         errorMessage: e instanceof Error ? e.message : 'unknown',
         context: { lesson_id: d.lessonId },
       })
-    } finally {
+      // Only re-enable on failure, so they can retry.
       submittingRef.current = false
       setSubmitting(false)
     }

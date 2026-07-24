@@ -193,14 +193,29 @@ html {
   70%  { transform: scale(1.15) rotate(6deg); opacity: 1; }
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
+/* The peel is the reward moment, so it should be felt, not just technically
+   present: a big lift + tilt, an overshoot wobble, then settle. */
 @keyframes lp-sticker-peel {
   0%   { transform: translate(0,0) rotate(0deg) scale(1); }
-  45%  { transform: translate(3px,-9px) rotate(-7deg) scale(1.07); }
-  100% { transform: translate(0,-5px) rotate(-4deg) scale(1.04); }
+  30%  { transform: translate(5px,-20px) rotate(-13deg) scale(1.16); }
+  55%  { transform: translate(-3px,-7px) rotate(5deg) scale(1.0); }
+  78%  { transform: translate(1px,-10px) rotate(-6deg) scale(1.08); }
+  100% { transform: translate(0,-6px) rotate(-4deg) scale(1.05); }
 }
 /* Gentle float after the peel so the sticker keeps feeling alive, not static.
    Starts from the peel's resting transform so there's no jump. */
 @keyframes lp-sticker-idle {
-  0%, 100% { transform: translate(0,-5px) rotate(-4deg) scale(1.04); }
-  50%      { transform: translate(0,-12px) rotate(-1deg) scale(1.06); }
+  0%, 100% { transform: translate(0,-6px) rotate(-4deg) scale(1.05); }
+  50%      { transform: translate(0,-14px) rotate(-1deg) scale(1.07); }
+}
+/* Ring that punches outward the moment the sticker lifts. */
+@keyframes lp-burst {
+  0%   { transform: scale(.45); opacity: .6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+/* Little sparkles that pop around the sticker on peel. */
+@keyframes lp-sparkle {
+  0%   { transform: scale(0) rotate(0deg); opacity: 0; }
+  30%  { transform: scale(1) rotate(80deg); opacity: 1; }
+  100% { transform: scale(0) rotate(170deg); opacity: 0; }
 }

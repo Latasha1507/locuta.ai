@@ -19,6 +19,17 @@ const CONFETTI = Array.from({ length: 28 }, (_, i) => ({
   rot: (i * 47) % 360,
 }))
 
+// Sparkles that pop around the sticker the moment it peels. Fixed positions so
+// the burst reads as designed rather than random. Purely decorative.
+const SPARKS = [
+  { x: -66, y: -34, size: 9, delay: 0.05, color: lc.yellow },
+  { x: 58, y: -40, size: 7, delay: 0.14, color: lc.blue },
+  { x: -74, y: 22, size: 7, delay: 0.22, color: lc.coral },
+  { x: 68, y: 26, size: 9, delay: 0.1, color: lc.purple },
+  { x: -12, y: -62, size: 8, delay: 0.28, color: lc.teal },
+  { x: 22, y: 52, size: 6, delay: 0.18, color: lc.green },
+]
+
 export function StickerUnlock({
   stickerIcon,
   stickerColor,
@@ -144,6 +155,43 @@ export function StickerUnlock({
               border: '2px dashed #d7e0cd',
             }}
           />
+
+          {/* The "wow" on peel: a ring punching outward plus sparkles. */}
+          {peeled && (
+            <>
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  width: 112,
+                  height: 112,
+                  borderRadius: '50%',
+                  border: `4px solid ${stickerColor}`,
+                  animation: 'lp-burst .75s ease-out both',
+                  pointerEvents: 'none',
+                }}
+              />
+              {SPARKS.map((s, i) => (
+                <span
+                  key={i}
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    top: `calc(50% + ${s.y}px)`,
+                    left: `calc(50% + ${s.x}px)`,
+                    width: s.size,
+                    height: s.size,
+                    background: s.color,
+                    borderRadius: 2,
+                    animation: `lp-sparkle .9s ease-out ${s.delay}s both`,
+                    pointerEvents: 'none',
+                  }}
+                />
+              ))}
+            </>
+          )}
+
           <span
             style={{
               position: 'relative',
