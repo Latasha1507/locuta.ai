@@ -12,21 +12,20 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* NOTE: the dark-mode media query that used to live here flipped --background
+   to #0a0a0a for anyone whose OS is set to dark, while every screen is designed
+   light-only with inline styles — so those users got a broken half-dark mix
+   (dark page chrome behind light cards). Half-dark is worse than no-dark, so it
+   is removed. Re-add only as part of implementing dark mode properly. */
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Removed the v3 `@tailwind base/components/utilities` directives: under
+   Tailwind v4 the single `@import "tailwindcss"` at the top is the entry point,
+   and the v3 directives are dead no-ops (invalid at-rules). */
 
 /* Glass card effects */
 .glass-card {
@@ -219,3 +218,32 @@ html {
   30%  { transform: scale(1) rotate(80deg); opacity: 1; }
   100% { transform: scale(0) rotate(170deg); opacity: 0; }
 }
+
+/* ---------------------------------------------------------------------------
+   Chunky-3D control primitives — the --lc-* system documented on the live
+   theme, introduced here so controls stop hardcoding the press mechanic and so
+   :focus-visible finally gets a real ring (the app-wide accessibility gap).
+   Hard offset shadow, zero blur — a blurred drop-shadow is off-system.
+   --------------------------------------------------------------------------- */
+.lc-ctl {
+  --lc-edge-h: 4px;
+  --lc-edge: #e8ece2;
+  --lc-ring: 0 0 0 4px rgba(63, 206, 111, 0.45);
+  border: 0;
+  cursor: pointer;
+  box-shadow: 0 var(--lc-edge-h) 0 var(--lc-edge);
+  transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.15s ease;
+}
+.lc-ctl:active:not(:disabled) {
+  transform: translateY(var(--lc-edge-h));
+  box-shadow: 0 0 0 var(--lc-edge);
+}
+.lc-ctl:disabled { cursor: not-allowed; opacity: 0.55; }
+.lc-ctl:focus-visible {
+  outline: none;
+  box-shadow: 0 var(--lc-edge-h) 0 var(--lc-edge), var(--lc-ring);
+}
+
+/* The waveform scrubber shares the ring but has no 3D edge. */
+.lc-seek { --lc-ring: 0 0 0 4px rgba(63, 206, 111, 0.45); border-radius: 12px; }
+.lc-seek:focus-visible { outline: none; box-shadow: var(--lc-ring); }

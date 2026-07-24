@@ -6,6 +6,7 @@ import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
 import { Icon } from '@/components/ui/icons'
 import { Mascot, type MascotMood } from '@/components/landing/Mascot'
 import { StickerUnlock } from './StickerUnlock'
+import { AudioPlayer } from './AudioPlayer'
 
 export interface FeedbackData {
   sessionId: string
@@ -445,10 +446,11 @@ export function FeedbackView(d: FeedbackData) {
                         <Chip label={d.passed ? 'Passed ✓' : 'Keep going'} color={d.passed ? lc.green : lc.orange} />
                       </div>
                       {d.userAudioUrl ? (
-                        <WaveformPlayer
+                        <AudioPlayer
                           src={d.userAudioUrl}
                           accent={lc.coral}
                           accentDark={lc.coralDark}
+                          label="your recording"
                           onActivate={() => setActiveCompare('user')}
                         />
                       ) : (
@@ -474,10 +476,11 @@ export function FeedbackView(d: FeedbackData) {
                       subtitle="Same topic, improved delivery"
                     >
                       {example.audioUrl ? (
-                        <WaveformPlayer
+                        <AudioPlayer
                           src={example.audioUrl}
                           accent={lc.green}
                           accentDark={lc.greenDark}
+                          label="the coach example"
                           onActivate={() => setActiveCompare('coach')}
                         />
                       ) : (
@@ -753,13 +756,6 @@ function ComparePane({
   )
 }
 
-// A fixed, waveform-ish set of bar heights (0..1). Deterministic so SSR and the
-// client always agree.
-const WAVE_BARS = [
-  0.2, 0.45, 0.7, 0.55, 0.85, 0.4, 0.95, 0.6, 0.35, 0.75, 0.5, 0.9, 0.3, 0.65, 0.8, 0.45, 1, 0.55, 0.7, 0.4,
-  0.6, 0.85, 0.35, 0.75, 0.5, 0.95, 0.45, 0.65, 0.25, 0.8, 0.55, 0.4, 0.7, 0.9, 0.3, 0.6, 0.5, 0.75, 0.35, 0.55,
-]
-
 const hearBtn: React.CSSProperties = {
   width: '100%',
   display: 'flex',
@@ -792,232 +788,6 @@ function readBtn(accent: string, accentDark: string): React.CSSProperties {
     fontSize: 12,
     cursor: 'pointer',
   }
-}
-
-/**
- * Interactive waveform audio player. Native <audio> can't be styled, so this is
- * ours: a clickable waveform that fills as it plays (and seeks on click), time
- * readouts, and a big play/pause button. The transcript is NOT here — it's the
- * single shared strip below the two players, so `onActivate` tells the parent
- * which one is speaking.
- */
-function WaveformPlayer({
-  src,
-  accent,
-  accentDark,
-  onActivate,
-}: {
-  src: string
-  accent: string
-  accentDark: string
-  onActivate?: () => void
-}) {
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const [playing, setPlaying] = useState(false)
-  const [time, setTime] = useState(0)
-  const [dur, setDur] = useState(0)
-  const [rate, setRate] = useState(1)
-
-  const applyRate = (r: number) => {
-    setRate(r)
-    if (audioRef.current) audioRef.current.playbackRate = r
-  }
-
-  const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`
-  const progress = dur ? time / dur : 0
-
-  const seekFrac = (clientX: number, el: HTMLElement) => {
-    const a = audioRef.current
-    if (!a || !dur) return
-    const r = el.getBoundingClientRect()
-    const next = Math.min(dur, Math.max(0, ((clientX - r.left) / r.width) * dur))
-    a.currentTime = next
-    setTime(next)
-  }
-  const toggle = () => {
-    const a = audioRef.current
-    if (!a) return
-    if (a.paused) {
-      a.playbackRate = rate
-      onActivate?.()
-      void a.play()
-    } else {
-      a.pause()
-    }
-  }
-  const restart = () => {
-    const a = audioRef.current
-    if (!a) return
-    a.currentTime = 0
-    setTime(0)
-    a.playbackRate = rate
-    onActivate?.()
-    void a.play()
-  }
-
-  return (
-    <div>
-      <audio
-        ref={audioRef}
-        src={src}
-        preload="none"
-        onPlay={() => {
-          setPlaying(true)
-          onActivate?.()
-        }}
-        onPause={() => setPlaying(false)}
-        onEnded={() => setPlaying(false)}
-        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
-        onLoadedMetadata={(e) => setDur(e.currentTarget.duration || 0)}
-      />
-
-      {/* waveform — mirrored bars on a tinted track, with a playhead; click to seek */}
-      <div
-        role="slider"
-        aria-label="Seek"
-        aria-valuemin={0}
-        aria-valuemax={Math.round(dur)}
-        aria-valuenow={Math.round(time)}
-        onClick={(e) => seekFrac(e.clientX, e.currentTarget)}
-        style={{
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2.5,
-          height: 60,
-          cursor: 'pointer',
-          padding: '0 8px',
-          margin: '2px 0 9px',
-          background: `${accent}0d`,
-          borderRadius: 14,
-        }}
-      >
-        {WAVE_BARS.map((h, i) => {
-          const frac = i / WAVE_BARS.length
-          const filled = frac <= progress
-          const atHead = playing && Math.abs(frac - progress) < 1 / WAVE_BARS.length
-          return (
-            <span
-              key={i}
-              style={{
-                flex: 1,
-                height: `${22 + h * 66}%`,
-                borderRadius: 999,
-                background: filled ? accent : '#d0dac6',
-                transform: atHead ? 'scaleY(1.18)' : 'none',
-                transition: 'background .12s linear, transform .12s ease',
-              }}
-            />
-          )
-        })}
-        {dur > 0 && (
-          <span
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              top: 7,
-              bottom: 7,
-              left: `calc(${progress * 100}% )`,
-              width: 2.5,
-              borderRadius: 2,
-              background: accentDark,
-              transform: 'translateX(-1px)',
-              transition: playing ? 'none' : 'left .2s ease',
-            }}
-          />
-        )}
-      </div>
-
-      {/* time · total */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 11, color: lc.faint }}>{fmt(time)}</span>
-        <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 11, color: lc.faint }}>
-          {dur ? fmt(dur) : '0:00'}
-        </span>
-      </div>
-
-      {/* controls — restart · big play/pause · speed */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-        <button
-          type="button"
-          onClick={restart}
-          aria-label="Restart from the beginning"
-          title="Restart"
-          style={{
-            width: 40,
-            height: 40,
-            flex: 'none',
-            borderRadius: '50%',
-            background: '#fff',
-            border: `2px solid ${accent}66`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-          }}
-        >
-          <Icon name="replay" size={16} color={accentDark} />
-        </button>
-
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label={playing ? 'Pause' : 'Play'}
-          style={{
-            width: 58,
-            height: 58,
-            flex: 'none',
-            borderRadius: '50%',
-            background: accent,
-            border: 0,
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: `0 5px 0 ${accentDark}`,
-          }}
-        >
-          {playing ? (
-            <span style={{ display: 'flex', gap: 4 }}>
-              <span style={{ width: 5, height: 18, borderRadius: 2, background: '#fff' }} />
-              <span style={{ width: 5, height: 18, borderRadius: 2, background: '#fff' }} />
-            </span>
-          ) : (
-            <span style={{ marginLeft: 3, display: 'flex' }}>
-              <Icon name="play" size={22} color="#fff" />
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => applyRate(rate === 1 ? 0.75 : 1)}
-          aria-label={`Playback speed ${rate === 1 ? '1x' : '0.75x'}. Tap to ${rate === 1 ? 'slow down' : 'return to normal speed'}.`}
-          title="Playback speed"
-          style={{
-            minWidth: 46,
-            height: 40,
-            flex: 'none',
-            borderRadius: 999,
-            padding: '0 10px',
-            background: rate === 1 ? '#fff' : `${accent}1f`,
-            border: `2px solid ${accent}66`,
-            color: accentDark,
-            fontFamily: fontDisplay,
-            fontWeight: 800,
-            fontSize: 12.5,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-          }}
-        >
-          {rate === 1 ? '1×' : '0.75×'}
-        </button>
-      </div>
-    </div>
-  )
 }
 
 /**

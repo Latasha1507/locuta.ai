@@ -85,6 +85,12 @@ export function PracticeView(d: PracticeData) {
   const [elapsed, setElapsed] = useState(0)
   const [level, setLevel] = useState(0) // live mic level, 0..1
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  // Playback of the take you just captured. Without this the big circle had no
+  // honest job once recording stopped — it showed a mic (reading as "record"),
+  // and tapping it silently threw the take away and started a new one.
+  const [takeUrl, setTakeUrl] = useState('')
+  const [takePlaying, setTakePlaying] = useState(false)
+  const takeRef = useRef<HTMLAudioElement | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showUpgrade, setShowUpgrade] = useState(!d.limit.allowed)
@@ -316,7 +322,27 @@ export function PracticeView(d: PracticeData) {
     }
   }
 
+  // Object URL for the captured take, so it can be played back before sending.
+  useEffect(() => {
+    if (!audioBlob) {
+      setTakeUrl('')
+      return
+    }
+    const url = URL.createObjectURL(audioBlob)
+    setTakeUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [audioBlob])
+
+  const toggleTakePlayback = () => {
+    const a = takeRef.current
+    if (!a) return
+    if (a.paused) void a.play()
+    else a.pause()
+  }
+
   const reRecord = () => {
+    takeRef.current?.pause()
+    setTakePlaying(false)
     setAudioBlob(null)
     setElapsed(0)
     setRec('idle')
@@ -806,11 +832,31 @@ export function PracticeView(d: PracticeData) {
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            {/* ONE circle, ONE job per state: record → stop → hear it back.
+                It used to show a mic even after capturing, which read as
+                "record again" but silently discarded the take. Re-recording is
+                now only the explicit, labelled button below. */}
+            <audio
+              ref={takeRef}
+              src={takeUrl || undefined}
+              preload="metadata"
+              onPlay={() => setTakePlaying(true)}
+              onPause={() => setTakePlaying(false)}
+              onEnded={() => setTakePlaying(false)}
+            />
             <button
               type="button"
-              onClick={toggleRecord}
+              onClick={captured ? toggleTakePlayback : toggleRecord}
               disabled={submitting || blocked}
-              aria-label={recording ? 'Stop recording' : 'Start recording'}
+              aria-label={
+                recording
+                  ? 'Stop recording'
+                  : captured
+                    ? takePlaying
+                      ? 'Pause your recording'
+                      : 'Play back your recording'
+                    : 'Start recording'
+              }
               style={{
                 position: 'relative',
                 width: 76,
@@ -841,6 +887,15 @@ export function PracticeView(d: PracticeData) {
               <span style={{ position: 'relative', zIndex: 1, display: 'flex' }}>
                 {recording ? (
                   <span style={{ width: 22, height: 22, borderRadius: 6, background: '#fff' }} />
+                ) : captured ? (
+                  takePlaying ? (
+                    <span style={{ display: 'flex', gap: 5 }}>
+                      <span style={{ width: 7, height: 24, borderRadius: 3, background: '#fff' }} />
+                      <span style={{ width: 7, height: 24, borderRadius: 3, background: '#fff' }} />
+                    </span>
+                  ) : (
+                    <Icon name="play" size={28} color="#fff" />
+                  )
                 ) : (
                   <Icon name="mic" size={28} color="#fff" />
                 )}
@@ -863,7 +918,9 @@ export function PracticeView(d: PracticeData) {
               {recording
                 ? `Tap to stop · ${fmt(maxSeconds - elapsed)} left`
                 : captured
-                  ? `${fmt(elapsed)} recorded`
+                  ? takePlaying
+                    ? 'Playing your take…'
+                    : 'Tap to hear your take'
                   : `0:00 / ${fmt(maxSeconds)} max`}
             </div>
           </div>
