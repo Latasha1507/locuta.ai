@@ -1,19 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay } from '@/components/landing/tokens'
 import { Icon } from '@/components/ui/icons'
 import { Mascot } from '@/components/landing/Mascot'
 
-// The reward moment. Fires only when a level is completed for the FIRST time —
-// a sticker you already own is not a reward, and celebrating a re-run would
-// cheapen the real thing.
+// The reward moment. Fires only when a level is completed for the FIRST time.
+// It is INTERACTIVE on purpose: the sticker sits on its backing paper and the
+// user physically peels it — that tap is the payoff, and everything (burst,
+// sparkles, confetti, haptic buzz, chime, the "You did it!" reveal) fires from
+// it. A reward you passively watch is not a reward; one you claim is.
 
-const CONFETTI = Array.from({ length: 28 }, (_, i) => ({
+const CONFETTI = Array.from({ length: 30 }, (_, i) => ({
   left: (i * 37) % 100,
-  delay: (i % 9) * 0.09,
-  dur: 1.9 + ((i * 7) % 12) / 10,
+  delay: (i % 9) * 0.06,
+  dur: 1.8 + ((i * 7) % 12) / 10,
   color: [lc.green, lc.yellow, lc.blue, lc.coral, lc.purple, lc.teal, lc.pink][i % 7],
   size: 7 + ((i * 3) % 6),
   rot: (i * 47) % 360,
@@ -22,13 +24,45 @@ const CONFETTI = Array.from({ length: 28 }, (_, i) => ({
 // Sparkles that pop around the sticker the moment it peels. Fixed positions so
 // the burst reads as designed rather than random. Purely decorative.
 const SPARKS = [
-  { x: -66, y: -34, size: 9, delay: 0.05, color: lc.yellow },
-  { x: 58, y: -40, size: 7, delay: 0.14, color: lc.blue },
-  { x: -74, y: 22, size: 7, delay: 0.22, color: lc.coral },
-  { x: 68, y: 26, size: 9, delay: 0.1, color: lc.purple },
-  { x: -12, y: -62, size: 8, delay: 0.28, color: lc.teal },
-  { x: 22, y: 52, size: 6, delay: 0.18, color: lc.green },
+  { x: -68, y: -36, size: 10, delay: 0.02, color: lc.yellow },
+  { x: 60, y: -42, size: 8, delay: 0.12, color: lc.blue },
+  { x: -76, y: 24, size: 8, delay: 0.2, color: lc.coral },
+  { x: 70, y: 28, size: 10, delay: 0.08, color: lc.purple },
+  { x: -14, y: -66, size: 9, delay: 0.26, color: lc.teal },
+  { x: 24, y: 56, size: 7, delay: 0.16, color: lc.green },
+  { x: 0, y: 66, size: 8, delay: 0.3, color: lc.yellow },
+  { x: -54, y: 54, size: 7, delay: 0.34, color: lc.blue },
 ]
+
+/** A short, pleasant "achievement" chime, synthesised so it needs no audio
+    asset. Runs on the user's peel gesture (which also satisfies autoplay
+    policy). Skipped under reduced-motion. */
+function playPeelChime() {
+  try {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    if (!AC) return
+    const ctx = new AC()
+    const now = ctx.currentTime
+    // A rising major arpeggio — reads as "success".
+    const notes = [523.25, 659.25, 783.99, 1046.5]
+    notes.forEach((f, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'triangle'
+      osc.frequency.value = f
+      const t = now + 0.04 + i * 0.075
+      gain.gain.setValueAtTime(0.0001, t)
+      gain.gain.exponentialRampToValueAtTime(0.16, t + 0.015)
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2)
+      osc.connect(gain).connect(ctx.destination)
+      osc.start(t)
+      osc.stop(t + 0.22)
+    })
+    setTimeout(() => ctx.close().catch(() => {}), 900)
+  } catch {
+    /* audio unavailable — silent is fine */
+  }
+}
 
 export function StickerUnlock({
   stickerIcon,
@@ -38,6 +72,7 @@ export function StickerUnlock({
   lessonTitle,
   onClose,
   nextHref,
+  soundEnabled = true,
 }: {
   stickerIcon: string
   stickerColor: string
@@ -46,13 +81,14 @@ export function StickerUnlock({
   lessonTitle: string
   onClose: () => void
   nextHref: string
+  /** Gated by the user's "sound effects" setting. Defaults on. */
+  soundEnabled?: boolean
 }) {
   const [peeled, setPeeled] = useState(false)
+  const [reduced, setReduced] = useState(false)
 
-  // Peel it after a beat so the user sees it land, then lift.
   useEffect(() => {
-    const t = setTimeout(() => setPeeled(true), 550)
-    return () => clearTimeout(t)
+    setReduced(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
   }, [])
 
   // Escape closes.
@@ -62,20 +98,24 @@ export function StickerUnlock({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  // Auto-reveal the feedback after the celebration plays. The popup sits ON TOP
-  // of the already-rendered feedback, so requiring a "SEE MY FEEDBACK" tap made
-  // reaching the feedback a needless second click. It still auto-dismisses; the
-  // buttons remain for anyone who wants to reveal it sooner or skip ahead.
-  useEffect(() => {
-    const t = setTimeout(onClose, 3400)
-    return () => clearTimeout(t)
-  }, [onClose])
+  const peel = useCallback(() => {
+    setPeeled((was) => {
+      if (was) return true
+      if (!reduced && soundEnabled) playPeelChime()
+      try {
+        navigator.vibrate?.([12, 26, 14])
+      } catch {
+        /* no haptics — fine */
+      }
+      return true
+    })
+  }, [reduced, soundEnabled])
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="New sticker unlocked"
+      aria-label={peeled ? 'Sticker unlocked' : 'Peel your sticker'}
       onClick={onClose}
       style={{
         position: 'fixed',
@@ -90,25 +130,27 @@ export function StickerUnlock({
         animation: 'lp-fade .25s ease both',
       }}
     >
-      {/* Confetti */}
-      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
-        {CONFETTI.map((c, i) => (
-          <span
-            key={i}
-            style={{
-              position: 'absolute',
-              top: -20,
-              left: `${c.left}%`,
-              width: c.size,
-              height: c.size * 1.6,
-              background: c.color,
-              borderRadius: 2,
-              transform: `rotate(${c.rot}deg)`,
-              animation: `lp-confetti ${c.dur}s linear ${c.delay}s infinite`,
-            }}
-          />
-        ))}
-      </div>
+      {/* Confetti — bursts only AFTER the peel, as the reward. */}
+      {peeled && (
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
+          {CONFETTI.map((c, i) => (
+            <span
+              key={i}
+              style={{
+                position: 'absolute',
+                top: -20,
+                left: `${c.left}%`,
+                width: c.size,
+                height: c.size * 1.6,
+                background: c.color,
+                borderRadius: 2,
+                transform: `rotate(${c.rot}deg)`,
+                animation: `lp-confetti ${c.dur}s linear ${c.delay}s infinite`,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       <div
         onClick={(e) => e.stopPropagation()}
@@ -140,14 +182,14 @@ export function StickerUnlock({
           LEVEL COMPLETE
         </div>
 
-        {/* The sticker: lands, then peels off the backing paper */}
-        <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
+        {/* The sticker on its backing paper. Tap it to peel. */}
+        <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', marginBottom: 6, height: 120, alignItems: 'center' }}>
           {/* backing paper */}
           <span
             aria-hidden="true"
             style={{
               position: 'absolute',
-              top: 6,
+              top: 14,
               width: 104,
               height: 104,
               borderRadius: 26,
@@ -156,16 +198,31 @@ export function StickerUnlock({
             }}
           />
 
-          {/* The "wow" on peel: a ring punching outward plus sparkles. */}
+          {/* Pre-peel: a pulsing "tap me" ring. */}
+          {!peeled && !reduced && (
+            <span
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                width: 104,
+                height: 104,
+                borderRadius: 28,
+                border: `3px solid ${stickerColor}`,
+                animation: 'lp-tap-pulse 1.5s ease-out infinite',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+
+          {/* Post-peel: burst ring + sparkles. */}
           {peeled && (
             <>
               <span
                 aria-hidden="true"
                 style={{
                   position: 'absolute',
-                  top: 2,
-                  width: 112,
-                  height: 112,
+                  width: 116,
+                  height: 116,
                   borderRadius: '50%',
                   border: `4px solid ${stickerColor}`,
                   animation: 'lp-burst .75s ease-out both',
@@ -192,150 +249,186 @@ export function StickerUnlock({
             </>
           )}
 
-          <span
+          {/* The sticker itself — a real button so it's tappable AND keyboard
+              operable. Disabled once peeled. */}
+          <button
+            type="button"
+            onClick={peel}
+            disabled={peeled}
+            aria-label={peeled ? `${dayLabel} sticker, peeled` : 'Tap to peel your sticker'}
             style={{
               position: 'relative',
               width: 104,
               height: 104,
               borderRadius: 26,
+              border: 0,
+              padding: 0,
               background: stickerColor,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              cursor: peeled ? 'default' : 'pointer',
               boxShadow: `0 7px 0 rgba(0,0,0,.16)`,
               animation: peeled
-                ? 'lp-sticker-peel .8s cubic-bezier(.34,1.56,.64,1) both, lp-sticker-idle 2.8s ease-in-out .8s infinite'
-                : 'lp-sticker-land .5s cubic-bezier(.34,1.56,.64,1) both',
+                ? 'lp-sticker-peel .85s cubic-bezier(.34,1.56,.64,1) both, lp-sticker-idle 2.8s ease-in-out .85s infinite'
+                : reduced
+                  ? undefined
+                  : 'lp-sticker-land .5s cubic-bezier(.34,1.56,.64,1) both, lp-sticker-wait 2.4s ease-in-out .5s infinite',
             }}
           >
             <Icon name={stickerIcon} size={52} color="#fff" />
-            {/* gloss sweep */}
-            <span
-              aria-hidden="true"
+            {/* gloss sweep (post-peel only, so pre-peel reads as matte + tappable) */}
+            {peeled && (
+              <span aria-hidden="true" style={{ position: 'absolute', inset: 0, borderRadius: 26, overflow: 'hidden' }}>
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: 40,
+                    height: '100%',
+                    background: 'linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent)',
+                    animation: 'lp-shine 2.2s ease-in-out .85s infinite',
+                  }}
+                />
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* PRE-PEEL: prompt to tap. POST-PEEL: the full celebration. */}
+        {!peeled ? (
+          <>
+            <div
               style={{
-                position: 'absolute',
-                inset: 0,
-                borderRadius: 26,
-                overflow: 'hidden',
+                fontFamily: fontDisplay,
+                fontWeight: 800,
+                fontSize: 12,
+                letterSpacing: '0.08em',
+                color: lc.faint,
+                margin: '4px 0 8px',
               }}
             >
-              <span
+              {dayLabel}&apos;S STICKER
+            </div>
+            <h2
+              style={{
+                fontFamily: fontDisplay,
+                fontWeight: 800,
+                fontSize: 24,
+                lineHeight: 1.1,
+                letterSpacing: '-0.5px',
+                margin: '0 0 6px',
+                color: lc.ink,
+              }}
+            >
+              Tap to peel your reward
+            </h2>
+            <p style={{ fontSize: 14, color: lc.muted, fontWeight: 600, lineHeight: 1.5, margin: '0 0 4px' }}>
+              You earned it — give it a press. 👆
+            </p>
+          </>
+        ) : (
+          <div style={{ animation: 'lp-rise .4s ease .15s both' }}>
+            <div
+              style={{
+                fontFamily: fontDisplay,
+                fontWeight: 800,
+                fontSize: 12,
+                letterSpacing: '0.08em',
+                color: lc.faint,
+                marginBottom: 12,
+              }}
+            >
+              {dayLabel}&apos;S STICKER — PEELED
+            </div>
+
+            <h2
+              style={{
+                fontFamily: fontDisplay,
+                fontWeight: 800,
+                fontSize: 26,
+                lineHeight: 1.1,
+                letterSpacing: '-0.5px',
+                margin: '0 0 8px',
+                color: lc.ink,
+              }}
+            >
+              You did it!
+            </h2>
+            <p style={{ fontSize: 14, color: lc.muted, fontWeight: 600, lineHeight: 1.5, margin: '0 0 18px' }}>
+              <strong style={{ color: lc.ink }}>{lessonTitle}</strong> is complete, and today&apos;s sticker is yours.
+            </p>
+
+            {streak > 0 && (
+              <div
                 style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: 40,
-                  height: '100%',
-                  background: 'linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent)',
-                  animation: 'lp-shine 2.2s ease-in-out .8s infinite',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: '#fff3d6',
+                  border: '2px solid #ffdb6e',
+                  borderRadius: 999,
+                  padding: '8px 16px',
+                  marginBottom: 20,
                 }}
-              />
-            </span>
-          </span>
-        </div>
+              >
+                <Icon name="flame" size={17} color={lc.orange} />
+                <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 14, color: '#c07d08' }}>
+                  {streak} day streak
+                </span>
+              </div>
+            )}
 
-        <div
-          style={{
-            fontFamily: fontDisplay,
-            fontWeight: 800,
-            fontSize: 12,
-            letterSpacing: '0.08em',
-            color: lc.faint,
-            marginBottom: 14,
-          }}
-        >
-          {dayLabel}&apos;S STICKER — PEELED
-        </div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
+              <div style={{ transform: 'scale(.62)', transformOrigin: 'center', height: 76 }}>
+                <Mascot mood="happy" />
+              </div>
+            </div>
 
-        <h2
-          style={{
-            fontFamily: fontDisplay,
-            fontWeight: 800,
-            fontSize: 26,
-            lineHeight: 1.1,
-            letterSpacing: '-0.5px',
-            margin: '0 0 8px',
-            color: lc.ink,
-          }}
-        >
-          You did it!
-        </h2>
-        <p style={{ fontSize: 14, color: lc.muted, fontWeight: 600, lineHeight: 1.5, margin: '0 0 18px' }}>
-          <strong style={{ color: lc.ink }}>{lessonTitle}</strong> is complete, and today&apos;s sticker is yours.
-        </p>
-
-        {streak > 0 && (
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              background: '#fff3d6',
-              border: '2px solid #ffdb6e',
-              borderRadius: 999,
-              padding: '8px 16px',
-              marginBottom: 20,
-            }}
-          >
-            <Icon name="flame" size={17} color={lc.orange} />
-            <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 14, color: '#c07d08' }}>
-              {streak} day streak
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  width: '100%',
+                  background: lc.green,
+                  color: '#fff',
+                  border: 0,
+                  padding: 14,
+                  borderRadius: 15,
+                  fontFamily: fontDisplay,
+                  fontWeight: 800,
+                  fontSize: 14.5,
+                  cursor: 'pointer',
+                  boxShadow: `0 5px 0 ${lc.greenDark}`,
+                }}
+              >
+                <Icon name="target" size={16} color="#fff" />
+                SEE MY FEEDBACK
+              </button>
+              <Link
+                href={nextHref}
+                style={{
+                  display: 'block',
+                  padding: 8,
+                  textAlign: 'center',
+                  fontFamily: fontDisplay,
+                  fontWeight: 800,
+                  fontSize: 13,
+                  color: lc.faint,
+                  textDecoration: 'none',
+                }}
+              >
+                Skip to next lesson →
+              </Link>
+            </div>
           </div>
         )}
-
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
-          <div style={{ transform: 'scale(.62)', transformOrigin: 'center', height: 76 }}>
-            <Mascot mood="happy" />
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Primary = SEE MY FEEDBACK. The user just recorded; the thing they
-              actually want is to see how they did, not to skip past it. This
-              button dismisses the popup, revealing the full feedback already
-              rendered behind it. "Next lesson" stays available but quiet — it's
-              the action for *after* they've read their feedback. */}
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              width: '100%',
-              background: lc.green,
-              color: '#fff',
-              border: 0,
-              padding: 14,
-              borderRadius: 15,
-              fontFamily: fontDisplay,
-              fontWeight: 800,
-              fontSize: 14.5,
-              cursor: 'pointer',
-              boxShadow: `0 5px 0 ${lc.greenDark}`,
-            }}
-          >
-            <Icon name="target" size={16} color="#fff" />
-            SEE MY FEEDBACK
-          </button>
-          <Link
-            href={nextHref}
-            style={{
-              display: 'block',
-              padding: 8,
-              textAlign: 'center',
-              fontFamily: fontDisplay,
-              fontWeight: 800,
-              fontSize: 13,
-              color: lc.faint,
-              textDecoration: 'none',
-            }}
-          >
-            Skip to next lesson →
-          </Link>
-        </div>
       </div>
     </div>
   )

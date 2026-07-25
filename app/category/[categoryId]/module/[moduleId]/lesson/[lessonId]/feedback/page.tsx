@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { checkSessionLimitServer } from '@/lib/check-session-limit-server'
 import { computeStreak } from '@/lib/streaks'
 import { resolveTone } from '@/lib/tones'
+import { readPreferences } from '@/lib/preferences'
 import { FeedbackView } from '@/components/feedback/FeedbackView'
 import { lc } from '@/components/landing/tokens'
 
@@ -50,7 +51,7 @@ export default async function FeedbackPage({
 
   if (!session) notFound()
 
-  const [lessonRes, siblingsRes, historyRes, limit] = await Promise.all([
+  const [lessonRes, siblingsRes, historyRes, profileRes, limit] = await Promise.all([
     supabase
       .from('lessons')
       .select('level_title')
@@ -73,12 +74,16 @@ export default async function FeedbackPage({
       .eq('user_id', user.id)
       .gte('created_at', new Date(Date.now() - 400 * 864e5).toISOString())
       .order('created_at', { ascending: true }),
+    // Preferences — only need the sound-effects flag to gate the sticker chime.
+    supabase.from('profiles').select('preferences').eq('id', user.id).maybeSingle(),
     checkSessionLimitServer(user.id).catch(() => ({
       allowed: true,
       reason: 'ok' as const,
       sessionsRemainingToday: 9999,
     })),
   ])
+
+  const soundEnabled = readPreferences(profileRes.data?.preferences).soundEffects ?? true
 
   const feedback = (session.feedback ?? {}) as Record<string, unknown>
   const score = Number(feedback.overall_score ?? 0)
@@ -169,6 +174,7 @@ export default async function FeedbackPage({
       nextHref={nextHref}
       retryHref={`/category/${categoryId}/module/${moduleId}/lesson/${lessonId}/practice${toneQ}`}
       sessionsRemainingToday={limit.sessionsRemainingToday}
+      soundEnabled={soundEnabled}
     />
   )
 }

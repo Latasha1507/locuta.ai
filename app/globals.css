@@ -218,6 +218,16 @@ html {
   30%  { transform: scale(1) rotate(80deg); opacity: 1; }
   100% { transform: scale(0) rotate(170deg); opacity: 0; }
 }
+/* Pre-peel: the sticker breathes so it reads as tappable, not static. */
+@keyframes lp-sticker-wait {
+  0%, 100% { transform: scale(1) rotate(-2deg); }
+  50%      { transform: scale(1.05) rotate(2deg); }
+}
+/* Pre-peel: a ring pulsing outward that says "tap me". */
+@keyframes lp-tap-pulse {
+  0%   { transform: scale(.82); opacity: .55; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
 
 /* ---------------------------------------------------------------------------
    Chunky-3D control primitives — the --lc-* system documented on the live

@@ -54,7 +54,10 @@ export function HeroMascot({ practicedToday, isNewUser }: { practicedToday: bool
     timer.current = setTimeout(() => setPoked(false), 1400)
   }
 
-  const mood: MascotMood = poked || practicedToday ? 'cheer' : 'happy'
+  // Always the soft "happy" face (round blinking eyes + gentle smile). The
+  // "cheer" mood renders flat eye-bars and a big open mouth that reads as creepy
+  // rather than joyful — poking still bounces + swaps the line for feedback.
+  const mood: MascotMood = 'happy'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>

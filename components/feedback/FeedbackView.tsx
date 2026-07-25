@@ -47,6 +47,8 @@ export interface FeedbackData {
   nextHref: string
   retryHref: string
   sessionsRemainingToday: number
+  /** User's "sound effects" preference — gates the sticker-peel chime. */
+  soundEnabled: boolean
 }
 
 const RING = 2 * Math.PI * 54
@@ -127,6 +129,7 @@ export function FeedbackView(d: FeedbackData) {
           streak={d.streak}
           lessonTitle={d.lessonTitle}
           nextHref={d.nextHref}
+          soundEnabled={d.soundEnabled}
           onClose={() => setShowSticker(false)}
         />
       )}
