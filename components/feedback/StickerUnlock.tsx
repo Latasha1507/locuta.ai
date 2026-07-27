@@ -184,17 +184,18 @@ export function StickerUnlock({
 
         {/* The sticker on its backing paper. Tap it to peel. */}
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', marginBottom: 6, height: 120, alignItems: 'center' }}>
-          {/* backing paper */}
+          {/* backing paper — a soft empty slot the sticker peels off of (no
+              cheap dashed outline). */}
           <span
             aria-hidden="true"
             style={{
               position: 'absolute',
-              top: 14,
-              width: 104,
-              height: 104,
-              borderRadius: 26,
-              background: '#f1f5ec',
-              border: '2px dashed #d7e0cd',
+              top: 16,
+              width: 110,
+              height: 110,
+              borderRadius: 30,
+              background: '#eef2e8',
+              boxShadow: 'inset 0 2px 6px rgba(0,0,0,.07)',
             }}
           />
 
@@ -204,9 +205,9 @@ export function StickerUnlock({
               aria-hidden="true"
               style={{
                 position: 'absolute',
-                width: 104,
-                height: 104,
-                borderRadius: 28,
+                width: 116,
+                height: 116,
+                borderRadius: 32,
                 border: `3px solid ${stickerColor}`,
                 animation: 'lp-tap-pulse 1.5s ease-out infinite',
                 pointerEvents: 'none',
@@ -221,8 +222,8 @@ export function StickerUnlock({
                 aria-hidden="true"
                 style={{
                   position: 'absolute',
-                  width: 116,
-                  height: 116,
+                  width: 124,
+                  height: 124,
                   borderRadius: '50%',
                   border: `4px solid ${stickerColor}`,
                   animation: 'lp-burst .75s ease-out both',
@@ -258,17 +259,22 @@ export function StickerUnlock({
             aria-label={peeled ? `${dayLabel} sticker, peeled` : 'Tap to peel your sticker'}
             style={{
               position: 'relative',
-              width: 104,
-              height: 104,
-              borderRadius: 26,
+              width: 110,
+              height: 110,
+              borderRadius: 30,
               border: 0,
-              padding: 0,
-              background: stickerColor,
+              padding: 7, // the white die-cut rim
+              background: '#fff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: peeled ? 'default' : 'pointer',
-              boxShadow: `0 7px 0 rgba(0,0,0,.16)`,
+              // Peeled = lifted off the paper, so it gets a soft float shadow
+              // (a deliberate deviation from the brand's hard-edge shadow — a
+              // floating sticker needs real depth). Resting = chunky flat edge.
+              boxShadow: peeled
+                ? '0 16px 26px -8px rgba(0,0,0,.34), 0 3px 0 rgba(0,0,0,.06)'
+                : '0 7px 0 rgba(0,0,0,.10)',
               animation: peeled
                 ? 'lp-sticker-peel .85s cubic-bezier(.34,1.56,.64,1) both, lp-sticker-idle 2.8s ease-in-out .85s infinite'
                 : reduced
@@ -276,23 +282,60 @@ export function StickerUnlock({
                   : 'lp-sticker-land .5s cubic-bezier(.34,1.56,.64,1) both, lp-sticker-wait 2.4s ease-in-out .5s infinite',
             }}
           >
-            <Icon name={stickerIcon} size={52} color="#fff" />
-            {/* gloss sweep (post-peel only, so pre-peel reads as matte + tappable) */}
-            {peeled && (
-              <span aria-hidden="true" style={{ position: 'absolute', inset: 0, borderRadius: 26, overflow: 'hidden' }}>
+            {/* Glossy vinyl face. backgroundColor is the solid fallback if a
+                browser doesn't support color-mix; backgroundImage layers the
+                gradient on top when it does. */}
+            <span
+              style={{
+                position: 'relative',
+                display: 'flex',
+                width: '100%',
+                height: '100%',
+                borderRadius: 23,
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                backgroundColor: stickerColor,
+                backgroundImage: `linear-gradient(150deg, color-mix(in srgb, ${stickerColor} 74%, #fff) 0%, ${stickerColor} 50%, color-mix(in srgb, ${stickerColor} 84%, #000) 100%)`,
+                boxShadow: 'inset 0 4px 8px rgba(255,255,255,.45), inset 0 -9px 14px rgba(0,0,0,.16)',
+              }}
+            >
+              <Icon
+                name={stickerIcon}
+                size={50}
+                color="#fff"
+                style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,.25))' }}
+              />
+              {/* soft top highlight — light hitting glossy vinyl */}
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  top: -10,
+                  left: -6,
+                  right: -6,
+                  height: '55%',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,.42), transparent)',
+                  borderRadius: '50%',
+                  pointerEvents: 'none',
+                }}
+              />
+              {/* gloss sweep (post-peel only) */}
+              {peeled && (
                 <span
+                  aria-hidden="true"
                   style={{
                     position: 'absolute',
                     top: 0,
                     left: 0,
                     width: 40,
                     height: '100%',
-                    background: 'linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent)',
+                    background: 'linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent)',
                     animation: 'lp-shine 2.2s ease-in-out .85s infinite',
                   }}
                 />
-              </span>
-            )}
+              )}
+            </span>
           </button>
         </div>
 
