@@ -6,7 +6,6 @@ import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
 import { Icon } from '@/components/ui/icons'
 import { Mascot, type MascotMood } from '@/components/landing/Mascot'
 import { StickerUnlock } from './StickerUnlock'
-import { AudioPlayer } from './AudioPlayer'
 
 export interface FeedbackData {
   sessionId: string
@@ -32,10 +31,6 @@ export interface FeedbackData {
   transcript: string
   /** The user's own recording, for side-by-side compare. May be empty. */
   userAudioUrl: string
-  /** Speaking pace in words/min. 0 = not measured (older sessions). */
-  wpm: number
-  /** Filler-word count. -1 = not measured (older sessions); 0 is a real "none". */
-  fillerCount: number
   exampleText: string
   exampleAudioUrl: string
   /** First time this level has ever been passed → the sticker is new. */
@@ -47,8 +42,6 @@ export interface FeedbackData {
   nextHref: string
   retryHref: string
   sessionsRemainingToday: number
-  /** User's "sound effects" preference — gates the sticker-peel chime. */
-  soundEnabled: boolean
 }
 
 const RING = 2 * Math.PI * 54
@@ -88,11 +81,6 @@ export function FeedbackView(d: FeedbackData) {
   const [exError, setExError] = useState('')
   const requested = useRef(false)
 
-  // Which of the two compare players the user last played/selected. Drives the
-  // single shared transcript strip below the two columns, so there's one caption
-  // area, not one per player.
-  const [activeCompare, setActiveCompare] = useState<'user' | 'coach' | null>(null)
-
   const generateExample = async () => {
     if (requested.current) return
     requested.current = true
@@ -129,7 +117,6 @@ export function FeedbackView(d: FeedbackData) {
           streak={d.streak}
           lessonTitle={d.lessonTitle}
           nextHref={d.nextHref}
-          soundEnabled={d.soundEnabled}
           onClose={() => setShowSticker(false)}
         />
       )}
@@ -276,7 +263,17 @@ export function FeedbackView(d: FeedbackData) {
               </div>
             </section>
 
-            {/* Words to learn — left column, under the score tiles */}
+            {/* Coach read moved into the LEFT column so it isn't stacked under
+                everything else on the right, and so both columns carry weight.
+                (Nav buttons removed here — the persistent action bar at the
+                bottom of the page already does Next / Practice again / Back.) */}
+            <Card title={`Your ${d.tone} coach's read`} icon="chat" iconColor={lc.purple} mascot="happy">
+              <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4a5645', fontWeight: 600, margin: 0 }}>
+                {d.detailedFeedback}
+              </p>
+            </Card>
+
+            {/* Words to learn — also on the left, under the coach read */}
             {d.wordsToLearn && d.wordsToLearn.length > 0 && (
               <Card title="Words to learn" icon="book" iconColor={lc.blue} mascot="shy">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -409,14 +406,6 @@ export function FeedbackView(d: FeedbackData) {
               </Card>
             </div>
 
-            {/* Your coach's read — right column, under What worked / Work on
-                this and above the model answer (per the requested layout). */}
-            <Card title={`Your ${d.tone} coach's read`} icon="chat" iconColor={lc.purple} mascot="happy">
-              <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4a5645', fontWeight: 600, margin: 0 }}>
-                {d.detailedFeedback}
-              </p>
-            </Card>
-
             {/* THE MODEL ANSWER — the user's own attempt, done properly */}
             <Card title="Your answer, done properly" icon="crown" iconColor={lc.green} mascot="cheer">
               <p style={{ fontSize: 12.5, color: lc.faint, fontWeight: 700, margin: '-4px 0 12px', lineHeight: 1.45 }}>
@@ -424,123 +413,122 @@ export function FeedbackView(d: FeedbackData) {
                 your details, rewritten the way a strong speaker would deliver it, in your {d.tone} coach&apos;s voice.
               </p>
 
-              {/* SIDE-BY-SIDE COMPARE — two waveform players (your recording +
-                  the coach), and ONE shared transcript strip below that shows
-                  whichever you play. No more duplicated per-player captions. */}
+              {/* SIDE-BY-SIDE AUDIO COMPARE — the user's own recording next to
+                  the coach version. Shown whenever any of the three exists:
+                  user audio, coach audio, or coach TEXT (old sessions have the
+                  text but their audio still lives as base64 — the button in
+                  the coach tile fetches/heals it on demand). */}
               {(d.userAudioUrl || example.audioUrl || example.text) && (
-                <>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" style={{ marginBottom: 12 }}>
-                    {/* YOUR RESPONSE */}
-                    <ComparePane
-                      active={activeCompare === 'user'}
-                      accent={lc.coral}
-                      icon="mic"
-                      title="Your response"
-                      subtitle="Your original recording"
-                    >
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                        {d.wpm > 0 && <Chip label={`${d.wpm} WPM`} color={lc.blue} />}
-                        {d.fillerCount >= 0 &&
-                          (d.fillerCount === 0 ? (
-                            <Chip label="No fillers ✓" color={lc.green} />
-                          ) : (
-                            <Chip label={`${d.fillerCount} filler${d.fillerCount === 1 ? '' : 's'}`} color={lc.orange} />
-                          ))}
-                        <Chip label={d.passed ? 'Passed ✓' : 'Keep going'} color={d.passed ? lc.green : lc.orange} />
-                      </div>
-                      {d.userAudioUrl ? (
-                        <AudioPlayer
-                          src={d.userAudioUrl}
-                          accent={lc.coral}
-                          accentDark={lc.coralDark}
-                          label="your recording"
-                          onActivate={() => setActiveCompare('user')}
-                        />
-                      ) : (
-                        <div>
-                          <p style={{ fontSize: 12, color: lc.faint, fontWeight: 700, margin: 0 }}>
-                            Recording not available for this attempt.
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" style={{ marginBottom: 14 }}>
+                  <div
+                    style={{
+                      background: '#fff6f2',
+                      border: '2px solid #ffdccf',
+                      borderRadius: 14,
+                      padding: '12px 13px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 9 }}>
+                      <Icon name="mic" size={15} color={lc.coral} />
+                      <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 12.5, color: '#c0392b' }}>
+                        You said it
+                      </span>
+                    </div>
+                    {d.userAudioUrl ? (
+                      <ComparePlayer src={d.userAudioUrl} caption={d.transcript} accent={lc.coral} accentDark={lc.coralDark} />
+                    ) : (
+                      <>
+                        <p style={{ fontSize: 12, color: lc.faint, fontWeight: 700, margin: 0 }}>
+                          Recording not available for this attempt.
+                        </p>
+                        {d.transcript && (
+                          <p style={{ margin: '8px 0 0', fontSize: 12.5, lineHeight: 1.55, color: '#4a5645', fontWeight: 600, fontStyle: 'italic', maxHeight: 130, overflowY: 'auto' }}>
+                            &ldquo;{d.transcript}&rdquo;
                           </p>
-                          {d.transcript && (
-                            <button type="button" onClick={() => setActiveCompare('user')} style={readBtn(lc.coral, lc.coralDark)}>
-                              <Icon name="chat" size={13} color={lc.coralDark} /> Read what you said
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </ComparePane>
-
-                    {/* AI COACH EXAMPLE */}
-                    <ComparePane
-                      active={activeCompare === 'coach'}
-                      accent={lc.green}
-                      icon="crown"
-                      title="Coach version"
-                      subtitle="Same topic, improved delivery"
-                    >
-                      {example.audioUrl ? (
-                        <AudioPlayer
-                          src={example.audioUrl}
-                          accent={lc.green}
-                          accentDark={lc.greenDark}
-                          label="the coach example"
-                          onActivate={() => setActiveCompare('coach')}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={generateExample}
-                          disabled={exLoading}
-                          style={{
-                            ...hearBtn,
-                            background: exLoading ? '#a8ddb9' : lc.green,
-                            boxShadow: `0 3px 0 ${exLoading ? '#8fc9a1' : lc.greenDark}`,
-                          }}
-                        >
-                          <Icon name="play" size={13} color="#fff" />
-                          {exLoading ? 'LOADING…' : 'HEAR IT'}
-                        </button>
-                      )}
-                    </ComparePane>
+                        )}
+                      </>
+                    )}
                   </div>
+                  <div
+                    style={{
+                      background: '#f2fbf4',
+                      border: '2px solid #cfe9c6',
+                      borderRadius: 14,
+                      padding: '12px 13px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 9 }}>
+                      <Icon name="crown" size={15} color={lc.greenDark} />
+                      <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 12.5, color: lc.greenDark }}>
+                        Coach version
+                      </span>
+                    </div>
+                    {example.audioUrl ? (
+                      <ComparePlayer src={example.audioUrl} caption={example.text} accent={lc.green} accentDark={lc.greenDark} />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={generateExample}
+                        disabled={exLoading}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 7,
+                          background: exLoading ? '#a8ddb9' : lc.green,
+                          color: '#fff',
+                          border: 0,
+                          padding: '9px 12px',
+                          borderRadius: 10,
+                          fontFamily: fontDisplay,
+                          fontWeight: 800,
+                          fontSize: 12,
+                          cursor: exLoading ? 'wait' : 'pointer',
+                          boxShadow: `0 3px 0 ${exLoading ? '#8fc9a1' : lc.greenDark}`,
+                        }}
+                      >
+                        <Icon name="play" size={13} color="#fff" />
+                        {exLoading ? 'LOADING…' : 'HEAR IT'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                  {/* ONE shared transcript, driven by whichever player is active */}
-                  <SharedTranscript active={activeCompare} userText={d.transcript} coachText={example.text} />
+              {example.text ? null : (
+                <>
+                  <button
+                    type="button"
+                    onClick={generateExample}
+                    disabled={exLoading}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 9,
+                      background: exLoading ? '#a8ddb9' : lc.green,
+                      color: '#fff',
+                      border: 0,
+                      padding: 14,
+                      borderRadius: 14,
+                      fontFamily: fontDisplay,
+                      fontWeight: 800,
+                      fontSize: 14,
+                      cursor: exLoading ? 'wait' : 'pointer',
+                      boxShadow: `0 4px 0 ${exLoading ? '#8fc9a1' : lc.greenDark}`,
+                    }}
+                  >
+                    <Icon name="bolt" size={16} color="#fff" />
+                    {exLoading ? 'REWRITING YOUR ANSWER…' : 'SHOW ME HOW IT SHOULD SOUND'}
+                  </button>
+                  {exError && (
+                    <p role="alert" style={{ fontSize: 12.5, color: '#c0392b', fontWeight: 700, marginTop: 10 }}>
+                      {exError}
+                    </p>
+                  )}
                 </>
-              )}
-
-              {/* Fallback only when there's nothing at all to compare yet. */}
-              {!(d.userAudioUrl || example.audioUrl || example.text) && (
-                <button
-                  type="button"
-                  onClick={generateExample}
-                  disabled={exLoading}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 9,
-                    background: exLoading ? '#a8ddb9' : lc.green,
-                    color: '#fff',
-                    border: 0,
-                    padding: 14,
-                    borderRadius: 14,
-                    fontFamily: fontDisplay,
-                    fontWeight: 800,
-                    fontSize: 14,
-                    cursor: exLoading ? 'wait' : 'pointer',
-                    boxShadow: `0 4px 0 ${exLoading ? '#8fc9a1' : lc.greenDark}`,
-                  }}
-                >
-                  <Icon name="bolt" size={16} color="#fff" />
-                  {exLoading ? 'REWRITING YOUR ANSWER…' : 'SHOW ME HOW IT SHOULD SOUND'}
-                </button>
-              )}
-              {exError && (
-                <p role="alert" style={{ fontSize: 12.5, color: '#c0392b', fontWeight: 700, marginTop: 10 }}>
-                  {exError}
-                </p>
               )}
             </Card>
 
@@ -682,187 +670,154 @@ function MiniMascot({ mood }: { mood: MascotMood }) {
   )
 }
 
-// A small colored metric chip (WPM, fillers, passed).
-function Chip({ label, color }: { label: string; color: string }) {
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        background: `${color}18`,
-        border: `2px solid ${color}44`,
-        color,
-        borderRadius: 999,
-        padding: '3px 10px',
-        fontFamily: fontDisplay,
-        fontWeight: 800,
-        fontSize: 11.5,
-      }}
-    >
-      {label}
-    </span>
-  )
-}
-
-// One of the two compare columns (Your response / AI coach). Lights up its
-// border when it's the active player driving the shared transcript below.
-function ComparePane({
-  active,
+/**
+ * Chunky audio player for the side-by-side compare. Native <audio> can't be
+ * styled, so this is ours: press-style play button, seekable progress bar, and
+ * a transcript "caption" that slides open WHILE the audio plays (and can be
+ * pinned with the Aa toggle). The caption replaces the big static text blocks
+ * that used to eat half the page.
+ */
+function ComparePlayer({
+  src,
+  caption,
   accent,
-  icon,
-  title,
-  subtitle,
-  children,
+  accentDark,
 }: {
-  active: boolean
+  src: string
+  caption: string
   accent: string
-  icon: string
-  title: string
-  subtitle: string
-  children: React.ReactNode
+  accentDark: string
 }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [time, setTime] = useState(0)
+  const [dur, setDur] = useState(0)
+  const [pinned, setPinned] = useState(false)
+
+  const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`
+
+  const toggle = () => {
+    const a = audioRef.current
+    if (!a) return
+    if (a.paused) void a.play()
+    else a.pause()
+  }
+  const seek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const a = audioRef.current
+    if (!a || !dur) return
+    const r = e.currentTarget.getBoundingClientRect()
+    a.currentTime = ((e.clientX - r.left) / r.width) * dur
+  }
+
+  const showCaption = (playing || pinned) && !!caption
+
   return (
-    <div
-      style={{
-        background: '#fff',
-        border: `2px solid ${active ? accent : lc.cardBorder}`,
-        borderRadius: 16,
-        padding: '14px 14px 15px',
-        boxShadow: active ? `0 0 0 3px ${accent}22` : 'none',
-        transition: 'border-color .2s ease, box-shadow .2s ease',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}>
-        <span
+    <div>
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="none"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => setDur(e.currentTarget.duration || 0)}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={playing ? 'Pause' : 'Play'}
           style={{
-            width: 34,
-            height: 34,
+            width: 42,
+            height: 42,
+            borderRadius: '50%',
+            border: 0,
             flex: 'none',
-            borderRadius: 10,
-            background: `${accent}1a`,
+            background: accent,
+            boxShadow: `0 4px 0 ${accentDark}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            cursor: 'pointer',
           }}
         >
-          <Icon name={icon} size={17} color={accent} />
-        </span>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 13.5, color: lc.ink, lineHeight: 1.1 }}>
-            {title}
+          {playing ? (
+            <span style={{ width: 13, height: 13, borderRadius: 3, background: '#fff' }} />
+          ) : (
+            <Icon name="play" size={16} color="#fff" />
+          )}
+        </button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            role="slider"
+            aria-label="Seek"
+            aria-valuemin={0}
+            aria-valuemax={Math.round(dur)}
+            aria-valuenow={Math.round(time)}
+            onClick={seek}
+            style={{ height: 10, background: 'rgba(0,0,0,.08)', borderRadius: 6, cursor: 'pointer', overflow: 'hidden' }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: dur ? `${(time / dur) * 100}%` : '0%',
+                background: accent,
+                borderRadius: 6,
+                transition: playing ? 'none' : 'width .2s ease',
+              }}
+            />
           </div>
-          <div style={{ fontSize: 11.5, color: lc.faint, fontWeight: 700 }}>{subtitle}</div>
+          <div style={{ fontSize: 10.5, fontWeight: 800, color: lc.faint, marginTop: 4 }}>
+            {fmt(time)} / {dur ? fmt(dur) : '–:––'}
+          </div>
         </div>
+        {caption && (
+          <button
+            type="button"
+            onClick={() => setPinned((v) => !v)}
+            aria-pressed={pinned}
+            aria-label="Show transcript"
+            title="Show transcript"
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 9,
+              flex: 'none',
+              border: `2px solid ${pinned ? accent : lc.cardBorder}`,
+              background: pinned ? `${accent}22` : '#fff',
+              fontFamily: fontDisplay,
+              fontWeight: 800,
+              fontSize: 11,
+              color: pinned ? accentDark : lc.muted,
+              cursor: 'pointer',
+            }}
+          >
+            Aa
+          </button>
+        )}
       </div>
-      {children}
-    </div>
-  )
-}
-
-const hearBtn: React.CSSProperties = {
-  width: '100%',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 7,
-  color: '#fff',
-  border: 0,
-  padding: '10px 12px',
-  borderRadius: 10,
-  fontFamily: fontDisplay,
-  fontWeight: 800,
-  fontSize: 12,
-  cursor: 'pointer',
-}
-
-function readBtn(accent: string, accentDark: string): React.CSSProperties {
-  return {
-    marginTop: 10,
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    background: `${accent}18`,
-    border: `2px solid ${accent}55`,
-    color: accentDark,
-    borderRadius: 10,
-    padding: '7px 12px',
-    fontFamily: fontDisplay,
-    fontWeight: 800,
-    fontSize: 12,
-    cursor: 'pointer',
-  }
-}
-
-/**
- * The single transcript strip shown BELOW the two players — it displays the
- * words of whichever player is active, so there's one caption area, not one per
- * player. Empty state prompts the user to press play.
- */
-function SharedTranscript({
-  active,
-  userText,
-  coachText,
-}: {
-  active: 'user' | 'coach' | null
-  userText: string
-  coachText: string
-}) {
-  const isUser = active === 'user'
-  const text = isUser ? userText : active === 'coach' ? coachText : ''
-
-  if (!active || !text) {
-    return (
-      <div
-        style={{
-          marginTop: 12,
-          padding: '14px 16px',
-          textAlign: 'center',
-          background: '#f7faf4',
-          border: `2px dashed ${lc.cardBorder}`,
-          borderRadius: 14,
-          fontSize: 12.5,
-          color: lc.faint,
-          fontWeight: 700,
-        }}
-      >
-        ▶ Play a version above to read the words here.
-      </div>
-    )
-  }
-
-  const accent = isUser ? lc.coral : lc.greenDark
-  const label = isUser ? 'You said' : 'Coach version'
-  return (
-    <div style={{ marginTop: 12, background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 14, overflow: 'hidden' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 7,
-          padding: '9px 14px',
-          background: `${accent}12`,
-          borderBottom: `2px solid ${lc.cardBorder}`,
-        }}
-      >
-        <Icon name={isUser ? 'mic' : 'crown'} size={13} color={accent} />
-        <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 12, color: accent }}>{label}</span>
-      </div>
-      <p
-        style={{
-          margin: 0,
-          padding: '13px 15px',
-          fontSize: 13.5,
-          lineHeight: 1.6,
-          color: '#4a5645',
-          fontWeight: 600,
-          fontStyle: 'italic',
-          maxHeight: 200,
-          overflowY: 'auto',
-          animation: 'lp-rise .25s ease both',
-        }}
-      >
-        &ldquo;{text}&rdquo;
-      </p>
+      {showCaption && (
+        <p
+          style={{
+            margin: '10px 0 0',
+            padding: '9px 11px',
+            background: 'rgba(255,255,255,.75)',
+            border: `2px solid ${lc.cardBorder}`,
+            borderRadius: 10,
+            fontSize: 12.5,
+            lineHeight: 1.55,
+            color: '#4a5645',
+            fontWeight: 600,
+            fontStyle: 'italic',
+            maxHeight: 150,
+            overflowY: 'auto',
+            animation: 'lp-rise .25s ease both',
+          }}
+        >
+          {caption}
+        </p>
+      )}
     </div>
   )
 }

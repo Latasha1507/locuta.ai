@@ -3,11 +3,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
-import { Icon } from '@/components/ui/icons'
 import { Sidebar } from '@/components/dashboard/Sidebar'
+import { Mascot, type MascotMood } from '@/components/landing/Mascot'
 import type { FounderPromo } from '@/components/dashboard/SidebarPromo'
-import type { ModuleNode } from '@/lib/category-map'
-import { ProfileButton } from '@/components/common/ProfileButton'
+import type { ModuleNode, LevelNode } from '@/lib/category-map'
 
 export interface PathCategory {
   id: string
@@ -31,14 +30,14 @@ export interface PathsData {
   profileEmail?: string
 }
 
-// A rotating palette so each chapter on the map reads as its own "belt".
 const CHAPTER_COLORS = [lc.green, lc.blue, lc.yellow, lc.coral, lc.purple, lc.teal, lc.pink]
+
+// A rotating cast of expressions for the little mascots along the trail.
+const TRAIL_MOODS: MascotMood[] = ['cheer', 'happy', 'shy', 'happy', 'cheer', 'shy']
 
 export function PathsView(d: PathsData) {
   const [tab, setTab] = useState(d.activeCategoryId)
 
-  // Category tabs are links (each loads its own map server-side); the active one
-  // is highlighted. This keeps locks/progress authoritative on the server.
   return (
     <div
       className="flex min-h-screen flex-col lg:flex-row"
@@ -46,25 +45,38 @@ export function PathsView(d: PathsData) {
     >
       <Sidebar isAdmin={d.isAdmin} promo={d.promo} />
 
+      <style>{`
+        @keyframes lp-nodepulse{
+          0%{box-shadow:0 3px 0 var(--edge),0 0 0 0 rgba(63,206,111,.5)}
+          70%{box-shadow:0 3px 0 var(--edge),0 0 0 12px rgba(63,206,111,0)}
+          100%{box-shadow:0 3px 0 var(--edge),0 0 0 0 rgba(63,206,111,0)}
+        }
+        .pv-pulse{animation:lp-nodepulse 2.2s ease-out infinite}
+        .pv-row{transition:background-color .12s ease}
+        .pv-row:hover:not(.pv-lock){background:#f7faf5!important}
+        .pv-row.pv-now:hover{background:#eaf8ee!important}
+        .pv-chev{opacity:.35;transition:opacity .12s ease}
+        .pv-row:hover .pv-chev{opacity:1}
+        @media (prefers-reduced-motion:reduce){.pv-pulse{animation:none}}
+      `}</style>
+
       <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-12 pt-5 lg:gap-6 lg:px-10 lg:pb-16 lg:pt-8">
-        {/* HEADER */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div>
-            <h1
-              className="text-[26px] lg:text-[32px]"
-              style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-0.5px', lineHeight: 1.05, margin: 0 }}
-            >
-              Your learning map
-            </h1>
-            <p style={{ fontSize: 14.5, color: lc.muted, fontWeight: 600, margin: '5px 0 0' }}>
-              Every lesson in a path, in order. Pick up wherever you left off.
-            </p>
-          </div>
-          <ProfileButton name={d.profileName} email={d.profileEmail} />
+        {/* HEADER — top-right profile button removed. */}
+        <div>
+          <h1
+            className="text-[26px] lg:text-[32px]"
+            style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-0.5px', lineHeight: 1.05, margin: 0 }}
+          >
+            Your learning map
+          </h1>
+          <p style={{ fontSize: 14.5, color: lc.muted, fontWeight: 600, margin: '5px 0 0' }}>
+            One path, one step at a time. Pick up right where you left off.
+          </p>
         </div>
 
-        {/* CATEGORY TABS */}
-        <div className="flex gap-2.5 overflow-x-auto pb-1">
+        {/* CATEGORY SWITCHER — wraps to rows (no horizontal scroll); each pill
+            carries a tiny mascot instead of a flat icon. */}
+        <div className="flex flex-wrap gap-2.5">
           {d.categories.map((c) => {
             const active = c.id === tab
             const pct = c.total > 0 ? Math.round((c.completed / c.total) * 100) : 0
@@ -76,29 +88,28 @@ export function PathsView(d: PathsData) {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
-                  flex: 'none',
-                  padding: '10px 15px',
+                  gap: 9,
+                  padding: '8px 14px 8px 9px',
                   borderRadius: 14,
                   textDecoration: 'none',
                   background: active ? c.color : '#fff',
                   border: `2px solid ${active ? c.color : lc.cardBorder}`,
-                  boxShadow: `0 4px 0 ${active ? shade(c.color) : lc.cardBorder}`,
                 }}
               >
                 <span
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 9,
-                    background: active ? 'rgba(255,255,255,.25)' : `${c.color}1a`,
+                    width: 34,
+                    height: 34,
+                    borderRadius: 10,
+                    background: active ? 'rgba(255,255,255,.22)' : `${c.color}14`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flex: 'none',
+                    overflow: 'hidden',
                   }}
                 >
-                  <Icon name={c.icon} size={18} color={active ? '#fff' : c.color} />
+                  <MiniMascot mood={active ? 'cheer' : 'happy'} box={30} />
                 </span>
                 <span>
                   <span
@@ -117,7 +128,7 @@ export function PathsView(d: PathsData) {
                     style={{
                       display: 'block',
                       fontSize: 11,
-                      fontWeight: 700,
+                      fontWeight: 800,
                       color: active ? 'rgba(255,255,255,.9)' : lc.faint,
                     }}
                   >
@@ -129,10 +140,10 @@ export function PathsView(d: PathsData) {
           })}
         </div>
 
-        {/* THE MAP */}
-        <div className="flex flex-col gap-5 lg:gap-7">
+        {/* THE TRAIL */}
+        <div className="flex max-w-[720px] flex-col gap-6 lg:gap-8">
           {d.modules.map((mod, mi) => (
-            <ChapterRow
+            <ChapterTrail
               key={mod.number}
               mod={mod}
               color={CHAPTER_COLORS[mi % CHAPTER_COLORS.length]}
@@ -147,7 +158,7 @@ export function PathsView(d: PathsData) {
   )
 }
 
-function ChapterRow({
+function ChapterTrail({
   mod,
   color,
   categoryId,
@@ -159,40 +170,38 @@ function ChapterRow({
   categoryId: string
   tone: string
   current: { moduleNumber: number; levelNumber: number } | null
-  profileName?: string
-  profileEmail?: string
 }) {
-  const pct = mod.totalCount > 0 ? Math.round((mod.completedCount / mod.totalCount) * 100) : 0
   const chapterDone = mod.completedCount === mod.totalCount && mod.totalCount > 0
+  const edge = shade(color)
 
   return (
     <section>
       {/* Chapter header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
         <span
           style={{
-            width: 44,
-            height: 44,
-            borderRadius: 13,
+            width: 46,
+            height: 46,
+            borderRadius: 14,
             background: mod.locked ? '#eef2e8' : color,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flex: 'none',
-            boxShadow: mod.locked ? 'none' : `0 4px 0 ${shade(color)}`,
+            boxShadow: mod.locked ? 'none' : `0 3px 0 ${edge}`,
           }}
         >
           {mod.locked ? (
-            <Icon name="lock" size={20} color="#a9b4a0" />
+            <LockGlyph color="#a9b4a0" size={17} />
           ) : chapterDone ? (
-            <Icon name="check" size={22} color="#fff" />
+            <CheckGlyph color="#fff" size={20} />
           ) : (
             <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 18, color: '#fff' }}>{mod.number}</span>
           )}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
-            <h2 style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 17.5, lineHeight: 1.1, margin: 0 }}>
+            <h2 style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 18, lineHeight: 1.1, margin: 0 }}>
               {mod.title}
             </h2>
             {chapterDone && (
@@ -212,159 +221,295 @@ function ChapterRow({
               </span>
             )}
           </div>
-          <div style={{ fontSize: 12, color: lc.faint, fontWeight: 700, marginTop: 3 }}>
-            {mod.locked
-              ? mod.lockedReason === 'plan'
-                ? 'Upgrade to unlock this chapter'
-                : 'Finish the previous chapter to unlock'
-              : `${mod.completedCount} of ${mod.totalCount} lessons · ${pct}%`}
+          {/* Chunked progress: "3 to go" is a goal, not a statistic. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5 }}>
+            <div style={{ display: 'inline-flex', gap: 3 }} aria-hidden="true">
+              {mod.levels.map((x, i) => (
+                <span
+                  key={i}
+                  style={{ width: 15, height: 6, borderRadius: 3, background: x.done ? color : '#dde7d6' }}
+                />
+              ))}
+            </div>
+            <span style={{ fontSize: 11.5, color: lc.faint, fontWeight: 800 }}>
+              {mod.locked
+                ? mod.lockedReason === 'plan'
+                  ? 'Upgrade to unlock this chapter'
+                  : 'Finish the previous chapter to unlock'
+                : chapterDone
+                  ? 'Chapter complete!'
+                  : `${mod.completedCount}/${mod.totalCount} · ${mod.totalCount - mod.completedCount} to go`}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Level nodes */}
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 lg:gap-3">
-        {mod.levels.map((lvl) => {
-          const isCurrent =
-            !!current && current.moduleNumber === mod.number && current.levelNumber === lvl.levelNumber
-
-          const node = (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 9,
-                    flex: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontFamily: fontDisplay,
-                    fontWeight: 800,
-                    fontSize: 14,
-                    background: lvl.done ? color : lvl.locked ? '#eef2e8' : isCurrent ? color : `${color}1a`,
-                    color: lvl.done || isCurrent ? '#fff' : lvl.locked ? '#aab4a1' : color,
-                  }}
-                >
-                  {lvl.done ? (
-                    <Icon name="check" size={15} color="#fff" />
-                  ) : lvl.locked ? (
-                    <Icon name="lock" size={13} color="#aab4a1" />
-                  ) : (
-                    lvl.levelNumber
-                  )}
-                </span>
-                {lvl.done && lvl.bestScore !== null && (
-                  <span
-                    style={{
-                      fontFamily: fontDisplay,
-                      fontWeight: 800,
-                      fontSize: 10,
-                      color: lc.greenDark,
-                      background: '#e7f8ec',
-                      padding: '2px 7px',
-                      borderRadius: 999,
-                    }}
-                  >
-                    {lvl.bestScore}
-                  </span>
-                )}
-                {isCurrent && (
-                  <span
-                    style={{
-                      fontFamily: fontDisplay,
-                      fontWeight: 800,
-                      fontSize: 8.5,
-                      letterSpacing: '0.04em',
-                      color: '#fff',
-                      background: color,
-                      padding: '2px 7px',
-                      borderRadius: 999,
-                    }}
-                  >
-                    NOW
-                  </span>
-                )}
-              </div>
-              <div
-                style={{
-                  fontFamily: fontDisplay,
-                  fontWeight: 800,
-                  fontSize: 13,
-                  color: lvl.locked ? '#a9b3a1' : lc.ink,
-                  marginTop: 9,
-                  lineHeight: 1.2,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  minHeight: 32,
-                }}
-              >
-                {lvl.title}
-              </div>
-              <div style={{ fontSize: 11, color: lc.faint, fontWeight: 700, marginTop: 6 }}>
-                {lvl.locked ? 'Locked' : lvl.done ? 'Completed · retry' : isCurrent ? 'Start now' : `${lvl.durationSec}s`}
-              </div>
-            </>
-          )
-
-          const cardStyle: React.CSSProperties = {
-            display: 'block',
-            background: isCurrent ? `${color}0f` : '#fff',
-            border: `2px solid ${isCurrent ? color : lc.cardBorder}`,
-            borderRadius: 16,
-            padding: 13,
-            boxShadow: `0 4px 0 ${isCurrent ? shade(color) : lc.cardBorder}`,
-            textDecoration: 'none',
-            color: 'inherit',
-            opacity: lvl.locked ? 0.7 : 1,
-          }
-
-          if (lvl.locked) {
-            return (
-              <div key={lvl.levelNumber} aria-disabled="true" style={{ ...cardStyle, cursor: 'not-allowed' }}>
-                {node}
-              </div>
-            )
-          }
-          return (
-            <Link
-              key={lvl.levelNumber}
-              href={`/category/${categoryId}/module/${mod.number}/lesson/${lvl.levelNumber}/practice?tone=${encodeURIComponent(tone)}`}
-              className="transition-transform duration-150 hover:-translate-y-[3px]"
-              style={cardStyle}
-            >
-              {node}
-            </Link>
-          )
-        })}
-      </div>
-
-      {/* Chapter reward */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          marginTop: 14,
-          background: chapterDone ? '#fff8e6' : '#f7faf3',
-          border: `2px dashed ${chapterDone ? lc.yellow : lc.cardBorder}`,
-          borderRadius: 14,
-          padding: '11px 15px',
-        }}
-      >
-        <span style={{ fontSize: 20 }} aria-hidden="true">
-          <Icon name={chapterDone ? 'trophy' : 'gift'} size={26} color="#fff" />
-        </span>
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: chapterDone ? '#8a6100' : lc.muted, lineHeight: 1.4 }}>
-          {chapterDone
-            ? 'Chapter complete — rare sticker peeled! On to the next.'
-            : 'Finish this chapter to peel a rare sticker.'}
-        </span>
+      {/* The path — a rail of connected nodes, one card per lesson. */}
+      <div>
+        {mod.levels.map((lvl, i) => (
+          <TrailStep
+            key={lvl.levelNumber}
+            lvl={lvl}
+            color={color}
+            edge={edge}
+            categoryId={categoryId}
+            moduleNumber={mod.number}
+            tone={tone}
+            isLast={i === mod.levels.length - 1}
+            isCurrent={!!current && current.moduleNumber === mod.number && current.levelNumber === lvl.levelNumber}
+            moodIndex={i}
+          />
+        ))}
       </div>
     </section>
+  )
+}
+
+function TrailStep({
+  lvl,
+  color,
+  edge,
+  categoryId,
+  moduleNumber,
+  tone,
+  isLast,
+  isCurrent,
+  moodIndex,
+}: {
+  lvl: LevelNode
+  color: string
+  edge: string
+  categoryId: string
+  moduleNumber: number
+  tone: string
+  isLast: boolean
+  isCurrent: boolean
+  moodIndex: number
+}) {
+  const nodeBg = lvl.done ? color : lvl.locked ? '#eef2e8' : isCurrent ? color : `${color}1a`
+  const nodeFg = lvl.done || isCurrent ? '#fff' : lvl.locked ? '#aab4a1' : color
+  const mood = TRAIL_MOODS[moodIndex % TRAIL_MOODS.length]
+
+  const rail = (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 'none', width: 46 }}>
+      <span
+        className={isCurrent ? 'pv-pulse' : undefined}
+        style={
+          {
+            width: 46,
+            height: 46,
+            borderRadius: '50%',
+            flex: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: fontDisplay,
+            fontWeight: 800,
+            fontSize: 16,
+            background: nodeBg,
+            color: nodeFg,
+            boxShadow: lvl.done || isCurrent ? `0 3px 0 ${edge}` : 'none',
+            zIndex: 1,
+            ['--edge' as string]: edge,
+          } as React.CSSProperties
+        }
+      >
+        {lvl.done ? (
+          <CheckGlyph color="#fff" size={19} />
+        ) : lvl.locked ? (
+          <LockGlyph color="#aab4a1" size={15} />
+        ) : (
+          lvl.levelNumber
+        )}
+      </span>
+      {!isLast && (
+        <span
+          style={{
+            width: 4,
+            flex: 1,
+            minHeight: 22,
+            borderRadius: 3,
+            background: lvl.done ? color : '#e3e8dd',
+            margin: '2px 0',
+          }}
+        />
+      )}
+    </div>
+  )
+
+  const cardInner = (
+    <>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontFamily: fontDisplay,
+            fontWeight: 800,
+            fontSize: 14.5,
+            color: lvl.locked ? '#a9b3a1' : lc.ink,
+            lineHeight: 1.2,
+          }}
+        >
+          {lvl.title}
+        </div>
+        <div style={{ fontSize: 11.5, color: lc.faint, fontWeight: 700, marginTop: 3 }}>
+          {lvl.locked ? 'Locked' : lvl.done ? 'Done — one more rep?' : isCurrent ? 'Start here' : `${lvl.durationSec}s`}
+        </div>
+      </div>
+
+      {(lvl.done || isCurrent) && !lvl.locked && (
+        <span style={{ flex: 'none', display: 'inline-flex' }}>
+          <MiniMascot mood={isCurrent ? 'cheer' : mood} box={34} />
+        </span>
+      )}
+
+      {lvl.done && lvl.bestScore !== null ? (
+        <span
+          style={{
+            flex: 'none',
+            fontFamily: fontDisplay,
+            fontWeight: 800,
+            fontSize: 11.5,
+            color: lc.greenDark,
+            background: '#e7f8ec',
+            border: `1.5px solid ${lc.green}`,
+            padding: '2px 9px',
+            borderRadius: 999,
+          }}
+        >
+          {lvl.bestScore}
+        </span>
+      ) : isCurrent ? (
+        <span
+          style={{
+            flex: 'none',
+            fontFamily: fontDisplay,
+            fontWeight: 800,
+            fontSize: 9.5,
+            letterSpacing: '0.05em',
+            color: '#fff',
+            background: color,
+            padding: '3px 9px',
+            borderRadius: 999,
+          }}
+        >
+          NOW
+        </span>
+      ) : lvl.locked ? null : (
+        <span className="pv-chev" aria-hidden="true" style={{ flex: 'none', fontSize: 20, fontWeight: 800, color: color }}>
+          ›
+        </span>
+      )}
+    </>
+  )
+
+  const cardStyle: React.CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 11,
+    background: isCurrent ? '#f2fbf4' : '#fff',
+    border: `2px solid ${isCurrent ? color : lc.cardBorder}`,
+    borderRadius: 16,
+    padding: '12px 15px',
+    marginBottom: 6,
+    textDecoration: 'none',
+    color: 'inherit',
+    opacity: lvl.locked ? 0.66 : 1,
+    fontFamily: 'inherit',
+    textAlign: 'left',
+    width: '100%',
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 14 }}>
+      {rail}
+      {lvl.locked ? (
+        <div
+          aria-disabled="true"
+          className="pv-row pv-lock"
+          title="Finish the step above to unlock"
+          style={{ ...cardStyle, cursor: 'not-allowed' }}
+        >
+          {cardInner}
+        </div>
+      ) : (
+        <Link
+          href={`/category/${categoryId}/module/${moduleNumber}/lesson/${lvl.levelNumber}/practice?tone=${encodeURIComponent(tone)}`}
+          className={isCurrent ? 'pv-row pv-now' : 'pv-row'}
+          style={cardStyle}
+        >
+          {cardInner}
+        </Link>
+      )}
+    </div>
+  )
+}
+
+/** The real Locuta mascot scaled into a small slot (keeps its idle bob). */
+function MiniMascot({ mood, box }: { mood: MascotMood; box: number }) {
+  const s = box / 132
+  return (
+    <span
+      aria-hidden="true"
+      style={{ width: box, height: box * (120 / 132), flex: 'none', display: 'inline-block', position: 'relative' }}
+    >
+      <span style={{ position: 'absolute', top: 0, left: 0, transform: `scale(${s})`, transformOrigin: 'top left' }}>
+        <Mascot mood={mood} />
+      </span>
+    </span>
+  )
+}
+
+/** A checkmark drawn with two borders — no icon font. */
+function CheckGlyph({ color, size }: { color: string; size: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: 'inline-block',
+        width: size * 0.55,
+        height: size * 0.85,
+        borderRight: `${Math.max(2, size * 0.14)}px solid ${color}`,
+        borderBottom: `${Math.max(2, size * 0.14)}px solid ${color}`,
+        transform: 'rotate(45deg)',
+        marginTop: -size * 0.12,
+        borderRadius: 1,
+      }}
+    />
+  )
+}
+
+/** A padlock drawn from a rounded body + an arc shackle — no icon font. */
+function LockGlyph({ color, size }: { color: string; size: number }) {
+  return (
+    <span aria-hidden="true" style={{ position: 'relative', width: size, height: size, display: 'inline-block' }}>
+      <span
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: size * 0.08,
+          transform: 'translateX(-50%)',
+          width: size * 0.52,
+          height: size * 0.5,
+          border: `${Math.max(2, size * 0.13)}px solid ${color}`,
+          borderBottom: 0,
+          borderRadius: `${size * 0.3}px ${size * 0.3}px 0 0`,
+        }}
+      />
+      <span
+        style={{
+          position: 'absolute',
+          left: '50%',
+          bottom: size * 0.05,
+          transform: 'translateX(-50%)',
+          width: size * 0.8,
+          height: size * 0.55,
+          background: color,
+          borderRadius: size * 0.14,
+        }}
+      />
+    </span>
   )
 }
 
