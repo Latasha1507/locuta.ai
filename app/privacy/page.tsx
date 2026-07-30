@@ -15,6 +15,7 @@ export default function PrivacyPage() {
       subtitle="What we collect, why, and the control you have over it — in plain language."
     >
       <div style={{ maxWidth: 760 }}>
+
         <Section n="1" title="Who we are">
           <P>
             Locuta (&ldquo;Locuta&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) provides an AI-powered

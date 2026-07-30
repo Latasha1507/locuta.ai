@@ -31,6 +31,10 @@ export interface FeedbackData {
   transcript: string
   /** The user's own recording, for side-by-side compare. May be empty. */
   userAudioUrl: string
+  /** Speaking pace in words/min. 0 = not measured (older sessions). */
+  wpm: number
+  /** Filler-word count. -1 = not measured; 0 is a real "none". */
+  fillerCount: number
   exampleText: string
   exampleAudioUrl: string
   /** First time this level has ever been passed → the sticker is new. */
@@ -42,6 +46,8 @@ export interface FeedbackData {
   nextHref: string
   retryHref: string
   sessionsRemainingToday: number
+  /** User's sound-effects preference (carried; used elsewhere if needed). */
+  soundEnabled: boolean
 }
 
 const RING = 2 * Math.PI * 54
