@@ -2,6 +2,7 @@ import { lc, fontDisplay } from '@/components/landing/tokens'
 import { Icon } from '@/components/landing/icons'
 import { Button } from '@/components/ui/Button'
 import { MarketingShell } from '@/components/marketing/MarketingShell'
+import { SubscribeButton } from '@/components/billing/SubscribeButton'
 
 export const metadata = { title: 'Pricing · Locuta' }
 
@@ -22,20 +23,24 @@ const TIERS = [
   },
   {
     name: 'Annual',
-    price: '$19.99',
+    planKey: 'annual' as const,
+    price: '$11.99',
+    wasPrice: '$19.99',
     period: '/mo',
-    note: 'Billed annually ($239.88/yr)',
+    note: 'Early-member price — 40% off. Billed annually ($143.93/yr).',
     cta: 'GET STARTED',
     href: '/auth/signup',
     highlight: true,
-    badge: 'BEST VALUE',
+    badge: 'BEST VALUE · 40% OFF',
     features: ['Unlimited sessions', 'Full analytics dashboard', 'Personalized AI coaching', 'All 6 paths & coaches', 'Priority support', 'Early access to new modules'],
   },
   {
     name: 'Monthly',
-    price: '$21.99',
+    planKey: 'monthly' as const,
+    price: '$16.99',
+    wasPrice: '$21.99',
     period: '/mo',
-    note: 'Billed monthly. Cancel anytime.',
+    note: 'Early-member price — save 23%. Billed monthly. Cancel anytime.',
     cta: 'GET STARTED',
     href: '/auth/signup',
     highlight: false,
@@ -89,16 +94,29 @@ export default function PricingPage() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
               <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 40, color: lc.ink, letterSpacing: '-1px' }}>{t.price}</span>
               {t.period && <span style={{ fontSize: 15, color: lc.faint, fontWeight: 700 }}>{t.period}</span>}
+              {'wasPrice' in t && t.wasPrice && (
+                <span style={{ fontSize: 17, color: lc.faint, fontWeight: 700, textDecoration: 'line-through', marginLeft: 4 }}>
+                  {t.wasPrice}
+                </span>
+              )}
             </div>
             <p style={{ fontSize: 13, color: lc.faint, fontWeight: 600, margin: '0 0 20px' }}>{t.note}</p>
-            <Button
-              href={t.href}
-              variant={t.highlight ? 'primary' : 'secondary'}
-              block
-              style={{ marginBottom: 20 }}
-            >
-              {t.cta}
-            </Button>
+            {'planKey' in t && t.planKey ? (
+              <SubscribeButton
+                planKey={t.planKey}
+                label={t.cta}
+                variant={t.highlight ? 'primary' : 'secondary'}
+              />
+            ) : (
+              <Button
+                href={t.href}
+                variant={t.highlight ? 'primary' : 'secondary'}
+                block
+                style={{ marginBottom: 20 }}
+              >
+                {t.cta}
+              </Button>
+            )}
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 11 }}>
               {t.features.map((f) => (
                 <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, color: '#4a5645', fontWeight: 600 }}>
