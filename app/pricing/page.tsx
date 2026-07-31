@@ -7,7 +7,7 @@ export const metadata = { title: 'Pricing · Locuta' }
 
 // Prices mirror the landing page and lib/check-session-limit.ts (14-day trial,
 // 10 sessions/day). Payments aren't live yet — the paid CTAs route to signup so
-// nobody hits a dead checkout; wire Stripe/Razorpay here when billing is ready.
+// nobody hits a dead checkout; wire Razorpay here when billing is ready.
 const TIERS = [
   {
     name: 'Free Trial',
@@ -21,26 +21,26 @@ const TIERS = [
     features: ['Up to 10 sessions a day', 'Communication analysis', 'AI feedback summary', 'Daily streak & stickers'],
   },
   {
-    name: 'Monthly',
-    price: '$16.99',
+    name: 'Annual',
+    price: '$19.99',
     period: '/mo',
-    note: 'Billed monthly',
+    note: 'Billed annually ($239.88/yr). Save 9%.',
     cta: 'GET STARTED',
     href: '/auth/signup',
     highlight: true,
-    badge: 'MOST POPULAR',
-    features: ['Unlimited sessions', 'Full analytics dashboard', 'Personalized AI coaching', 'All 6 paths & coaches'],
+    badge: 'BEST VALUE',
+    features: ['Unlimited sessions', 'Full analytics dashboard', 'Personalized AI coaching', 'All 6 paths & coaches', 'Priority support', 'Early access to new modules'],
   },
   {
-    name: 'Yearly',
-    price: '$12.99',
+    name: 'Monthly',
+    price: '$21.99',
     period: '/mo',
-    note: 'Billed annually. Save 24%.',
+    note: 'Billed monthly. Cancel anytime.',
     cta: 'GET STARTED',
     href: '/auth/signup',
     highlight: false,
     badge: '',
-    features: ['Everything in Monthly', 'Priority support', 'Early access to new modules'],
+    features: ['Unlimited sessions', 'Full analytics dashboard', 'Personalized AI coaching', 'All 6 paths & coaches'],
   },
 ]
 
