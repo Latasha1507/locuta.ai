@@ -70,8 +70,8 @@ const CATEGORIES = [
 // Trial terms mirror lib/check-session-limit.ts: 14 days, 10 sessions/day.
 const PLANS = [
   { name: 'Free Trial', price: '$0', period: '', billNote: '14 days, then pick a plan', cta: 'START FREE', highlight: false, badge: '', features: ['Up to 10 sessions a day', 'Communication analysis', 'AI feedback summary', 'Daily streak & stickers'] },
-  { name: 'Monthly', price: '$16.99', period: '/mo', billNote: 'Billed monthly', cta: 'GET STARTED', highlight: true, badge: 'MOST POPULAR', features: ['Unlimited sessions', 'Full analytics dashboard', 'Personalized AI coaching', 'All 6 paths & coaches'] },
-  { name: 'Yearly', price: '$12.99', period: '/mo', billNote: 'Billed annually. Save 24%.', cta: 'GET STARTED', highlight: false, badge: '', features: ['Everything in Monthly', 'Priority support', 'Early access to new modules'] },
+  { name: 'Annual', price: '$19.99', period: '/mo', billNote: 'Billed annually ($239.88/yr). Save 9%.', cta: 'GET STARTED', highlight: true, badge: 'BEST VALUE', features: ['Unlimited sessions', 'Full analytics dashboard', 'Personalized AI coaching', 'All 6 paths & coaches', 'Priority support', 'Early access to new modules'] },
+  { name: 'Monthly', price: '$21.99', period: '/mo', billNote: 'Billed monthly. Cancel anytime.', cta: 'GET STARTED', highlight: false, badge: '', features: ['Unlimited sessions', 'Full analytics dashboard', 'Personalized AI coaching', 'All 6 paths & coaches'] },
 ]
 
 const FOOTER_LINKS = [
