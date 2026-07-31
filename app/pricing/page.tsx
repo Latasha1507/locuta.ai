@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { lc, fontDisplay } from '@/components/landing/tokens'
 import { Icon } from '@/components/landing/icons'
+import { Button } from '@/components/ui/Button'
 import { MarketingShell } from '@/components/marketing/MarketingShell'
 
 export const metadata = { title: 'Pricing · Locuta' }
@@ -91,26 +91,14 @@ export default function PricingPage() {
               {t.period && <span style={{ fontSize: 15, color: lc.faint, fontWeight: 700 }}>{t.period}</span>}
             </div>
             <p style={{ fontSize: 13, color: lc.faint, fontWeight: 600, margin: '0 0 20px' }}>{t.note}</p>
-            <Link
+            <Button
               href={t.href}
-              style={{
-                display: 'block',
-                textAlign: 'center',
-                background: t.highlight ? lc.green : '#fff',
-                color: t.highlight ? '#fff' : lc.ink,
-                border: `2px solid ${t.highlight ? lc.green : lc.cardBorder}`,
-                padding: 14,
-                borderRadius: 14,
-                fontFamily: fontDisplay,
-                fontWeight: 800,
-                fontSize: 14,
-                textDecoration: 'none',
-                boxShadow: `0 4px 0 ${t.highlight ? lc.greenDark : lc.cardBorder}`,
-                marginBottom: 20,
-              }}
+              variant={t.highlight ? 'primary' : 'secondary'}
+              block
+              style={{ marginBottom: 20 }}
             >
               {t.cta}
-            </Link>
+            </Button>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 11 }}>
               {t.features.map((f) => (
                 <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, color: '#4a5645', fontWeight: 600 }}>
