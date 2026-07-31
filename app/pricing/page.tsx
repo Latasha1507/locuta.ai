@@ -24,7 +24,7 @@ const TIERS = [
     name: 'Annual',
     price: '$19.99',
     period: '/mo',
-    note: 'Billed annually ($239.88/yr). Save 9%.',
+    note: 'Billed annually ($239.88/yr)',
     cta: 'GET STARTED',
     href: '/auth/signup',
     highlight: true,
