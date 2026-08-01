@@ -70,8 +70,8 @@ const CATEGORIES = [
 // Trial terms mirror lib/check-session-limit.ts: 14 days, 10 sessions/day.
 const PLANS = [
   { name: 'Free Trial', price: '$0', period: '', billNote: '14 days, then pick a plan', cta: 'START FREE', highlight: false, badge: '', features: ['Up to 10 sessions a day', 'Communication analysis', 'AI feedback summary', 'Daily streak & stickers'] },
-  { name: 'Annual', price: '$19.99', period: '/mo', billNote: 'Billed annually ($239.88/yr). Save 9%.', cta: 'GET STARTED', highlight: true, badge: 'BEST VALUE', features: ['Unlimited sessions', 'Full analytics dashboard', 'Personalized AI coaching', 'All 6 paths & coaches', 'Priority support', 'Early access to new modules'] },
-  { name: 'Monthly', price: '$21.99', period: '/mo', billNote: 'Billed monthly. Cancel anytime.', cta: 'GET STARTED', highlight: false, badge: '', features: ['Unlimited sessions', 'Full analytics dashboard', 'Personalized AI coaching', 'All 6 paths & coaches'] },
+  { name: 'Annual', price: '$11.99', wasPrice: '$19.99', period: '/mo', billNote: 'Early-member price — 40% off. Billed annually ($143.93/yr).', cta: 'GET STARTED', highlight: true, badge: 'BEST VALUE · 40% OFF', features: ['Unlimited sessions', 'Full analytics dashboard', 'Personalized AI coaching', 'All 6 paths & coaches', 'Priority support', 'Early access to new modules'] },
+  { name: 'Monthly', price: '$16.99', wasPrice: '$21.99', period: '/mo', billNote: 'Early-member price — save 23%. Billed monthly. Cancel anytime.', cta: 'GET STARTED', highlight: false, badge: '', features: ['Unlimited sessions', 'Full analytics dashboard', 'Personalized AI coaching', 'All 6 paths & coaches'] },
 ]
 
 const FOOTER_LINKS = [
@@ -629,6 +629,9 @@ export function LandingPage() {
                   {p.price}
                 </span>
                 <span style={{ fontSize: 14, color: lc.faint, fontWeight: 800 }}>{p.period}</span>
+                {'wasPrice' in p && p.wasPrice && (
+                  <span style={{ fontSize: 16, color: lc.faint, fontWeight: 700, textDecoration: 'line-through', marginLeft: 4 }}>{p.wasPrice}</span>
+                )}
               </div>
               <div style={{ fontSize: 12.5, color: lc.faint, marginBottom: 22, fontWeight: 700 }}>{p.billNote}</div>
               <Link

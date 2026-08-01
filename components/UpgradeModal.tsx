@@ -46,7 +46,7 @@ export default function UpgradeModal({ reason, daysRemaining, onClose }: Upgrade
                     <p className="text-sm text-slate-600">Unlimited sessions</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-3xl font-bold text-purple-600">$21.99</p>
+                    <p className="text-3xl font-bold text-purple-600">$16.99</p>
                     <p className="text-xs text-slate-500">/month</p>
                   </div>
                 </div>
@@ -60,7 +60,7 @@ export default function UpgradeModal({ reason, daysRemaining, onClose }: Upgrade
               {/* Yearly Plan */}
               <div className="border-2 border-green-500 rounded-xl p-5 bg-green-50/50 hover:shadow-lg transition-all cursor-pointer relative">
                 <span className="absolute -top-3 right-4 bg-green-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-md">
-                  SAVE 9%
+                  40% OFF
                 </span>
                 <div className="flex items-center justify-between mb-2">
                   <div>
@@ -68,11 +68,11 @@ export default function UpgradeModal({ reason, daysRemaining, onClose }: Upgrade
                     <p className="text-sm text-slate-600">Best value</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-3xl font-bold text-green-600">$19.99</p>
+                    <p className="text-3xl font-bold text-green-600">$11.99</p>
                     <p className="text-xs text-slate-500">/month</p>
                   </div>
                 </div>
-                <p className="text-sm text-slate-600 mt-2">Billed annually at $239.88</p>
+                <p className="text-sm text-slate-600 mt-2">Billed annually at $143.93</p>
                 <div className="flex flex-wrap gap-2 mt-3">
                   <span className="text-xs bg-white px-2 py-1 rounded-full text-slate-700">✓ Everything in Monthly</span>
                   <span className="text-xs bg-white px-2 py-1 rounded-full text-slate-700">✓ Priority support</span>
