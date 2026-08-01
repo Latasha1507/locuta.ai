@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { AuthShell, AuthLink } from '@/components/auth/AuthShell'
@@ -28,6 +28,13 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [typingPassword, setTypingPassword] = useState(false)
+  // If they arrived heading for checkout (?next=/pricing?plan=…), show pay-
+  // flavoured copy instead of trial copy — they came to subscribe, not trial.
+  const [isPaying, setIsPaying] = useState(false)
+  useEffect(() => {
+    const next = new URLSearchParams(window.location.search).get('next') ?? ''
+    setIsPaying(/[?&]plan=(monthly|annual)/.test(next) || next.includes('plan%3D'))
+  }, [])
 
   const supabase = createClient()
 
@@ -175,9 +182,13 @@ export default function SignupPage() {
     <AuthShell
       mood={mood}
       bubble={bubble}
-      eyebrow="14 DAYS FREE"
+      eyebrow={isPaying ? 'ONE STEP TO CHECKOUT' : '14 DAYS FREE'}
       title={<>Create your account.</>}
-      subtitle="No card needed. Your first 60-second rep is about two minutes away."
+      subtitle={
+        isPaying
+          ? 'Create your account and we’ll take you straight to secure checkout.'
+          : 'No card needed. Your first 60-second rep is about two minutes away.'
+      }
       footer={
         <>
           Already practicing? <AuthLink href="/auth/login">Log in</AuthLink>
@@ -219,7 +230,7 @@ export default function SignupPage() {
           disabled={loading}
         />
 
-        <PrimaryButton loading={loading}>START MY FREE TRIAL</PrimaryButton>
+        <PrimaryButton loading={loading}>{isPaying ? 'CONTINUE TO PAYMENT' : 'START MY FREE TRIAL'}</PrimaryButton>
       </form>
 
       <div style={{ margin: '20px 0' }}>

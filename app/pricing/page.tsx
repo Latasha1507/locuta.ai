@@ -3,6 +3,7 @@ import { Icon } from '@/components/landing/icons'
 import { Button } from '@/components/ui/Button'
 import { MarketingShell } from '@/components/marketing/MarketingShell'
 import { SubscribeButton } from '@/components/billing/SubscribeButton'
+import { PRICING, FREE_TRIAL_CARD } from '@/lib/pricing'
 
 export const metadata = { title: 'Pricing · Locuta' }
 
@@ -11,41 +12,41 @@ export const metadata = { title: 'Pricing · Locuta' }
 // nobody hits a dead checkout; wire Razorpay here when billing is ready.
 const TIERS = [
   {
-    name: 'Free Trial',
-    price: '$0',
-    period: '',
-    note: '14 days, then pick a plan',
-    cta: 'START FREE',
-    href: '/auth/signup',
+    name: FREE_TRIAL_CARD.name,
+    price: FREE_TRIAL_CARD.price,
+    period: FREE_TRIAL_CARD.period,
+    note: FREE_TRIAL_CARD.note,
+    cta: FREE_TRIAL_CARD.cta,
+    href: FREE_TRIAL_CARD.href,
     highlight: false,
-    badge: '',
-    features: ['Up to 10 sessions a day', 'Communication analysis', 'AI feedback summary', 'Daily streak & stickers'],
+    badge: FREE_TRIAL_CARD.badge,
+    features: FREE_TRIAL_CARD.features,
   },
   {
-    name: 'Annual',
+    name: PRICING.annual.name,
     planKey: 'annual' as const,
-    price: '$11.99',
-    wasPrice: '$19.99',
-    period: '/mo',
-    note: 'Early-member price — 40% off. Billed annually ($143.93/yr).',
+    price: PRICING.annual.price,
+    wasPrice: PRICING.annual.wasPrice,
+    period: PRICING.annual.period,
+    note: PRICING.annual.note,
     cta: 'GET STARTED',
     href: '/auth/signup',
     highlight: true,
-    badge: 'BEST VALUE · 40% OFF',
-    features: ['Unlimited sessions', 'Full analytics dashboard', 'Personalized AI coaching', 'All 6 paths & coaches', 'Priority support', 'Early access to new modules'],
+    badge: PRICING.annual.badge,
+    features: PRICING.annual.features,
   },
   {
-    name: 'Monthly',
+    name: PRICING.monthly.name,
     planKey: 'monthly' as const,
-    price: '$16.99',
-    wasPrice: '$21.99',
-    period: '/mo',
-    note: 'Early-member price — save 23%. Billed monthly. Cancel anytime.',
+    price: PRICING.monthly.price,
+    wasPrice: PRICING.monthly.wasPrice,
+    period: PRICING.monthly.period,
+    note: PRICING.monthly.note,
     cta: 'GET STARTED',
     href: '/auth/signup',
     highlight: false,
-    badge: '',
-    features: ['Unlimited sessions', 'Full analytics dashboard', 'Personalized AI coaching', 'All 6 paths & coaches'],
+    badge: PRICING.monthly.badge,
+    features: PRICING.monthly.features,
   },
 ]
 

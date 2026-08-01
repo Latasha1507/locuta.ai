@@ -1,4 +1,5 @@
 import Razorpay from 'razorpay'
+import { getPlanPricing, getPlanPricingByRazorpayId, type PlanPricing } from '@/lib/pricing'
 
 /**
  * Razorpay client. Keys come from env so TEST and LIVE never mix in code.
@@ -35,41 +36,33 @@ export interface PlanConfig {
   /** Value written to profiles.plan_type — must be in PAID_PLANS to grant access. */
   planType: 'monthly' | 'yearly'
   planId: string
-  amount: number // smallest currency unit, e.g. 2199 = $21.99
+  amount: number // smallest currency unit, e.g. 1699 = $16.99
   currency: string
   /** Number of billing cycles Razorpay should run before completing. */
   totalCount: number
 }
 
+// All amounts/plan ids now come from lib/pricing.ts — the single source of
+// truth. This keeps the charged amount (and therefore commission) exactly in
+// step with what the pricing UI shows.
+function toConfig(p: PlanPricing): PlanConfig {
+  return {
+    planKey: p.planKey,
+    planType: p.planType,
+    planId: p.planId,
+    amount: p.amountCents,
+    currency: p.currency,
+    totalCount: p.totalCount,
+  }
+}
+
 export function getPlan(planKey: string): PlanConfig | null {
-  if (planKey === 'monthly') {
-    return {
-      planKey: 'monthly',
-      planType: 'monthly',
-      planId: process.env.RAZORPAY_PLAN_MONTHLY ?? '',
-      amount: 2199, // $21.99
-      currency: 'USD',
-      totalCount: 120, // ~10 years of monthly cycles; effectively "until cancelled"
-    }
-  }
-  if (planKey === 'annual') {
-    return {
-      planKey: 'annual',
-      planType: 'yearly',
-      planId: process.env.RAZORPAY_PLAN_ANNUAL ?? '',
-      amount: 23988, // $239.88
-      currency: 'USD',
-      totalCount: 10, // ~10 years of annual cycles
-    }
-  }
-  return null
+  const p = getPlanPricing(planKey)
+  return p ? toConfig(p) : null
 }
 
 /** Map a Razorpay plan id back to our config (used by the webhook). */
 export function getPlanByRazorpayId(planId: string): PlanConfig | null {
-  for (const key of ['monthly', 'annual'] as const) {
-    const p = getPlan(key)
-    if (p && p.planId && p.planId === planId) return p
-  }
-  return null
+  const p = getPlanPricingByRazorpayId(planId)
+  return p ? toConfig(p) : null
 }
