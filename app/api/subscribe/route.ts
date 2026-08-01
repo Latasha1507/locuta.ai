@@ -46,19 +46,31 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient()
 
-    // 3. Guard against creating a second active subscription for the same user.
-    const { data: existing } = await admin
+    // 3. Only a GENUINELY ACTIVE subscription should block a new one. A row
+    //    left in 'created'/'pending' is an ATTEMPT that never completed (e.g.
+    //    the payment failed or the user closed checkout) — it must NOT lock the
+    //    user out of trying again. We block only on 'active'/'authenticated'.
+    const { data: activeSub } = await admin
       .from('subscriptions')
       .select('razorpay_subscription_id, status')
       .eq('user_id', user.id)
-      .in('status', ['active', 'authenticated', 'created', 'pending'])
+      .in('status', ['active', 'authenticated'])
       .maybeSingle()
-    if (existing) {
+    if (activeSub) {
       return NextResponse.json(
-        { error: 'You already have a subscription in progress.' },
+        { error: 'You already have an active subscription.' },
         { status: 409 },
       )
     }
+
+    // Clean up any stale, never-completed attempts for this user so the ledger
+    // doesn't accumulate dead 'created' rows (and so a prior failed attempt —
+    // like a declined card — can't wrongly appear to be "in progress").
+    await admin
+      .from('subscriptions')
+      .update({ status: 'abandoned', updated_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+      .in('status', ['created', 'pending'])
 
     // 4. Create the subscription in Razorpay. No discount in Phase 1 — the
     //    charge equals the plan price. (Phase 2 will attach an offer_id here.)

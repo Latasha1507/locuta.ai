@@ -61,7 +61,7 @@ export default async function PricingPage({
   const sp = await searchParams
   const autoPlan = sp?.plan === 'annual' || sp?.plan === 'monthly' ? sp.plan : null
   return (
-    <MarketingShell eyebrow="JOIN THE CLUB" title="Start free. Keep improving." subtitle="One 60-second rep a day. Pick a plan when you're ready — the trial needs no card.">
+    <MarketingShell eyebrow="JOIN THE CLUB" title="Start free. Keep improving." subtitle="One 60-second rep a day. Pick a plan when you're ready. The trial needs no card.">
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:items-stretch">
         {TIERS.map((t) => (
           <div
@@ -143,7 +143,7 @@ export default async function PricingPage({
       </div>
 
       <p style={{ textAlign: 'center', fontSize: 13, color: lc.faint, fontWeight: 600, marginTop: 28 }}>
-        Payments are being set up — start your free trial today and you&apos;ll be first to know when plans go live.
+        Payments are being set up. Start your free trial today and you&apos;ll be first to know when plans go live.
       </p>
     </MarketingShell>
   )
