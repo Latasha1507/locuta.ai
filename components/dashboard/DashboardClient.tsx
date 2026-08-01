@@ -40,7 +40,8 @@ export interface DashboardData {
   categories: CategoryStat[]
   nextHref: string
   showWelcome: boolean
-  trial: { active: boolean; daysLeft: number } | null
+  trial: { active: boolean; daysLeft: number; sessionsLeft: number } | null
+  planState: 'explore' | 'trial' | 'paid'
   promo: FounderPromo | null
   userId: string
 }
@@ -127,7 +128,8 @@ export function DashboardClient(d: DashboardData) {
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {d.trial?.active && (
+            {/* TRIAL: calm status pill — days left + sessions left today. */}
+            {d.planState === 'trial' && d.trial?.active && (
               <span
                 style={{
                   display: 'flex',
@@ -144,9 +146,13 @@ export function DashboardClient(d: DashboardData) {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {d.trial.daysLeft} {d.trial.daysLeft === 1 ? 'day' : 'days'} left
+                {d.trial.daysLeft} {d.trial.daysLeft === 1 ? 'day' : 'days'} to end free trial
+                <span style={{ opacity: 0.5 }}>·</span>
+                {d.trial.sessionsLeft}/10 sessions
               </span>
             )}
+            {/* EXPLORE: a free-trial nudge (no status counters). One click, no form. */}
+            {d.planState === 'explore' && <ExploreTrialNudge />}
             <span
               style={{
                 display: 'flex',
@@ -411,6 +417,67 @@ export function DashboardClient(d: DashboardData) {
       </main>
 
       {showWelcome && <TrialWelcomeModal onClose={() => setShowWelcome(false)} daysLeft={d.trial?.daysLeft ?? 14} />}
+    </div>
+  )
+}
+
+/**
+ * EXPLORE-state nudge: a single, zero-field button that starts the 14-day trial.
+ * No form, no card — one click flips the user to trial (via /api/start-trial)
+ * and reloads so the dashboard + lessons unlock immediately.
+ */
+function ExploreTrialNudge() {
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function startTrial() {
+    setErr('')
+    setLoading(true)
+    try {
+      const res = await fetch('/api/start-trial', { method: 'POST' })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setErr(d?.error || 'Could not start. Try again.')
+        setLoading(false)
+        return
+      }
+      // Trial is live — reload so gating, lessons and the status pill update.
+      window.location.href = '/dashboard'
+    } catch {
+      setErr('Could not start. Try again.')
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+      <button
+        type="button"
+        onClick={startTrial}
+        disabled={loading}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          background: lc.green,
+          border: `2px solid ${lc.greenDark}`,
+          boxShadow: `0 3px 0 ${lc.greenDark}`,
+          color: '#fff',
+          padding: '10px 16px',
+          borderRadius: 12,
+          fontFamily: fontDisplay,
+          fontWeight: 800,
+          fontSize: 13.5,
+          cursor: loading ? 'wait' : 'pointer',
+          opacity: loading ? 0.75 : 1,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {loading ? 'Starting…' : 'Start your 14-day free trial'}
+      </button>
+      <span style={{ fontSize: 11, color: lc.faint, fontWeight: 700 }}>
+        {err || 'No card needed · 10 sessions a day'}
+      </span>
     </div>
   )
 }

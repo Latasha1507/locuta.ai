@@ -12,7 +12,7 @@ import { isAdmin } from '@/lib/admin'
 export const TRIAL_DAYS = 14
 export const TRIAL_SESSIONS_PER_DAY = 10
 
-export type LimitReason = 'ok' | 'trial_expired' | 'daily_limit'
+export type LimitReason = 'ok' | 'trial_expired' | 'daily_limit' | 'explore'
 
 export interface ServerLimit {
   allowed: boolean
@@ -66,20 +66,22 @@ export async function checkSessionLimitServer(userId: string): Promise<ServerLim
     }
   }
 
-  // Trial users.
+  // Explore users: signed up but have NOT opted into the trial yet. The trial
+  // is opt-in (it starts only when they click "Start free trial"), so we do NOT
+  // burn their 14-day clock at signup. Until they start it, lessons are locked
+  // — they can browse paths, titles and details, but not practise.
   const startedAt = profile?.trial_started_at as string | null
   if (!startedAt) {
-    // Trial hasn't been initialised yet — treat as day 1 rather than locking
-    // someone out of a product they just signed up for.
     return {
-      allowed: true,
-      reason: 'ok',
+      allowed: false,
+      reason: 'explore',
       daysRemaining: TRIAL_DAYS,
-      sessionsRemainingToday: TRIAL_SESSIONS_PER_DAY,
+      sessionsRemainingToday: 0,
       planType,
     }
   }
 
+  // Trial users (trial has been explicitly started).
   const daysUsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 864e5)
   const daysRemaining = Math.max(0, TRIAL_DAYS - daysUsed)
 

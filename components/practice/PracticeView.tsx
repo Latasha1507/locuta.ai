@@ -33,7 +33,7 @@ export interface PracticeData {
   /** Server-computed. The API enforces this too — this is just the UX. */
   limit: {
     allowed: boolean
-    reason: 'ok' | 'trial_expired' | 'daily_limit'
+    reason: 'ok' | 'trial_expired' | 'daily_limit' | 'explore'
     sessionsRemainingToday: number
   }
 }

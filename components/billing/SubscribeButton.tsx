@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
@@ -57,16 +57,20 @@ export function SubscribeButton({
   planKey,
   label,
   variant = 'primary',
+  autoStart = false,
 }: {
   planKey: 'monthly' | 'annual'
   label: string
   variant?: 'primary' | 'secondary'
+  /** When true (set via ?plan= on return from signup), open checkout on mount
+      for an already-signed-in user — the seamless new-user → pay path. */
+  autoStart?: boolean
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (auto = false) => {
     setError('')
 
     const supabase = createClient()
@@ -74,6 +78,9 @@ export function SubscribeButton({
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) {
+      // Auto-trigger on a non-signed-in visitor: do NOTHING (never redirect on
+      // mount — that would risk a signup↔pricing loop). They can click manually.
+      if (auto) return
       const next = encodeURIComponent(`/pricing?plan=${planKey}`)
       router.push(`/auth/signup?next=${next}`)
       return
@@ -123,9 +130,19 @@ export function SubscribeButton({
     }
   }, [planKey, router])
 
+  // Auto-open checkout once on mount when arriving with ?plan=<this plan> and
+  // already signed in (the seamless return-from-signup path).
+  useEffect(() => {
+    if (autoStart) {
+      void start(true)
+    }
+    // Run once on mount for this button only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart])
+
   return (
     <div style={{ marginBottom: 20 }}>
-      <Button variant={variant} block onClick={start} disabled={loading}>
+      <Button variant={variant} block onClick={() => start(false)} disabled={loading}>
         {loading ? 'Opening…' : label}
       </Button>
       {error && (

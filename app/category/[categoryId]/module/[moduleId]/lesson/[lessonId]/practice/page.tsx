@@ -67,6 +67,13 @@ export default async function PracticePage({
   if (!limit.allowed && limit.reason === 'trial_expired') {
     redirect('/pricing?from=lesson')
   }
+  // EXPLORE users have not started the trial yet → they must not reach the
+  // practice page (it would fire paid OpenAI work). Send them to the dashboard
+  // where the "Start free trial" action lives. The path page still lets them
+  // browse titles/details; only practising is gated.
+  if (!limit.allowed && limit.reason === 'explore') {
+    redirect('/dashboard?start=trial')
+  }
 
   return (
     <PracticeView

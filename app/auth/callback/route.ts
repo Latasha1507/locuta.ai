@@ -71,25 +71,32 @@ export async function GET(request: Request) {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (user) {
-        // Check if this is a new user (trial not started yet)
+        // Trial is OPT-IN (Option B). A fresh sign-up lands in EXPLORE: they can
+        // browse paths/titles/details but lessons are locked until they either
+        // click "Start free trial" (→ /api/start-trial) or subscribe. We do NOT
+        // start the trial clock at signup — the user may plan to start it later.
         const { data: profile } = await supabase
           .from('profiles')
           .select('trial_started_at, plan_type')
           .eq('id', user.id)
           .single()
 
-        // If trial hasn't been started, initialize it
-        if (profile && !profile.trial_started_at) {
+        // Only initialise brand-new profiles that have no state yet. Never
+        // overwrite an existing trial/paid user.
+        const isPaid = ['monthly', 'yearly', 'pro', 'paid', 'premium', 'founder', 'lifetime'].includes(
+          String(profile?.plan_type ?? '').toLowerCase(),
+        )
+        if (profile && !profile.trial_started_at && !isPaid) {
           await supabase
             .from('profiles')
             .update({
-              trial_started_at: new Date().toISOString(),
+              plan_type: 'explore',
+              trial_started_at: null,
               trial_sessions_used: 0,
-              plan_type: 'trial'
             })
             .eq('id', user.id)
 
-          console.log('✅ Trial initialized')
+          console.log('✅ New user set to explore (trial opt-in)')
         }
       }
     }

@@ -42,6 +42,9 @@ export interface CoachLessonData {
   totalInCategory: number
   initialTone: string
   lockedReason: 'sequence' | 'plan' | null
+  /** EXPLORE state: signed up, no trial started. Lessons are readable but
+      blurred/teased and non-interactive; the CTA starts the free trial. */
+  isExplore?: boolean
 }
 
 const DIFF_COLOR: Record<LessonItem['difficulty'], string> = {
@@ -489,7 +492,19 @@ export function CoachLessonView(d: CoachLessonData) {
             )
           })()}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+          {d.isExplore && <ExploreUnlockBanner categoryId={d.categoryId} />}
+
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 11,
+              // Tease: readable but clearly gated. Titles/details stay legible.
+              ...(d.isExplore
+                ? { filter: 'blur(1.4px) opacity(0.55)', pointerEvents: 'none', userSelect: 'none' }
+                : {}),
+            }}
+          >
             {d.lessons.map((l, rowIdx) => {
               const isNext = l.levelNumber === d.nextLevel && !l.locked
               const dc = DIFF_COLOR[l.difficulty]
@@ -697,16 +712,20 @@ export function CoachLessonView(d: CoachLessonData) {
 
               // Locked lessons are NOT links — they explain themselves instead of
               // dumping the user on a page they can't use.
-              if (l.locked) {
+              // EXPLORE: readable but not clickable — practising is gated. The
+              // blur/overlay + trial CTA sit on the wrapper below.
+              if (l.locked || d.isExplore) {
                 return (
                   <div
                     key={l.levelNumber}
                     aria-disabled="true"
                     className="lsn-anim"
                     title={
-                      d.lockedReason === 'plan'
-                        ? 'Upgrade to unlock the rest of this path'
-                        : 'Finish the previous module to unlock this'
+                      d.isExplore
+                        ? 'Start your free trial to practise this lesson'
+                        : d.lockedReason === 'plan'
+                          ? 'Upgrade to unlock the rest of this path'
+                          : 'Finish the previous module to unlock this'
                     }
                     style={{ ...cardStyle, cursor: 'not-allowed', animationDelay: `${rowIdx * 45}ms` }}
                   >
@@ -803,5 +822,82 @@ function ModuleArrow({ href, dir }: { href: string | null; dir: 'prev' | 'next' 
     <Link href={href} aria-label={dir === 'prev' ? 'Previous module' : 'Next module'} style={style}>
       {icon}
     </Link>
+  )
+}
+
+/**
+ * Banner shown above the (blurred) lesson list for EXPLORE users. One click
+ * starts the 14-day trial and reloads so the path unlocks in place — no form,
+ * no card, no leaving the page.
+ */
+function ExploreUnlockBanner({ categoryId }: { categoryId: string }) {
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function startTrial() {
+    setErr('')
+    setLoading(true)
+    try {
+      const res = await fetch('/api/start-trial', { method: 'POST' })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setErr(d?.error || 'Could not start. Try again.')
+        setLoading(false)
+        return
+      }
+      // Reload this same path — lessons unlock immediately.
+      window.location.href = `/category/${categoryId}/modules`
+    } catch {
+      setErr('Could not start. Try again.')
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        background: '#eafaef',
+        border: `2px solid ${lc.green}`,
+        borderRadius: 16,
+        padding: '14px 16px',
+        marginBottom: 14,
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 15, color: lc.ink }}>
+          🔒 Free trial unlocks all of this
+        </div>
+        <div style={{ fontSize: 12.5, color: lc.muted, fontWeight: 600, marginTop: 2 }}>
+          {err || 'Read the lessons free. Start your 14-day trial to practise — no card needed.'}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={startTrial}
+        disabled={loading}
+        style={{
+          flex: 'none',
+          background: lc.green,
+          border: `2px solid ${lc.greenDark}`,
+          boxShadow: `0 3px 0 ${lc.greenDark}`,
+          color: '#fff',
+          padding: '10px 18px',
+          borderRadius: 12,
+          fontFamily: fontDisplay,
+          fontWeight: 800,
+          fontSize: 13.5,
+          cursor: loading ? 'wait' : 'pointer',
+          opacity: loading ? 0.75 : 1,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {loading ? 'Starting…' : 'Start free trial'}
+      </button>
+    </div>
   )
 }

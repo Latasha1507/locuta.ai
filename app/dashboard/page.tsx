@@ -75,7 +75,7 @@ export default async function DashboardPage({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, onboarding_completed, trial_started_at, trial_sessions_used, plan_type')
+    .select('full_name, onboarding_completed, trial_started_at, trial_sessions_used, plan_type, last_session_date, daily_sessions_used')
     .eq('id', user.id)
     .single()
 
@@ -136,13 +136,30 @@ export default async function DashboardPage({
 
   // Trial state, straight from the profile (same 14-day rule as
   // lib/check-session-limit.ts).
-  let trial: { active: boolean; daysLeft: number } | null = null
+  let trial: { active: boolean; daysLeft: number; sessionsLeft: number } | null = null
   if (profile?.plan_type === 'trial' && profile?.trial_started_at) {
     const started = new Date(profile.trial_started_at as string).getTime()
     const trialDaysUsed = Math.floor((Date.now() - started) / 864e5)
     const daysLeft = Math.max(0, TRIAL_DAYS - trialDaysUsed)
-    trial = { active: daysLeft > 0, daysLeft }
+    // Sessions left today (10/day). Reset if last session wasn't today.
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const lastDay = (profile?.last_session_date as string | null)?.slice(0, 10) ?? null
+    const usedToday = lastDay === todayStr ? Number(profile?.daily_sessions_used ?? 0) : 0
+    const sessionsLeft = Math.max(0, 10 - usedToday)
+    trial = { active: daysLeft > 0, daysLeft, sessionsLeft }
   }
+
+  // The three onboarding states, derived from plan_type + trial_started_at:
+  //   paid    → a subscription plan_type
+  //   trial   → plan_type 'trial' with a started clock (handled above)
+  //   explore → everything else (signed up, no trial started) → show trial nudge
+  const planTypeLower = String(profile?.plan_type ?? '').toLowerCase()
+  const isPaid = ['monthly', 'yearly', 'pro', 'paid', 'premium', 'founder', 'lifetime'].includes(planTypeLower)
+  const planState: 'explore' | 'trial' | 'paid' = isPaid
+    ? 'paid'
+    : profile?.trial_started_at
+      ? 'trial'
+      : 'explore'
 
   // Welcome modal only in the first few minutes of a brand-new trial.
   const showWelcome =
@@ -202,6 +219,7 @@ export default async function DashboardPage({
       nextHref={nextHref}
       showWelcome={showWelcome}
       trial={trial}
+      planState={planState}
       promo={promo}
     />
     </>

@@ -49,7 +49,16 @@ const TIERS = [
   },
 ]
 
-export default function PricingPage() {
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ plan?: string }>
+}) {
+  // ?plan=annual|monthly (set when a signed-out user is sent to signup and
+  // returns here) auto-opens Razorpay for that plan — so a new paying user
+  // doesn't have to click "Get Started" a second time.
+  const sp = await searchParams
+  const autoPlan = sp?.plan === 'annual' || sp?.plan === 'monthly' ? sp.plan : null
   return (
     <MarketingShell eyebrow="JOIN THE CLUB" title="Start free. Keep improving." subtitle="One 60-second rep a day. Pick a plan when you're ready — the trial needs no card.">
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:items-stretch">
@@ -106,6 +115,7 @@ export default function PricingPage() {
                 planKey={t.planKey}
                 label={t.cta}
                 variant={t.highlight ? 'primary' : 'secondary'}
+                autoStart={autoPlan === t.planKey}
               />
             ) : (
               <Button

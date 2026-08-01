@@ -135,6 +135,16 @@ export default async function CategoryModulesPage({
     ['pro', 'paid', 'premium', 'founder', 'lifetime'].includes(planType) ||
     ['active', 'trialing'].includes(subStatus)
 
+  // EXPLORE = signed up, no trial started, not paid. These users can READ the
+  // path (titles + details) but the lessons are teased with a blur and the
+  // practice CTA becomes "Start free trial" — they can't reach the practice page.
+  const isPaidPlan =
+    hasLifetime || hasSubFlag ||
+    ['pro', 'paid', 'premium', 'founder', 'lifetime', 'monthly', 'yearly'].includes(planType) ||
+    ['active', 'trialing'].includes(subStatus)
+  const trialStarted = Boolean(profile?.trial_started_at)
+  const isExplore = !isUserAdmin && !isPaidPlan && !trialStarted
+
   const prevModuleComplete = (() => {
     const prev = byModule.get(moduleNumber - 1)
     if (!prev) return true
@@ -185,6 +195,7 @@ export default async function CategoryModulesPage({
       totalInCategory={lessons.length}
       initialTone={initialTone}
       lockedReason={lockedReason}
+      isExplore={isExplore}
     />
   )
 }
