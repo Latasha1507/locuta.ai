@@ -31,9 +31,14 @@ export default function SignupPage() {
   // If they arrived heading for checkout (?next=/pricing?plan=…), show pay-
   // flavoured copy instead of trial copy — they came to subscribe, not trial.
   const [isPaying, setIsPaying] = useState(false)
+  // Carry ?next= onto the "Log in" link, so an EXISTING user who came here to
+  // subscribe (next=/pricing?plan=…) logs in and returns to checkout — not the
+  // dashboard. Without this, the plan is lost on login. (Bug fix.)
+  const [loginHref, setLoginHref] = useState('/auth/login')
   useEffect(() => {
     const next = new URLSearchParams(window.location.search).get('next') ?? ''
     setIsPaying(/[?&]plan=(monthly|annual)/.test(next) || next.includes('plan%3D'))
+    setLoginHref(next ? `/auth/login?next=${encodeURIComponent(next)}` : '/auth/login')
   }, [])
 
   const supabase = createClient()
@@ -191,7 +196,7 @@ export default function SignupPage() {
       }
       footer={
         <>
-          Already practicing? <AuthLink href="/auth/login">Log in</AuthLink>
+          Already practicing? <AuthLink href={loginHref}>Log in</AuthLink>
         </>
       }
     >
