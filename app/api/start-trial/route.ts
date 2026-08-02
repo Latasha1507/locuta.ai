@@ -68,12 +68,30 @@ export async function POST() {
   }
 
   if (!updated || updated.length === 0) {
-    // Update matched no row — the user's profile row is missing or unwritable.
-    console.error('start-trial: 0 rows updated for user', user.id)
-    return NextResponse.json(
-      { error: 'Could not start trial (no profile row updated).' },
-      { status: 500 },
-    )
+    // No profile row existed to update (the missing-profile bug). Self-heal:
+    // create the row already in trial state so the user isn't stuck.
+    const { data: created, error: insertErr } = await admin
+      .from('profiles')
+      .upsert(
+        {
+          id: user.id,
+          email: user.email ?? null,
+          plan_type: 'trial',
+          trial_started_at: new Date().toISOString(),
+          trial_sessions_used: 0,
+        },
+        { onConflict: 'id' },
+      )
+      .select('id, plan_type, trial_started_at')
+
+    if (insertErr || !created || created.length === 0) {
+      console.error('start-trial: could not create profile:', insertErr?.message)
+      return NextResponse.json(
+        { error: 'Could not start trial.', detail: insertErr?.message },
+        { status: 500 },
+      )
+    }
+    return NextResponse.json({ status: 'started', profile: created[0] })
   }
 
   return NextResponse.json({ status: 'started', profile: updated[0] })

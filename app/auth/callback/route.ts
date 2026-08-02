@@ -79,14 +79,33 @@ export async function GET(request: Request) {
           .from('profiles')
           .select('trial_started_at, plan_type')
           .eq('id', user.id)
-          .single()
+          .maybeSingle()
 
-        // Only initialise brand-new profiles that have no state yet. Never
-        // overwrite an existing trial/paid user.
         const isPaid = ['monthly', 'yearly', 'pro', 'paid', 'premium', 'founder', 'lifetime'].includes(
           String(profile?.plan_type ?? '').toLowerCase(),
         )
-        if (profile && !profile.trial_started_at && !isPaid) {
+
+        if (!profile) {
+          // No profile row yet (e.g. the auto-create trigger didn't run for this
+          // account). CREATE it as explore — otherwise the user has no profile
+          // and trial/gating/dashboard all break with "0 rows updated". This is
+          // the self-heal for a missing profiles row.
+          await supabase
+            .from('profiles')
+            .upsert(
+              {
+                id: user.id,
+                email: user.email ?? null,
+                plan_type: 'explore',
+                trial_started_at: null,
+                trial_sessions_used: 0,
+              },
+              { onConflict: 'id' },
+            )
+          console.log('✅ Created missing profile as explore')
+        } else if (!profile.trial_started_at && !isPaid) {
+          // Existing row, brand-new state → normalise to explore. Never overwrite
+          // an active trial or a paid user.
           await supabase
             .from('profiles')
             .update({
@@ -95,7 +114,6 @@ export async function GET(request: Request) {
               trial_sessions_used: 0,
             })
             .eq('id', user.id)
-
           console.log('✅ New user set to explore (trial opt-in)')
         }
       }
