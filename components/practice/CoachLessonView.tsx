@@ -841,7 +841,7 @@ function ExploreUnlockBanner({ categoryId }: { categoryId: string }) {
       const res = await fetch('/api/start-trial', { method: 'POST' })
       if (!res.ok) {
         const d = await res.json().catch(() => ({}))
-        setErr(d?.error || 'Could not start. Try again.')
+        setErr(d?.detail || d?.error || 'Could not start. Try again.')
         setLoading(false)
         return
       }

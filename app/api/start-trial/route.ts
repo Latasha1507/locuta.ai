@@ -1,23 +1,22 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server-admin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
  * Starts the 14-day free trial for the signed-in user — the explicit opt-in
- * that moves them from EXPLORE to TRIAL. The clock starts NOW (on this click),
- * not at signup, so a user who signs up today and starts the trial next week
- * gets their full 14 days from next week.
+ * that moves EXPLORE → TRIAL. The clock starts NOW (on this click).
  *
- * Idempotent and safe:
- *   • already on a trial  → no-op (don't reset their clock)
- *   • already paid        → no-op (don't downgrade)
- *   • only an EXPLORE user (no trial_started_at, non-paid) actually starts one.
- * A user cannot use this to restart an expired trial — once trial_started_at is
- * set, it is never cleared here.
+ * Idempotent: already-paid or already-started → no-op. Only an explore user
+ * (no trial_started_at, non-paid) actually starts a trial.
+ *
+ * Uses the ADMIN client for the write and RETURNS THE UPDATED ROW so the update
+ * can never succeed silently with 0 rows changed (the previous failure mode).
  */
 export async function POST() {
+  // Identify the user with their own session…
   const supabase = await createClient()
   const {
     data: { user },
@@ -26,24 +25,29 @@ export async function POST() {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
   }
 
-  const { data: profile } = await supabase
+  // …but perform the privileged state change with the service role, so RLS on
+  // profiles can never cause a silent 0-row update.
+  const admin = createAdminClient()
+
+  const { data: profile, error: readErr } = await admin
     .from('profiles')
     .select('plan_type, trial_started_at')
     .eq('id', user.id)
     .maybeSingle()
 
+  if (readErr) {
+    console.error('start-trial read error:', readErr.message)
+    return NextResponse.json({ error: 'Could not read your account.' }, { status: 500 })
+  }
+
   const planType = String(profile?.plan_type ?? '').toLowerCase()
   const paid = ['monthly', 'yearly', 'pro', 'paid', 'premium', 'founder', 'lifetime'].includes(planType)
+  if (paid) return NextResponse.json({ status: 'already_paid' })
+  if (profile?.trial_started_at) return NextResponse.json({ status: 'already_started' })
 
-  // Already paid, or a trial already exists (active OR expired) → do nothing.
-  if (paid) {
-    return NextResponse.json({ status: 'already_paid' })
-  }
-  if (profile?.trial_started_at) {
-    return NextResponse.json({ status: 'already_started' })
-  }
-
-  const { error } = await supabase
+  // Flip to trial. `.select()` returns the changed rows so we can VERIFY the
+  // write actually happened rather than trusting a no-error response.
+  const { data: updated, error } = await admin
     .from('profiles')
     .update({
       plan_type: 'trial',
@@ -51,13 +55,26 @@ export async function POST() {
       trial_sessions_used: 0,
     })
     .eq('id', user.id)
-    // Guard against a race: only flip if it's still unstarted.
-    .is('trial_started_at', null)
+    .select('id, plan_type, trial_started_at')
 
   if (error) {
-    console.error('start-trial error:', error.message)
-    return NextResponse.json({ error: 'Could not start trial. Please try again.' }, { status: 500 })
+    // Surface the real DB message so a constraint issue (e.g. valid_plan_type
+    // not allowing 'trial') is visible instead of a vague failure.
+    console.error('start-trial update error:', error.message)
+    return NextResponse.json(
+      { error: 'Could not start trial.', detail: error.message },
+      { status: 500 },
+    )
   }
 
-  return NextResponse.json({ status: 'started' })
+  if (!updated || updated.length === 0) {
+    // Update matched no row — the user's profile row is missing or unwritable.
+    console.error('start-trial: 0 rows updated for user', user.id)
+    return NextResponse.json(
+      { error: 'Could not start trial (no profile row updated).' },
+      { status: 500 },
+    )
+  }
+
+  return NextResponse.json({ status: 'started', profile: updated[0] })
 }
