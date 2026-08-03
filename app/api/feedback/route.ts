@@ -496,12 +496,17 @@ Be encouraging but honest. If non-English content detected, reduce overall score
 
     let userAudioUrl = ''
     try {
+      // Browsers report the recording as e.g. "audio/webm;codecs=opus", but the
+      // storage bucket only accepts the base MIME type — the ";codecs=…" suffix
+      // makes Supabase reject the upload. Strip it to the base type.
+      const rawType = audioFile.type || 'audio/webm'
+      const baseType = rawType.split(';')[0].trim() || 'audio/webm'
       // Reuse the bytes we read before Whisper (audioFile's stream is spent).
       const url = await uploadAudio(
         storage,
         userRecordingPath(user.id, sessionId),
         userAudioBytes,
-        audioFile.type || 'audio/webm',
+        baseType,
       )
       if (url) userAudioUrl = url
     } catch (e) {
