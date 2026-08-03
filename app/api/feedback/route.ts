@@ -1,5 +1,6 @@
 // app/api/feedback/route.ts
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server-admin'
 import { checkSessionLimitServer } from '@/lib/check-session-limit-server'
 import { uploadAudio, userRecordingPath, exampleAudioPath } from '@/lib/audio-storage'
 import { NextRequest, NextResponse } from 'next/server'
@@ -190,10 +191,19 @@ export async function POST(request: NextRequest) {
     const levelExpectations = getLevelExpectations(levelNumber)
     const weights = SCORING_WEIGHTS.getAdjustedWeights(levelNumber)
 
+    // Read the recording bytes ONCE, up front. Passing the original File to
+    // Whisper consumes its stream, after which a second arrayBuffer() read
+    // returns empty — which is why the user recording never got stored. We keep
+    // the bytes here and reuse them for BOTH transcription and the upload.
+    const userAudioBytes = Buffer.from(await audioFile.arrayBuffer())
+    const whisperFile = new File([userAudioBytes], audioFile.name || 'recording.webm', {
+      type: audioFile.type || 'audio/webm',
+    })
+
     // Step 1: Transcribe audio with FORCED ENGLISH
     console.log('🎤 Transcribing audio (English only)...')
     const transcription = await getOpenAI().audio.transcriptions.create({
-      file: audioFile,
+      file: whisperFile,
       model: 'whisper-1',
       language: 'en',
       prompt: 'This is an English speaking practice recording. Transcribe only in English.',
@@ -208,36 +218,38 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Generate AI example
     console.log('🎯 Generating AI example response...')
-    const aiExamplePrompt = `You are demonstrating how to complete this speaking task perfectly for a Level ${levelNumber} learner.
+    // Length comes from the lesson's own expected_duration_sec (set by the
+    // curriculum author per task) — NOT a fixed 30–60s. A "repeat this line
+    // three times" task has a small duration; an open-ended one has a larger
+    // one. ~130 words per minute of natural speech. This mirrors how
+    // /api/generate-example sizes its answer, so the two stay consistent.
+    const exampleDurationSec = Number(lesson.expected_duration_sec) || 30
+    const exampleTargetWords = Math.max(12, Math.round((exampleDurationSec / 60) * 130))
+    const aiExamplePrompt = `You are demonstrating how to complete this exact speaking task for a Level ${levelNumber} learner, in a ${tone} coaching style.
 
 **Task:** ${lesson.practice_prompt}
 
-**Category:** ${categoryName}
-**Coaching Style:** ${tone}
-**Focus Areas:** ${lesson.feedback_focus_areas}
+Produce ONLY what a strong speaker would actually SAY to complete THIS task — nothing else.
 
-Create a natural, authentic example response that:
-1. Directly addresses the task
-2. Uses appropriate vocabulary for Level ${levelNumber}
-3. Demonstrates good pacing and natural flow
-4. Is 30-60 seconds when spoken (approximately 75-150 words)
-5. Sounds like real human speech, not scripted
+Rules:
+- Length: about ${exampleTargetWords} words (~${exampleDurationSec} seconds spoken). Do not exceed the length the task needs.
+- Do exactly what the task asks. If it says repeat a specific line a set number of times, say that exact line that many times and stop — nothing added. If it's open-ended, give one strong, natural response of the target length.
+- Do NOT re-teach, coach, narrate breathing, or add warm-ups, intros, or encouragement ("take a deep breath", "great job", "one more time"). Only the spoken answer.
+- No meta-commentary, no stage directions, no wrapping quotation marks.
 
-Respond with ONLY the example speech text - no explanation, no meta-commentary.`
+Respond with ONLY the example speech text.`
 
     const aiExampleResponse = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        { 
-          role: 'system', 
-          content: `You are an expert speaking coach creating demonstration examples. 
-          Speak naturally and authentically. Never say things like "As a language model..." 
-          or "Here's an example..." - just speak the example directly.` 
+        {
+          role: 'system',
+          content: `You are an expert speaking coach who demonstrates a task by speaking ONLY the answer, at the length the task actually needs. You never pad, never re-teach, never add breathing cues or pep talk. If the task is "repeat this line three times", you say exactly that line three times and stop. If the task is open-ended, you give one natural answer of the requested length.`,
         },
-        { role: 'user', content: aiExamplePrompt }
+        { role: 'user', content: aiExamplePrompt },
       ],
-      temperature: 0.8,
-      max_tokens: 200,
+      temperature: 0.6,
+      max_tokens: 400,
     })
 
     const aiExampleText = aiExampleResponse.choices[0].message.content || 
@@ -477,13 +489,18 @@ Be encouraging but honest. If non-English content detected, reduce overall score
     // page beside the coach version. The blob was already read for Whisper;
     // we upload the same bytes. Non-fatal: if it fails, the compare UI simply
     // falls back to "recording unavailable" rather than blocking feedback.
+    // Storage writes go through the SERVICE-ROLE client: the audio bucket's RLS
+    // blocks the user-scoped client, which is the other reason the recording
+    // never persisted. Admin client bypasses RLS for these server-side writes.
+    const storage = createAdminClient()
+
     let userAudioUrl = ''
     try {
-      const audioBuffer = Buffer.from(await audioFile.arrayBuffer())
+      // Reuse the bytes we read before Whisper (audioFile's stream is spent).
       const url = await uploadAudio(
-        supabase,
+        storage,
         userRecordingPath(user.id, sessionId),
-        audioBuffer,
+        userAudioBytes,
         audioFile.type || 'audio/webm',
       )
       if (url) userAudioUrl = url
@@ -491,14 +508,10 @@ Be encouraging but honest. If non-English content detected, reduce overall score
       console.error('⚠️ Failed to store user recording (non-critical):', e)
     }
 
-    // Upload the coach's spoken example to storage and keep a real URL. Until
-    // now this audio was generated then only stored as base64 under a column
-    // the feedback page never read, so the coach player never appeared. A URL
-    // streams from the CDN and is what the compare UI actually uses.
     let exampleAudioUrl = ''
     try {
       const url = await uploadAudio(
-        supabase,
+        storage,
         exampleAudioPath(user.id, sessionId),
         aiAudioBuffer,
         'audio/mpeg',

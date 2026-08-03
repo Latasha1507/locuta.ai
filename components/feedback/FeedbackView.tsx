@@ -448,7 +448,7 @@ export function FeedbackView(d: FeedbackData) {
                           Recording not available for this attempt.
                         </p>
                         {d.transcript && (
-                          <p style={{ margin: '8px 0 0', fontSize: 12.5, lineHeight: 1.55, color: '#4a5645', fontWeight: 600, fontStyle: 'italic', maxHeight: 130, overflowY: 'auto' }}>
+                          <p style={{ margin: '8px 0 0', fontSize: 12.5, lineHeight: 1.55, color: '#4a5645', fontWeight: 600, fontStyle: 'italic', maxHeight: 320, overflowY: 'auto' }}>
                             &ldquo;{d.transcript}&rdquo;
                           </p>
                         )}
@@ -816,7 +816,7 @@ function ComparePlayer({
             color: '#4a5645',
             fontWeight: 600,
             fontStyle: 'italic',
-            maxHeight: 150,
+            maxHeight: 320,
             overflowY: 'auto',
             animation: 'lp-rise .25s ease both',
           }}
