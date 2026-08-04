@@ -148,7 +148,7 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
         <div className="text-center mb-6">
           <div className="mb-3 flex justify-center"><Icon name="gift" size={52} color="#3fce6f" /></div>
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
-            Get 1 Year FREE Access!
+            Get 1 Month FREE Access!
           </h2>
           <p className="text-slate-600">
             30-min 1:1 feedback call with founder

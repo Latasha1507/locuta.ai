@@ -333,39 +333,36 @@ Respond with ONLY the example speech text.`
 - 2-4 sentences. One genuine specific strength, then the single most useful thing to work on. No generic filler like "keep practicing to improve".
 - "strengths" and "improvements" arrays: also address the learner as "you" and reference their actual answer where possible.
 
-Respond with ONLY valid JSON (no markdown, no code blocks):
+Respond with ONLY valid JSON (no markdown, no code blocks). The numbers below are PLACEHOLDERS showing the FORMAT — you MUST replace every score with a genuine 0–100 rating of THIS learner's actual recording. Do NOT copy the placeholder numbers. Score honestly: a weak answer with grammar errors, poor vocabulary, or very slow/awkward pacing should score low (40s–60s); an average answer 60s–70s; only a genuinely strong, fluent answer should score 80+. Vary the numbers to match what you actually heard.
 {
-  "overall_score": 85,
-  "content_score": 80,
-  "linguistic_score": 90,
-  "weighted_overall_score": 84,
-  "passed": true,
+  "content_score": <0-100: how well they addressed the task, ideas, delivery>,
+  "focus_area_scores": {
+    "Clarity": <0-100>,
+    "Confidence": <0-100>,
+    "Delivery": <0-100>
+  },
+  "passed": <true|false>,
   "strengths": ["strength 1", "strength 2", "strength 3"],
   "improvements": ["improvement 1", "improvement 2"],
   "detailed_feedback": "First-person, direct-address paragraph in the coach's voice",
-  "focus_area_scores": {
-    "Clarity": 80,
-    "Confidence": 85,
-    "Delivery": 90
-  },
   "linguistic_analysis": {
     "grammar": {
-      "score": 85,
+      "score": <0-100: penalise real errors in what they said>,
       "issues": ["issue if any"],
       "suggestions": ["suggestion 1", "suggestion 2"]
     },
     "sentence_formation": {
-      "score": 88,
-      "complexity_level": "intermediate",
-      "variety_score": 85,
-      "flow_score": 90,
+      "score": <0-100>,
+      "complexity_level": "<basic|intermediate|advanced>",
+      "variety_score": <0-100>,
+      "flow_score": <0-100>,
       "issues": ["issue if any"],
       "suggestions": ["suggestion"]
     },
     "vocabulary": {
-      "score": 82,
-      "level_appropriateness": 85,
-      "variety_score": 80,
+      "score": <0-100>,
+      "level_appropriateness": <0-100>,
+      "variety_score": <0-100>,
       "advanced_words_used": ["word1", "word2"],
       "suggested_alternatives": {
         "word": ["alternative1", "alternative2"]
@@ -374,9 +371,9 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
     }
   },
   "language_compliance": {
-    "is_english_only": true,
+    "is_english_only": <true|false>,
     "non_english_words_detected": [],
-    "language_score_penalty": 0
+    "language_score_penalty": <0-100>
   },
   "words_to_learn": [
     {"word": "vivid", "meaning": "producing a strong, clear picture in the mind", "example": "She gave a vivid description of the beach."}
@@ -409,42 +406,64 @@ Be encouraging but honest. If non-English content detected, reduce overall score
     try {
       const feedbackText = feedbackResponse.choices[0].message.content || '{}'
       feedback = JSON.parse(feedbackText)
-      
-      if (!feedback.content_score && feedback.focus_area_scores) {
-        const scores = Object.values(feedback.focus_area_scores) as number[]
-        feedback.content_score = scores.reduce((a, b) => a + b, 0) / scores.length
+
+      // ── SCORING IS COMPUTED IN CODE, NOT TRUSTED FROM THE MODEL ──────────────
+      // The model returns only COMPONENT scores (content, grammar, sentence,
+      // vocabulary, focus areas). We derive linguistic + overall ourselves with
+      // SCORING_WEIGHTS. Previously the model returned its own overall and the
+      // code only recomputed "if missing" — so a value copied from the prompt
+      // template (the infamous 84) skipped the formula entirely. Now it always
+      // runs, so the score reflects the actual component ratings.
+
+      const clamp = (n: number) => Math.max(0, Math.min(100, Number.isFinite(n) ? n : 0))
+
+      // Content: prefer the model's content_score; else average the focus areas.
+      let contentScore: number
+      if (typeof feedback.content_score === 'number') {
+        contentScore = clamp(feedback.content_score)
+      } else if (feedback.focus_area_scores) {
+        const s = Object.values(feedback.focus_area_scores).map(Number).filter(Number.isFinite) as number[]
+        contentScore = s.length ? clamp(s.reduce((a, b) => a + b, 0) / s.length) : 60
+      } else {
+        contentScore = 60
       }
-      
-      if (!feedback.linguistic_score && feedback.linguistic_analysis) {
-        const grammarScore = feedback.linguistic_analysis.grammar.score || 75
-        const sentenceScore = feedback.linguistic_analysis.sentence_formation.score || 75
-        const vocabularyScore = feedback.linguistic_analysis.vocabulary.score || 75
-        
-        feedback.linguistic_score = (
-          grammarScore * SCORING_WEIGHTS.GRAMMAR_WEIGHT +
-          sentenceScore * SCORING_WEIGHTS.SENTENCE_FORMATION_WEIGHT +
-          vocabularyScore * SCORING_WEIGHTS.VOCABULARY_WEIGHT
-        )
-      }
-      
-      if (!feedback.weighted_overall_score) {
-        feedback.weighted_overall_score = (
-          feedback.content_score * weights.CONTENT_WEIGHT +
-          feedback.linguistic_score * weights.LINGUISTIC_WEIGHT
-        )
-      }
-      
-      feedback.overall_score = Math.round(feedback.weighted_overall_score)
-      
+
+      // Linguistic: ALWAYS computed from grammar / sentence / vocabulary.
+      const la = feedback.linguistic_analysis ?? {}
+      const grammarScore = clamp(Number(la.grammar?.score ?? 60))
+      const sentenceScore = clamp(Number(la.sentence_formation?.score ?? 60))
+      const vocabularyScore = clamp(Number(la.vocabulary?.score ?? 60))
+      const linguisticScore =
+        grammarScore * SCORING_WEIGHTS.GRAMMAR_WEIGHT +
+        sentenceScore * SCORING_WEIGHTS.SENTENCE_FORMATION_WEIGHT +
+        vocabularyScore * SCORING_WEIGHTS.VOCABULARY_WEIGHT
+
+      // Overall: ALWAYS computed from content + linguistic with level weights.
+      let overall = contentScore * weights.CONTENT_WEIGHT + linguisticScore * weights.LINGUISTIC_WEIGHT
+
+      // English-only penalty (the model reports a 0–100 penalty to subtract).
+      const penalty = clamp(Number(feedback.language_compliance?.language_score_penalty ?? 0))
+      overall = clamp(overall - penalty)
+
+      feedback.content_score = Math.round(contentScore)
+      feedback.linguistic_score = Math.round(linguisticScore)
+      feedback.weighted_overall_score = overall
+      feedback.overall_score = Math.round(overall)
+
       const passThreshold = levelNumber <= 10 ? 60 : levelNumber <= 30 ? 65 : 70
       feedback.passed = feedback.overall_score >= passThreshold
-      
-      console.log('✅ Feedback generated:', {
+
+      console.log('✅ Feedback scored (computed):', {
+        content: feedback.content_score,
+        grammar: grammarScore,
+        sentence: sentenceScore,
+        vocab: vocabularyScore,
+        linguistic: feedback.linguistic_score,
         overall: feedback.overall_score,
         passed: feedback.passed,
-        threshold: passThreshold
+        threshold: passThreshold,
       })
-      
+
     } catch (e) {
       console.error('⚠️ Failed to parse feedback:', e)
       feedback = {
