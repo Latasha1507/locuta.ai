@@ -233,7 +233,7 @@ Produce ONLY what a strong speaker would actually SAY to complete THIS task — 
 
 Rules:
 - Length: about ${exampleTargetWords} words (~${exampleDurationSec} seconds spoken). Do not exceed the length the task needs.
-- Do exactly what the task asks. If it says repeat a specific line a set number of times, say that exact line that many times and stop — nothing added. If it's open-ended, give one strong, natural response of the target length.
+- Speak the task the way a real person actually would — naturally, once through. If the task lists several phrases or starters to practise, say each ONE naturally with the right tone, as a short flowing example. Do NOT chant or repeat any phrase multiple times. Only say a line more than once if the task LITERALLY tells you to repeat that one exact line a set number of times. If it's open-ended, give one strong, natural response of the target length.
 - Do NOT re-teach, coach, narrate breathing, or add warm-ups, intros, or encouragement ("take a deep breath", "great job", "one more time"). Only the spoken answer.
 - No meta-commentary, no stage directions, no wrapping quotation marks.
 
@@ -244,7 +244,7 @@ Respond with ONLY the example speech text.`
       messages: [
         {
           role: 'system',
-          content: `You are an expert speaking coach who demonstrates a task by speaking ONLY the answer, at the length the task actually needs. You never pad, never re-teach, never add breathing cues or pep talk. If the task is "repeat this line three times", you say exactly that line three times and stop. If the task is open-ended, you give one natural answer of the requested length.`,
+          content: `You are an expert speaking coach who demonstrates a task by speaking ONLY the answer, naturally, at the length the task needs. You never pad, never re-teach, never add breathing cues or pep talk. If the task lists several phrases or starters, you say each ONE naturally with good tone — as a flowing example, never chanting or repeating a phrase multiple times. You only repeat a line if the task literally instructs repeating that one exact line a set number of times. If the task is open-ended, you give one natural answer of the requested length.`,
         },
         { role: 'user', content: aiExamplePrompt },
       ],

@@ -259,34 +259,37 @@ html {
 .lc-seek:focus-visible { outline: none; box-shadow: var(--lc-ring); }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   App-wide button polish.
-   The design-system buttons (.lc-btn) and audio controls (.lc-ctl) already
-   have the proper landing-style press. Some other buttons across the app were
-   given a STATIC offset box-shadow inline (e.g. "0 6px 0 #…") which reads as a
-   cheap, dead drop-shadow — it never moves. This targets buttons that use
-   NEITHER system: it removes that static shadow and gives them the same
-   satisfying press-down on click. .lc-btn / .lc-ctl are explicitly excluded so
-   the good ones are untouched.
+   App-wide button press — matches the landing buttons (.lc-btn).
+   Landing buttons sink on HOVER (the key starts going down as the cursor
+   arrives) and bottom out on CLICK. We give every other <button> the same feel.
+   Their own inline offset edge is KEPT (it's the "side of the key"); on hover
+   the surface dips toward it, on press it meets it — so the edge reads as a
+   real 3D key being pushed, not a dead drop-shadow. .lc-btn / .lc-ctl already
+   do this and are excluded.
    ──────────────────────────────────────────────────────────────────────── */
 button:not(.lc-btn):not(.lc-ctl):not(:disabled):not([aria-disabled="true"]) {
-  /* Kill the static offset drop-shadow (beats inline styles, which have no
-     !important). Buttons that legitimately need a shadow use .lc-btn/.lc-ctl. */
-  box-shadow: none !important;
-  transition: transform 0.06s ease-out, background-color 0.12s ease-out, filter 0.12s ease-out;
+  transition: transform 0.1s ease-out, filter 0.1s ease-out, background-color 0.1s ease-out;
   -webkit-tap-highlight-color: transparent;
+  will-change: transform;
 }
-/* The press: the button dips down when clicked, like the landing buttons. */
-button:not(.lc-btn):not(.lc-ctl):not(:disabled):not([aria-disabled="true"]):active {
+/* HOVER — cursor arrives, the key starts sinking (like landing's half-press). */
+button:not(.lc-btn):not(.lc-ctl):not(:disabled):not([aria-disabled="true"]):hover {
   transform: translateY(2px);
+  filter: brightness(0.98);
 }
-/* Motion-sensitive users: keep it still (this rule is authored to survive the
-   blanket reduced-motion setting rather than be silently overridden). */
+/* ACTIVE — bottomed out on click. */
+button:not(.lc-btn):not(.lc-ctl):not(:disabled):not([aria-disabled="true"]):active {
+  transform: translateY(4px);
+  filter: brightness(0.96);
+}
+/* Motion-sensitive users: colour feedback only, no travel. Authored to survive
+   the blanket reduced-motion rule rather than be silently overridden. */
 @media (prefers-reduced-motion: reduce) {
+  button:not(.lc-btn):not(.lc-ctl):hover,
   button:not(.lc-btn):not(.lc-ctl):active { transform: none; }
 }
-/* Preserve a keyboard focus ring — the shadow removal above must not strip the
-   accessible focus indicator for keyboard users. */
+/* Keyboard focus ring stays visible. */
 button:not(.lc-btn):not(.lc-ctl):focus-visible {
-  box-shadow: 0 0 0 4px rgba(63, 206, 111, 0.45) !important;
+  box-shadow: 0 0 0 4px rgba(63, 206, 111, 0.45);
   outline: none;
 }
