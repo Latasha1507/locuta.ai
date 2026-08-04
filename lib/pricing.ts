@@ -44,14 +44,14 @@ export const PRICING: Record<PlanKey, PlanPricing> = {
     planKey: 'annual',
     planType: 'yearly',
     planId: process.env.RAZORPAY_PLAN_ANNUAL ?? '',
-    amountCents: 14393, // $143.93/yr ($11.99/mo) — 40% off $239.88
+    amountCents: 14393, // $143.88/yr ($11.99/mo) — 40% off $239.88
     currency: 'USD',
     totalCount: 10,
     name: 'Annual',
     price: '$11.99',
     wasPrice: '$19.99',
     period: '/mo',
-    note: 'Early-member price — 40% off. Billed annually ($143.93/yr).',
+    note: 'Early-member price — 40% off. Billed annually ($143.88/yr).',
     badge: 'BEST VALUE · 40% OFF',
     features: [
       'Unlimited sessions',
