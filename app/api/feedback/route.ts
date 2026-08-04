@@ -389,23 +389,53 @@ WORDS_TO_LEARN: return 3 useful words (2 minimum — a single word looks broken 
 
 Be encouraging but honest. If non-English content detected, reduce overall score significantly.`
 
-    const feedbackResponse = await getOpenAI().chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { 
-          role: 'system', 
-          content: 'You are a warm, specific, personal speaking coach who always talks directly TO the learner as "you" and in the first person — never in the third person or like a report. Respond ONLY with valid JSON, no markdown or code blocks.' 
-        },
-        { role: 'user', content: feedbackPrompt }
-      ],
-      temperature: 0.7,
-      response_format: { type: "json_object" }
-    })
+    // Generate + parse feedback with ONE retry. JSON mode makes malformed
+    // output rare; if it happens we ask again rather than fabricate a score.
+    let feedback: any = null
+    let lastParseError: unknown = null
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const feedbackResponse = await getOpenAI().chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a warm, specific, personal speaking coach who always talks directly TO the learner as "you" and in the first person — never in the third person or like a report. Respond ONLY with valid JSON, no markdown or code blocks.',
+          },
+          { role: 'user', content: feedbackPrompt },
+        ],
+        temperature: 0.7,
+        response_format: { type: 'json_object' },
+      })
+      try {
+        feedback = JSON.parse(feedbackResponse.choices[0].message.content || '{}')
+        break // parsed OK
+      } catch (e) {
+        lastParseError = e
+        console.error(`⚠️ Feedback parse failed (attempt ${attempt}/2):`, e)
+        feedback = null
+      }
+    }
 
-    let feedback
-    try {
-      const feedbackText = feedbackResponse.choices[0].message.content || '{}'
-      feedback = JSON.parse(feedbackText)
+    if (feedback) {
+      // Guard: the model must have returned the real component scores. If any
+      // critical one is missing, we do NOT substitute a made-up number — we
+      // treat the attempt as unscored and return an honest error below.
+      const la0 = feedback.linguistic_analysis ?? {}
+      const hasContent =
+        typeof feedback.content_score === 'number' ||
+        (feedback.focus_area_scores &&
+          Object.values(feedback.focus_area_scores).some((v) => Number.isFinite(Number(v))))
+      const hasLinguistic =
+        Number.isFinite(Number(la0.grammar?.score)) &&
+        Number.isFinite(Number(la0.sentence_formation?.score)) &&
+        Number.isFinite(Number(la0.vocabulary?.score))
+      if (!hasContent || !hasLinguistic) {
+        console.error('⚠️ Feedback missing critical component scores — not fabricating.')
+        return NextResponse.json(
+          { error: "We couldn't score this attempt just now. Please try again." },
+          { status: 502 },
+        )
+      }
 
       // ── SCORING IS COMPUTED IN CODE, NOT TRUSTED FROM THE MODEL ──────────────
       // The model returns only COMPONENT scores (content, grammar, sentence,
@@ -464,40 +494,15 @@ Be encouraging but honest. If non-English content detected, reduce overall score
         threshold: passThreshold,
       })
 
-    } catch (e) {
-      console.error('⚠️ Failed to parse feedback:', e)
-      feedback = {
-        overall_score: 70,
-        content_score: 70,
-        linguistic_score: 70,
-        weighted_overall_score: 70,
-        passed: false,
-        strengths: ['Good effort', 'Clear speaking', 'Engaged with task'],
-        improvements: ['Practice more', 'Focus on task requirements'],
-        detailed_feedback: 'Keep practicing to improve your speaking skills.',
-        words_to_learn: [],
-        grammar_fixes: [],
-        focus_area_scores: { Clarity: 70, Confidence: 70, Delivery: 70 },
-        linguistic_analysis: {
-          grammar: { score: 70, issues: [], suggestions: [] },
-          sentence_formation: { 
-            score: 70, 
-            complexity_level: 'basic',
-            variety_score: 70,
-            flow_score: 70,
-            issues: [], 
-            suggestions: [] 
-          },
-          vocabulary: { 
-            score: 70,
-            level_appropriateness: 70,
-            variety_score: 70,
-            advanced_words_used: [],
-            suggested_alternatives: {},
-            issues: [] 
-          }
-        }
-      }
+    } else {
+      // Both attempts failed to return parseable JSON. Per our rule — NEVER show
+      // a fabricated score — we don't invent a 70. Return an honest error so the
+      // UI asks the learner to try again. No session/score is recorded.
+      console.error('⚠️ Feedback unavailable after retry:', lastParseError)
+      return NextResponse.json(
+        { error: "We couldn't score this attempt just now. Please try again." },
+        { status: 502 },
+      )
     }
 
     // Step 5: Save session to database
