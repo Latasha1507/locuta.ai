@@ -5,7 +5,7 @@ import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
 import { Icon } from '@/components/ui/icons'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import type { FounderPromo } from '@/components/dashboard/SidebarPromo'
-import { ProfileButton } from '@/components/common/ProfileButton'
+import { useState } from 'react'
 
 export interface HistoryItem {
   sessionId: string
@@ -20,6 +20,8 @@ export interface HistoryItem {
   linguisticScore: number
   passed: boolean
   createdAt: string
+  userAudioUrl: string
+  coachAudioUrl: string
 }
 
 export interface PersonalBest {
@@ -70,7 +72,6 @@ export function HistoryView(d: HistoryData) {
               Practice history
             </h1>
           </div>
-          <ProfileButton name={d.profileName} email={d.profileEmail} />
         </div>
 
         {d.totalCount === 0 ? (
@@ -141,72 +142,11 @@ export function HistoryView(d: HistoryData) {
               ))}
             </div>
 
-            {/* TIMELINE — one card per attempt, tap to reopen its feedback */}
+            {/* TIMELINE — tap a row to expand its compare audio inline (no page
+                jump). "Full review" opens the complete feedback page. */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
               {d.items.map((s) => (
-                <Link
-                  key={s.sessionId}
-                  href={`/category/${s.categoryId}/module/${s.moduleNumber}/lesson/${s.levelNumber}/feedback?session=${s.sessionId}`}
-                  className="transition-transform duration-150 hover:-translate-y-[2px]"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
-                    background: '#fff',
-                    border: `2px solid ${lc.cardBorder}`,
-                    borderRadius: 18,
-                    padding: '14px 16px',
-                    boxShadow: `0 4px 0 ${lc.cardBorder}`,
-                    textDecoration: 'none',
-                    color: 'inherit',
-                  }}
-                >
-                  {/* Score badge */}
-                  <span
-                    style={{
-                      width: 52, height: 52, borderRadius: 14, flex: 'none',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                      background: `${scoreColor(s.score)}15`, border: `2px solid ${scoreColor(s.score)}`,
-                    }}
-                  >
-                    <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 20, lineHeight: 1, color: scoreColor(s.score) }}>
-                      {s.score}
-                    </span>
-                  </span>
-
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 14.5, color: lc.ink }}>
-                        {s.lessonTitle}
-                      </span>
-                      {s.passed ? (
-                        <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.04em', color: lc.greenDark, background: '#e7f8ec', padding: '2px 7px', borderRadius: 999 }}>
-                          PASSED
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.04em', color: '#a86a12', background: '#fff3e2', padding: '2px 7px', borderRadius: 999 }}>
-                          RETRY
-                        </span>
-                      )}
-                    </span>
-                    <span style={{ display: 'block', fontSize: 12, color: lc.muted, fontWeight: 700, marginTop: 3 }}>
-                      {s.categoryName} · {s.tone} coach
-                    </span>
-                    <span style={{ display: 'flex', gap: 12, marginTop: 7 }}>
-                      <SubScore label="Content" value={s.contentScore} />
-                      <SubScore label="Language" value={s.linguisticScore} />
-                    </span>
-                  </span>
-
-                  <span style={{ flex: 'none', textAlign: 'right' }}>
-                    <span style={{ display: 'block', fontSize: 11.5, color: lc.faint, fontWeight: 700 }}>
-                      {new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11.5, fontWeight: 800, color: lc.green, marginTop: 6 }}>
-                      Review <Icon name="arrow" size={12} color={lc.green} />
-                    </span>
-                  </span>
-                </Link>
+                <SessionRow key={s.sessionId} s={s} activeCategoryId={d.activeCategoryId} />
               ))}
             </div>
 
@@ -231,6 +171,151 @@ export function HistoryView(d: HistoryData) {
           </>
         )}
       </main>
+    </div>
+  )
+}
+
+function SessionRow({ s, activeCategoryId }: { s: HistoryItem; activeCategoryId: string | null }) {
+  const [open, setOpen] = useState(false)
+  const hasAudio = Boolean(s.userAudioUrl || s.coachAudioUrl)
+  // "Full review" carries from=history so the feedback page's back button
+  // returns HERE, not to the lesson/module page.
+  const reviewHref = `/category/${s.categoryId}/module/${s.moduleNumber}/lesson/${s.levelNumber}/feedback?session=${s.sessionId}&from=history${activeCategoryId ? `&fromCategory=${activeCategoryId}` : ''}`
+
+  return (
+    <div
+      style={{
+        background: '#fff',
+        border: `2px solid ${lc.cardBorder}`,
+        borderRadius: 18,
+        boxShadow: `0 4px 0 ${lc.cardBorder}`,
+        overflow: 'hidden',
+      }}
+    >
+      {/* HEADER ROW — click to expand (only if there's audio to show) */}
+      <button
+        type="button"
+        onClick={() => hasAudio && setOpen((v) => !v)}
+        aria-expanded={open}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+          padding: '14px 16px', background: 'transparent', border: 'none',
+          cursor: hasAudio ? 'pointer' : 'default', textAlign: 'left', color: 'inherit',
+        }}
+      >
+        <span
+          style={{
+            width: 52, height: 52, borderRadius: 14, flex: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: `${scoreColor(s.score)}15`, border: `2px solid ${scoreColor(s.score)}`,
+          }}
+        >
+          <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 20, lineHeight: 1, color: scoreColor(s.score) }}>
+            {s.score}
+          </span>
+        </span>
+
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 14.5, color: lc.ink }}>{s.lessonTitle}</span>
+            {s.passed ? (
+              <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.04em', color: lc.greenDark, background: '#e7f8ec', padding: '2px 7px', borderRadius: 999 }}>PASSED</span>
+            ) : (
+              <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.04em', color: '#a86a12', background: '#fff3e2', padding: '2px 7px', borderRadius: 999 }}>RETRY</span>
+            )}
+          </span>
+          <span style={{ display: 'block', fontSize: 12, color: lc.muted, fontWeight: 700, marginTop: 3 }}>
+            {s.categoryName} · {s.tone} coach
+          </span>
+          <span style={{ display: 'flex', gap: 12, marginTop: 7 }}>
+            <SubScore label="Content" value={s.contentScore} />
+            <SubScore label="Language" value={s.linguisticScore} />
+          </span>
+        </span>
+
+        <span style={{ flex: 'none', textAlign: 'right' }}>
+          <span style={{ display: 'block', fontSize: 11.5, color: lc.faint, fontWeight: 700 }}>
+            {new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+          {hasAudio && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11.5, fontWeight: 800, color: lc.green, marginTop: 6 }}>
+              {open ? 'Hide' : 'Compare'}
+              <span
+                aria-hidden
+                style={{
+                  display: 'inline-block', width: 6, height: 6, marginLeft: 2,
+                  borderRight: `2px solid ${lc.green}`, borderBottom: `2px solid ${lc.green}`,
+                  transform: open ? 'rotate(-135deg)' : 'rotate(45deg)',
+                  transition: 'transform .15s', marginBottom: open ? -2 : 2,
+                }}
+              />
+            </span>
+          )}
+        </span>
+      </button>
+
+      {/* EXPANDED — inline compare audio + full-review link */}
+      {open && hasAudio && (
+        <div style={{ padding: '0 16px 16px', borderTop: `1px solid ${lc.cardBorder}` }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
+            <MiniAudio label="You said it" src={s.userAudioUrl} accent={lc.coral} />
+            <MiniAudio label="Coach version" src={s.coachAudioUrl} accent={lc.green} />
+          </div>
+          <Link
+            href={reviewHref}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 12, fontSize: 12.5, fontWeight: 800, color: lc.green, textDecoration: 'none' }}
+          >
+            Open full review <Icon name="arrow" size={12} color={lc.green} />
+          </Link>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Compact inline audio player for the History compare view. */
+function MiniAudio({ label, src, accent }: { label: string; src: string; accent: string }) {
+  const [playing, setPlaying] = useState(false)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
+
+  function toggle() {
+    if (!src) return
+    let a = audio
+    if (!a) {
+      a = new Audio(src)
+      a.onended = () => setPlaying(false)
+      setAudio(a)
+    }
+    if (playing) {
+      a.pause()
+      setPlaying(false)
+    } else {
+      void a.play()
+      setPlaying(true)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: `${accent}0d`, border: `2px solid ${accent}33`, borderRadius: 12, padding: '10px 12px' }}>
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={!src}
+        aria-label={playing ? 'Pause' : 'Play'}
+        style={{
+          width: 34, height: 34, borderRadius: '50%', flex: 'none', border: 'none',
+          background: src ? accent : '#cfd6cb', color: '#fff', cursor: src ? 'pointer' : 'not-allowed',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
+        }}
+      >
+        {playing ? '❚❚' : '▶'}
+      </button>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: 11.5, fontWeight: 800, color: lc.ink }}>{label}</span>
+        <span style={{ display: 'block', fontSize: 10.5, color: lc.faint, fontWeight: 700 }}>
+          {src ? (playing ? 'Playing…' : 'Tap to play') : 'Not available'}
+        </span>
+      </span>
     </div>
   )
 }
@@ -305,39 +390,78 @@ function PageLink({ href, disabled, dir }: { href: string; disabled: boolean; di
 function TrendChart({ data }: { data: number[] }) {
   if (data.length < 2) {
     return (
-      <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: lc.faint, fontWeight: 700 }}>
+      <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: lc.faint, fontWeight: 700 }}>
         A couple more sessions and your trend line appears here.
       </div>
     )
   }
-  const W = 100
-  const H = 40
-  const max = Math.max(...data, 100)
-  const min = Math.min(...data, 0)
-  const range = max - min || 1
-  const pts = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * W
-    const y = H - ((v - min) / range) * H
-    return [x, y] as const
-  })
-  const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')
-  const area = `${path} L${W},${H} L0,${H} Z`
+
+  // Real pixel coordinates (no aspect-ratio stretching, so the line isn't
+  // distorted). Padding leaves room for the value labels above each point.
+  const W = 560
+  const H = 190
+  const padX = 18
+  const padTop = 26
+  const padBottom = 22
+
+  // Y-scale: frame the actual scores with a little headroom so the variation is
+  // visible, but never invert or exaggerate. Clamped to 0–100.
+  const lo = Math.max(0, Math.min(...data) - 8)
+  const hi = Math.min(100, Math.max(...data) + 8)
+  const range = hi - lo || 1
+  const x = (i: number) => padX + (i / (data.length - 1)) * (W - padX * 2)
+  const y = (v: number) => padTop + (1 - (v - lo) / range) * (H - padTop - padBottom)
+
+  const pts = data.map((v, i) => [x(i), y(v)] as const)
+  const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')
+  const area = `${line} L${pts[pts.length - 1][0].toFixed(1)},${H - padBottom} L${pts[0][0].toFixed(1)},${H - padBottom} Z`
+
+  // Gridlines at three readable score marks within the visible range.
+  const gridVals = [Math.round(hi), Math.round((hi + lo) / 2), Math.round(lo)]
+
+  const first = data[0]
+  const last = data[data.length - 1]
+  const delta = last - first
+  const deltaColor = delta > 0 ? lc.greenDark : delta < 0 ? lc.coralDark : lc.faint
+  const deltaLabel = delta > 0 ? `▲ +${delta} since you started` : delta < 0 ? `▼ ${delta} since you started` : 'Holding steady'
 
   return (
-    <div style={{ position: 'relative' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: 120, overflow: 'visible' }}>
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
         <defs>
           <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lc.green} stopOpacity="0.25" />
+            <stop offset="0%" stopColor={lc.green} stopOpacity="0.22" />
             <stop offset="100%" stopColor={lc.green} stopOpacity="0" />
           </linearGradient>
         </defs>
+
+        {/* Gridlines + y labels */}
+        {gridVals.map((gv, i) => {
+          const gy = y(gv)
+          return (
+            <g key={i}>
+              <line x1={padX} y1={gy} x2={W - padX} y2={gy} stroke={lc.cardBorder} strokeWidth="1" strokeDasharray="3 4" />
+              <text x={W - padX + 2} y={gy + 3} fontSize="10" fontWeight="700" fill={lc.faint}>{gv}</text>
+            </g>
+          )
+        })}
+
         <path d={area} fill="url(#trendFill)" />
-        <path d={path} fill="none" stroke={lc.green} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <path d={line} fill="none" stroke={lc.green} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+
+        {/* Points + value labels */}
         {pts.map((p, i) => (
-          <circle key={i} cx={p[0]} cy={p[1]} r="1.6" fill="#fff" stroke={lc.green} strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
+          <g key={i}>
+            <circle cx={p[0]} cy={p[1]} r="3.6" fill="#fff" stroke={lc.green} strokeWidth="2.2" />
+            <text x={p[0]} y={p[1] - 9} fontSize="10.5" fontWeight="800" fill={lc.ink} textAnchor="middle">{data[i]}</text>
+          </g>
         ))}
       </svg>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, paddingLeft: 2 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: deltaColor }}>{deltaLabel}</span>
+        <span style={{ fontSize: 11.5, color: lc.faint, fontWeight: 700 }}>· first {first} → latest {last}</span>
+      </div>
     </div>
   )
 }

@@ -27,10 +27,17 @@ export default async function FeedbackPage({
   searchParams,
 }: {
   params: Promise<{ categoryId: string; moduleId: string; lessonId: string }>
-  searchParams: Promise<{ session?: string }>
+  searchParams: Promise<{ session?: string; from?: string; fromCategory?: string }>
 }) {
   const { categoryId, moduleId, lessonId } = await params
-  const { session: sessionId } = await searchParams
+  const { session: sessionId, from, fromCategory } = await searchParams
+
+  // Back button destination: return to History if that's where they came from,
+  // otherwise the lesson list (the standard flow).
+  const backHref =
+    from === 'history'
+      ? `/history${fromCategory ? `?category=${fromCategory}` : ''}`
+      : undefined
 
   const supabase = await createClient()
   const {
@@ -136,6 +143,7 @@ export default async function FeedbackPage({
       moduleId={String(moduleId)}
       lessonId={String(lessonId)}
       lessonTitle={lessonRes.data?.level_title || 'Lesson'}
+      backHref={backHref}
       tone={tone}
       score={score}
       passThreshold={passThreshold}

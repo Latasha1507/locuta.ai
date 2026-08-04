@@ -129,31 +129,6 @@ export function Sidebar({ isAdmin, promo }: { isAdmin: boolean; promo: FounderPr
       </nav>
 
       {promo && <SidebarPromo promo={promo} />}
-
-      <form action="/auth/signout" method="post" className="hidden lg:block" style={{ marginTop: promo ? 12 : 'auto' }}>
-        <button
-          type="submit"
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 9,
-            padding: '12px 13px',
-            borderRadius: 13,
-            cursor: 'pointer',
-            background: '#fff5f3',
-            border: '2px solid #ffdcd6',
-            fontFamily: fontDisplay,
-            fontWeight: 800,
-            fontSize: 14,
-            color: '#c04333',
-          }}
-        >
-          <Icon name="out" size={18} color="#b0392f" />
-          Sign out
-        </button>
-      </form>
     </aside>
   )
 }

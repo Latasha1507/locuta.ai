@@ -15,6 +15,9 @@ export interface FeedbackData {
   lessonId: string
   lessonTitle: string
   tone: string
+  /** Where the back button returns to. Defaults to the lesson list, but is set
+      to /history when the user arrived from the History page (?from=history). */
+  backHref?: string
   score: number
   passThreshold: number
   passed: boolean
@@ -139,8 +142,8 @@ export function FeedbackView(d: FeedbackData) {
           }}
         >
           <Link
-            href={`/category/${d.categoryId}/modules?tone=${encodeURIComponent(d.tone)}&module=${d.moduleId}`}
-            aria-label="Back to lessons"
+            href={d.backHref || `/category/${d.categoryId}/modules?tone=${encodeURIComponent(d.tone)}&module=${d.moduleId}`}
+            aria-label="Back"
             style={{
               width: 42,
               height: 42,

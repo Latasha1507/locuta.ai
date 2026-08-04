@@ -46,7 +46,7 @@ export default async function HistoryPage({
   // Only completed sessions (they have feedback). A session mid-flight has none.
   let pageQuery = supabase
     .from('sessions')
-    .select('id, category, module_number, level_number, tone, feedback, created_at', { count: 'exact' })
+    .select('id, category, module_number, level_number, tone, feedback, user_audio_url, ai_example_audio_url, created_at', { count: 'exact' })
     .eq('user_id', user.id)
     .not('feedback', 'is', null)
     .order('created_at', { ascending: false })
@@ -111,6 +111,8 @@ export default async function HistoryPage({
       linguisticScore: Number(fb.linguistic_score ?? 0),
       passed: Boolean(fb.passed ?? Number(fb.overall_score ?? 0) >= 70),
       createdAt: r.created_at as string,
+      userAudioUrl: (r.user_audio_url as string) || '',
+      coachAudioUrl: (r.ai_example_audio_url as string) || '',
     }
   })
 
