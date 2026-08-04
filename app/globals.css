@@ -257,3 +257,36 @@ html {
 /* The waveform scrubber shares the ring but has no 3D edge. */
 .lc-seek { --lc-ring: 0 0 0 4px rgba(63, 206, 111, 0.45); border-radius: 12px; }
 .lc-seek:focus-visible { outline: none; box-shadow: var(--lc-ring); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   App-wide button polish.
+   The design-system buttons (.lc-btn) and audio controls (.lc-ctl) already
+   have the proper landing-style press. Some other buttons across the app were
+   given a STATIC offset box-shadow inline (e.g. "0 6px 0 #…") which reads as a
+   cheap, dead drop-shadow — it never moves. This targets buttons that use
+   NEITHER system: it removes that static shadow and gives them the same
+   satisfying press-down on click. .lc-btn / .lc-ctl are explicitly excluded so
+   the good ones are untouched.
+   ──────────────────────────────────────────────────────────────────────── */
+button:not(.lc-btn):not(.lc-ctl):not(:disabled):not([aria-disabled="true"]) {
+  /* Kill the static offset drop-shadow (beats inline styles, which have no
+     !important). Buttons that legitimately need a shadow use .lc-btn/.lc-ctl. */
+  box-shadow: none !important;
+  transition: transform 0.06s ease-out, background-color 0.12s ease-out, filter 0.12s ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+/* The press: the button dips down when clicked, like the landing buttons. */
+button:not(.lc-btn):not(.lc-ctl):not(:disabled):not([aria-disabled="true"]):active {
+  transform: translateY(2px);
+}
+/* Motion-sensitive users: keep it still (this rule is authored to survive the
+   blanket reduced-motion setting rather than be silently overridden). */
+@media (prefers-reduced-motion: reduce) {
+  button:not(.lc-btn):not(.lc-ctl):active { transform: none; }
+}
+/* Preserve a keyboard focus ring — the shadow removal above must not strip the
+   accessible focus indicator for keyboard users. */
+button:not(.lc-btn):not(.lc-ctl):focus-visible {
+  box-shadow: 0 0 0 4px rgba(63, 206, 111, 0.45) !important;
+  outline: none;
+}

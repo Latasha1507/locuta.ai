@@ -376,7 +376,9 @@ Structure your introduction as follows:
 
 CRITICAL: Embody the ${tone} coaching style throughout. ${toneChar.style} ${toneChar.delivery}
 Make it conversational and engaging, not robotic. Let your ${tone} personality shine through!
-DO NOT include any greeting or user name - start directly with "It's wonderful to have you..." or similar.`
+DO NOT include any greeting or user name - start directly with "It's wonderful to have you..." or similar.
+
+ONE-ON-ONE RULE (always): You are coaching ONE person, privately. Speak to a single learner as "you". NEVER address a group or audience — no "folks", "everyone", "guys", "class", "showtime", "let's all", "grab your imaginary mic", or any crowd/stage framing. This is a private 1:1 session, not a performance or a room of people. Even in a playful or Funny style, keep the humour directed at the one person in front of you.`
 
     const userPrompt = `Create an engaging introduction for this speaking lesson in your ${tone} coaching style:
 Lesson Title: ${lesson.level_title || 'Speaking Practice'}
@@ -386,7 +388,7 @@ Practice Task: ${lesson.practice_prompt || 'Speak clearly and confidently'}
 Example/Tips: ${lesson.practice_example || 'Focus on clarity and confidence'}
 Focus Areas: ${Array.isArray(lesson.feedback_focus_areas) ? lesson.feedback_focus_areas.join(', ') : 'General speaking'}
 
-Remember: You're a ${tone} coach. Start DIRECTLY with the content (no greeting). ${toneChar.goal}. ${toneChar.style}`
+Remember: You're a ${tone} coach speaking privately to ONE learner as "you" — never to a group or crowd. Start DIRECTLY with the content (no greeting). ${toneChar.goal}. ${toneChar.style}`
 
     // ⭐ Run in parallel: lesson content + personalized greeting + worked example
     const [completion, greeting, workedExample] = await Promise.all([
