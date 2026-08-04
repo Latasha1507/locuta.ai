@@ -77,8 +77,12 @@ function useCountUp(target: number, ms = 1100, start = true) {
 }
 
 export function FeedbackView(d: FeedbackData) {
-  // The sticker celebration takes over first; the feedback is waiting underneath.
-  const [showSticker, setShowSticker] = useState(d.newlyCompleted && d.passed)
+  // The sticker celebration is for the moment JUST AFTER finishing a practice.
+  // When the user opens this page to REVIEW an old session from History
+  // (backHref points at /history), we never show it — reviewing isn't
+  // completing, and the popup is jarring in that context.
+  const isReview = Boolean(d.backHref && d.backHref.startsWith('/history'))
+  const [showSticker, setShowSticker] = useState(d.newlyCompleted && d.passed && !isReview)
   const scoreVisible = !showSticker
   const shown = useCountUp(d.score, 1100, scoreVisible)
 
