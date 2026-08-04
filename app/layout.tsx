@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Baloo_2, Nunito } from "next/font/google";
 import "./globals.css";
+import { TimezoneSync } from "@/components/TimezoneSync";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -66,6 +67,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${baloo.variable} ${nunito.variable} antialiased`}
       >
+        <TimezoneSync />
         {children}
       </body>
     </html>

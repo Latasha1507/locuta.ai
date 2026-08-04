@@ -21,6 +21,11 @@ export interface UserPreferences {
   shareData?: boolean
   // Practice
   soundEffects?: boolean
+  // Notification plumbing (set by the client / cron, not shown as toggles)
+  timezone?: string // IANA tz, e.g. "America/New_York" — for local-time sends
+  lastDailyReminderAt?: string // ISO date we last sent each, for dedupe
+  lastStreakWarningAt?: string
+  lastWeeklyEmailAt?: string
 }
 
 const BOOL_KEYS: (keyof UserPreferences)[] = [
@@ -35,7 +40,9 @@ const BOOL_KEYS: (keyof UserPreferences)[] = [
 ]
 
 // Defaults chosen so a brand-new user gets a sensible, non-annoying setup.
-export const PREFERENCE_DEFAULTS: Required<Omit<UserPreferences, 'defaultTone' | 'defaultPath'>> = {
+export const PREFERENCE_DEFAULTS: Required<
+  Omit<UserPreferences, 'defaultTone' | 'defaultPath' | 'timezone' | 'lastDailyReminderAt' | 'lastStreakWarningAt' | 'lastWeeklyEmailAt'>
+> = {
   dailyGoal: 'Regular',
   dailyReminder: true,
   reminderTime: '7:00 PM',
@@ -56,6 +63,10 @@ export function readPreferences(raw: unknown): UserPreferences {
   if (typeof p.defaultPath === 'string') out.defaultPath = p.defaultPath
   if (p.dailyGoal === 'Casual' || p.dailyGoal === 'Regular' || p.dailyGoal === 'Serious') out.dailyGoal = p.dailyGoal
   if (typeof p.reminderTime === 'string') out.reminderTime = p.reminderTime
+  if (typeof p.timezone === 'string') out.timezone = p.timezone
+  if (typeof p.lastDailyReminderAt === 'string') out.lastDailyReminderAt = p.lastDailyReminderAt
+  if (typeof p.lastStreakWarningAt === 'string') out.lastStreakWarningAt = p.lastStreakWarningAt
+  if (typeof p.lastWeeklyEmailAt === 'string') out.lastWeeklyEmailAt = p.lastWeeklyEmailAt
   for (const k of BOOL_KEYS) {
     if (typeof p[k] === 'boolean') (out[k] as boolean) = p[k] as boolean
   }
@@ -63,7 +74,10 @@ export function readPreferences(raw: unknown): UserPreferences {
 }
 
 /** Preferences merged over defaults — safe to read every field directly. */
-export function withDefaults(raw: unknown): Required<UserPreferences> {
+export function withDefaults(
+  raw: unknown,
+): Required<Omit<UserPreferences, 'timezone' | 'lastDailyReminderAt' | 'lastStreakWarningAt' | 'lastWeeklyEmailAt'>> &
+  Pick<UserPreferences, 'timezone' | 'lastDailyReminderAt' | 'lastStreakWarningAt' | 'lastWeeklyEmailAt'> {
   const p = readPreferences(raw)
   return {
     defaultTone: p.defaultTone ?? 'Normal',
@@ -78,6 +92,10 @@ export function withDefaults(raw: unknown): Required<UserPreferences> {
     saveRecordings: p.saveRecordings ?? PREFERENCE_DEFAULTS.saveRecordings,
     shareData: p.shareData ?? PREFERENCE_DEFAULTS.shareData,
     soundEffects: p.soundEffects ?? PREFERENCE_DEFAULTS.soundEffects,
+    timezone: p.timezone,
+    lastDailyReminderAt: p.lastDailyReminderAt,
+    lastStreakWarningAt: p.lastStreakWarningAt,
+    lastWeeklyEmailAt: p.lastWeeklyEmailAt,
   }
 }
 
@@ -90,6 +108,9 @@ export function sanitizePreferencePatch(body: Record<string, unknown>): Partial<
     patch.dailyGoal = body.dailyGoal
   }
   if (typeof body.reminderTime === 'string') patch.reminderTime = body.reminderTime.slice(0, 20)
+  if (typeof body.timezone === 'string' && body.timezone.length <= 64 && /^[A-Za-z_+\-/0-9]+$/.test(body.timezone)) {
+    patch.timezone = body.timezone
+  }
   for (const k of BOOL_KEYS) {
     if (typeof body[k] === 'boolean') (patch[k] as boolean) = body[k] as boolean
   }

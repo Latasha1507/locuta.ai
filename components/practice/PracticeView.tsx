@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSequentialAudio } from '@/lib/hooks/useSequentialAudio'
+import { playSound } from '@/lib/sounds'
 import {
   trackLessonStart,
   trackRecordingStart,
@@ -36,6 +37,8 @@ export interface PracticeData {
     reason: 'ok' | 'trial_expired' | 'daily_limit' | 'explore'
     sessionsRemainingToday: number
   }
+  /** From the user's Settings — gates the chimes/pops during practice. */
+  soundEffects?: boolean
 }
 
 const WAVE = [26, 44, 62, 38, 80, 52, 96, 34, 70, 48, 88, 30, 64, 42, 78, 36, 90, 46, 58, 32, 72]
@@ -234,6 +237,7 @@ export function PracticeView(d: PracticeData) {
     rafRef.current = null
     setLevel(0)
     setRec('done')
+    playSound('stop', d.soundEffects)
   }, [])
 
   const startRecording = async () => {
@@ -261,6 +265,7 @@ export function PracticeView(d: PracticeData) {
 
       recorder.start()
       setRec('recording')
+      playSound('start', d.soundEffects)
       setElapsed(0)
       setAudioBlob(null)
 

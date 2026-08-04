@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { resolveTone } from '@/lib/tones'
 import { checkSessionLimitServer } from '@/lib/check-session-limit-server'
+import { readPreferences } from '@/lib/preferences'
 import { PracticeView } from '@/components/practice/PracticeView'
 
 export const dynamic = 'force-dynamic'
@@ -42,7 +43,7 @@ export default async function PracticePage({
   const levelNumber = Number(lessonId)
   if (!Number.isInteger(moduleNumber) || !Number.isInteger(levelNumber)) notFound()
 
-  const [lessonRes, limit] = await Promise.all([
+  const [lessonRes, limit, profileRes] = await Promise.all([
     supabase
       .from('lessons')
       .select('level_title, lesson_explanation, practice_prompt, practice_example, expected_duration_sec')
@@ -51,6 +52,7 @@ export default async function PracticePage({
       .eq('level_number', levelNumber)
       .maybeSingle(),
     checkSessionLimitServer(user.id),
+    supabase.from('profiles').select('preferences').eq('id', user.id).maybeSingle(),
   ])
 
   const lesson = lessonRes.data
@@ -92,6 +94,7 @@ export default async function PracticePage({
         reason: limit.reason,
         sessionsRemainingToday: limit.sessionsRemainingToday,
       }}
+      soundEffects={readPreferences(profileRes.data?.preferences).soundEffects ?? true}
     />
   )
 }

@@ -96,7 +96,7 @@ export function SettingsView(d: SettingsData) {
       <Sidebar isAdmin={d.isAdmin} promo={d.promo} />
 
       <main className="mx-auto flex w-full max-w-[820px] flex-1 flex-col gap-[18px] px-4 pb-16 pt-5 lg:gap-5 lg:px-8 lg:pt-8">
-        {/* HEADER with top-right profile chip */}
+        {/* HEADER */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <h1 className="text-[26px] lg:text-[32px]" style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-0.5px', margin: 0 }}>
@@ -106,16 +106,6 @@ export function SettingsView(d: SettingsData) {
               Tune Locuta to fit how you like to practise.
             </p>
           </div>
-          <span
-            aria-hidden="true"
-            style={{
-              width: 44, height: 44, borderRadius: '50%', flex: 'none', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', background: lc.green, color: '#fff', fontFamily: fontDisplay, fontWeight: 800,
-              fontSize: 19, boxShadow: `0 3px 0 ${lc.greenDark}`, border: '2px solid #fff',
-            }}
-          >
-            {d.initial}
-          </span>
         </div>
 
         {/* PROFILE CARD */}
