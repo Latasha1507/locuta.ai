@@ -18,7 +18,7 @@ const LOGO_H = 319
 const ASPECT = LOGO_W / LOGO_H
 
 export function LocutaLogo({
-  size = 36,
+  size = 44,
   // Accepted for backwards-compatibility with existing callers. The wordmark is
   // now baked into the image, so these no longer change what's drawn.
   wordmark = true,
