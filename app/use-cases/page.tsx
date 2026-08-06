@@ -6,7 +6,7 @@ import { MarketingShell, MarketingCard } from '@/components/marketing/MarketingS
 export const metadata = { title: 'Use cases · Locuta' }
 
 const CASES = [
-  { icon: 'ic-briefcase', color: lc.blue, title: 'Job interviews', text: 'Rehearse "tell me about yourself" and tough behavioural questions until your answers land clean and confident.', path: 'workplace-communication' },
+  { icon: 'ic-briefcase', color: lc.blue, title: 'Workplace communication', text: 'Rehearse "tell me about yourself" and tough behavioural questions until your answers land clean and confident.', path: 'workplace-communication' },
   { icon: 'ic-mic', color: lc.green, title: 'Public speaking', text: 'Practise talks, toasts and presentations out loud — pacing, hooks, and finishing strong without notes.', path: 'public-speaking' },
   { icon: 'ic-camera', color: lc.coral, title: 'Content creators', text: 'Get to camera-ready delivery: crisp intros, natural energy, and fewer takes to a clip you\u2019d actually post.', path: 'creator-speaking' },
   { icon: 'ic-chat', color: lc.purple, title: 'Everyday conversation', text: 'Small talk, networking, saying the thing you meant to say — the reps that make you smoother in the moment.', path: 'casual-conversation' },

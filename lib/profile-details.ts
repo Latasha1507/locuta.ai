@@ -34,7 +34,7 @@ export function readProfileDetails(raw: unknown): ProfileDetails {
   }
 }
 
-export const GOALS = ['Build confidence', 'Job interviews', 'Public speaking', 'Everyday conversation', 'Accent & clarity']
+export const GOALS = ['Build confidence', 'Workplace communication', 'Public speaking', 'Everyday conversation', 'Accent & clarity']
 export const PROFICIENCY = ['Beginner', 'Intermediate', 'Advanced', 'Fluent']
 
 /** Derive an age from DOB, or null. Used for a friendly display, not gating. */
