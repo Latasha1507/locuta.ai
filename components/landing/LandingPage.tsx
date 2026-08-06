@@ -636,7 +636,13 @@ export function LandingPage() {
               </div>
               <div style={{ fontSize: 12.5, color: lc.faint, marginBottom: 22, fontWeight: 700 }}>{p.billNote}</div>
               <Link
-                href="/auth/signup"
+                href={
+                  p.name === PRICING.annual.name
+                    ? '/pricing?plan=annual'
+                    : p.name === PRICING.monthly.name
+                      ? '/pricing?plan=monthly'
+                      : '/auth/signup'
+                }
                 style={{
                   display: 'block',
                   width: '100%',
