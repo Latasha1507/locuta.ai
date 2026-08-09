@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
+import { trackServer, setPeopleServer } from '@/lib/analytics/server'
+import { EVENTS } from '@/lib/analytics/events'
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
@@ -115,6 +117,57 @@ export async function GET(request: Request) {
             })
             .eq('id', user.id)
           console.log('✅ New user set to explore (trial opt-in)')
+        }
+
+        // Analytics: confirm auth completion SERVER-SIDE. This is the accurate
+        // place for OAuth completion — the browser only captured intent (Login
+        // Started / Signup Started) before redirecting to the provider. Runs
+        // AFTER the response is sent (`after`) so a Mixpanel call never holds up
+        // the user's login redirect. Every helper is best-effort / never-throws.
+        {
+          const provider = String(user.app_metadata?.provider ?? '')
+          const createdMs = user.created_at ? new Date(user.created_at).getTime() : 0
+          const lastSignInMs = user.last_sign_in_at
+            ? new Date(user.last_sign_in_at).getTime()
+            : createdMs
+          // A first-ever sign-in has created_at ≈ last_sign_in_at; a returning
+          // user's created_at is far older. 30s window is unambiguous.
+          const isNewUser = createdMs > 0 && Math.abs(lastSignInMs - createdMs) < 30_000
+          const isPaying = /[?&]plan=(monthly|annual)/.test(nextParam ?? '')
+          const meta = (user.user_metadata ?? {}) as Record<string, unknown>
+          const name = (meta.full_name || meta.name || meta.display_name) as string | undefined
+          const userId = user.id
+          const email = user.email
+          const createdAt = user.created_at
+          const isOAuth = !!provider && provider !== 'email'
+
+          after(async () => {
+            await Promise.allSettled([
+              setPeopleServer(userId, {
+                ...(email ? { $email: email } : {}),
+                ...(name ? { $name: name } : {}),
+                ...(createdAt ? { $created: createdAt } : {}),
+                ...(isNewUser ? { 'Signup Method': provider || 'email' } : {}),
+              }),
+              isOAuth
+                ? trackServer({
+                    event: isNewUser ? EVENTS.SIGNUP_COMPLETED : EVENTS.LOGIN_COMPLETED,
+                    distinctId: userId,
+                    // Idempotent per sign-in: a re-hit won't double-count.
+                    insertId: `auth-${userId}-${lastSignInMs}`,
+                    properties: { method: provider, is_paying: isPaying, is_new_user: isNewUser },
+                  })
+                : // Email-confirmation hop: the client already fired Signup
+                  // Completed at sign-up, so we record the verification step here
+                  // rather than double-counting the signup.
+                  trackServer({
+                    event: EVENTS.EMAIL_CONFIRMED,
+                    distinctId: userId,
+                    insertId: `emailconfirm-${userId}-${lastSignInMs}`,
+                    properties: { method: 'email' },
+                  }),
+            ])
+          })
         }
       }
     }

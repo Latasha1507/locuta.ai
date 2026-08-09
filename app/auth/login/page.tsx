@@ -8,6 +8,8 @@ import { AuthShell, AuthLink } from '@/components/auth/AuthShell'
 import { Field, PrimaryButton, GoogleButton, ErrorBanner, Divider } from '@/components/auth/ui'
 import { lc } from '@/components/landing/tokens'
 import type { MascotMood } from '@/components/landing/Mascot'
+import Mixpanel from '@/lib/mixpanel'
+import { EVENTS } from '@/lib/analytics/events'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
@@ -61,6 +63,7 @@ function LoginForm() {
       return
     }
 
+    Mixpanel.track(EVENTS.LOGIN_COMPLETED, { method: 'email' })
     // refresh() makes the server components pick up the new session cookie.
     router.push(safeNext() ?? '/dashboard')
     router.refresh()
@@ -69,6 +72,9 @@ function LoginForm() {
   const handleGoogleLogin = async () => {
     setLoading(true)
     setError('')
+    // OAuth completion is confirmed on the dashboard via MixpanelProvider's
+    // identify; here we capture the login intent before the redirect.
+    Mixpanel.track('Login Started', { method: 'google' })
 
     try {
       const next = safeNext()

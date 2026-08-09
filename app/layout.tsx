@@ -2,7 +2,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Baloo_2, Nunito } from "next/font/google";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 import { TimezoneSync } from "@/components/TimezoneSync";
+import MixpanelProvider from "@/components/MixpanelProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -68,7 +70,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${baloo.variable} ${nunito.variable} antialiased`}
       >
         <TimezoneSync />
+        <MixpanelProvider />
         {children}
+        <Analytics />
       </body>
     </html>
   );

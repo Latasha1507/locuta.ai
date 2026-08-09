@@ -8,6 +8,8 @@ import { Field, PrimaryButton, GoogleButton, ErrorBanner, Divider } from '@/comp
 import { lc, fontDisplay } from '@/components/landing/tokens'
 import { Icon } from '@/components/ui/icons'
 import type { MascotMood } from '@/components/landing/Mascot'
+import Mixpanel from '@/lib/mixpanel'
+import { EVENTS } from '@/lib/analytics/events'
 
 // Read a same-origin ?next= from the current URL (event-handler time, so
 // window is available and we avoid a Suspense boundary for useSearchParams).
@@ -47,6 +49,7 @@ export default function SignupPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    Mixpanel.track(EVENTS.SIGNUP_STARTED, { method: 'email', is_paying: isPaying })
 
     try {
       const { data, error: signUpError } = await supabase.auth.signUp({
@@ -65,6 +68,7 @@ export default function SignupPage() {
       }
 
       if (data.user) {
+        Mixpanel.track(EVENTS.SIGNUP_COMPLETED, { method: 'email', is_paying: isPaying })
         setSuccess(true)
       } else {
         setError("We couldn't create your account. Please try again.")
@@ -79,6 +83,9 @@ export default function SignupPage() {
   const handleGoogleSignup = async () => {
     setLoading(true)
     setError('')
+    // OAuth completes after a full-page redirect, so "completed" for Google is
+    // best confirmed server-side (deferred). We capture intent here.
+    Mixpanel.track(EVENTS.SIGNUP_STARTED, { method: 'google', is_paying: isPaying })
 
     try {
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({

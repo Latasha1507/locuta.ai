@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
+import Mixpanel from '@/lib/mixpanel'
+import { EVENTS } from '@/lib/analytics/events'
 
 const CHECKOUT_SRC = 'https://checkout.razorpay.com/v1/checkout.js'
 
@@ -72,6 +74,9 @@ export function SubscribeButton({
 
   const start = useCallback(async (auto = false) => {
     setError('')
+    // A real click is an explicit plan-selection signal; the auto-start path
+    // (return-from-signup) is not a fresh selection, so don't double-count it.
+    if (!auto) Mixpanel.track(EVENTS.PLAN_SELECTED, { plan: planKey })
 
     const supabase = createClient()
     const {
@@ -115,14 +120,23 @@ export function SubscribeButton({
         theme: { color: '#3fce6f' },
         prefill: { email: user.email ?? undefined },
         handler: () => {
+          // Not a confirmed payment — access is granted by the Razorpay webhook.
+          // The authoritative "Payment Completed" event is tracked server-side.
           router.push('/dashboard?welcome=1')
         },
-        modal: { ondismiss: () => setLoading(false) },
+        modal: {
+          ondismiss: () => {
+            Mixpanel.track(EVENTS.CHECKOUT_ABANDONED, { plan: planKey })
+            setLoading(false)
+          },
+        },
       })
       rzp.on('payment.failed', () => {
+        Mixpanel.track(EVENTS.CHECKOUT_FAILED, { plan: planKey })
         setError('Payment failed. You have not been charged. Please try again.')
         setLoading(false)
       })
+      Mixpanel.track(EVENTS.CHECKOUT_STARTED, { plan: planKey })
       rzp.open()
     } catch {
       setError('Something went wrong. Please try again.')

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Mixpanel from '@/lib/mixpanel'
+import { EVENTS } from '@/lib/analytics/events'
 
 interface RatingNudgeModalProps {
   score: number
@@ -45,7 +46,7 @@ export default function RatingNudgeModal({
     }
 
     // Track to Mixpanel
-    Mixpanel.track('rating_submitted', {
+    Mixpanel.track(EVENTS.RATING_SUBMITTED, {
       rating,
       score,
       lesson_id: lessonId,

@@ -51,7 +51,14 @@ export function DashboardClient(d: DashboardData) {
 
   useEffect(() => {
     try {
-      Mixpanel.identify(d.userId)
+      // Identity/reset is owned centrally by MixpanelProvider (auth lifecycle).
+      // Here we only enrich the profile with domain data the dashboard already
+      // knows, and fire the screen-view event.
+      Mixpanel.people.set({
+        'Plan State': d.planState,
+        'Lessons Completed': d.lessonsCompleted,
+        'Current Streak': d.streak,
+      })
       Mixpanel.track('Dashboard Viewed', {
         streak: d.streak,
         lessons_completed: d.lessonsCompleted,
@@ -60,7 +67,7 @@ export function DashboardClient(d: DashboardData) {
     } catch {
       // Analytics must never break the page.
     }
-  }, [d.userId, d.streak, d.lessonsCompleted, d.practicedToday])
+  }, [d.planState, d.streak, d.lessonsCompleted, d.practicedToday])
 
   const isNewUser = d.lessonsCompleted === 0
 

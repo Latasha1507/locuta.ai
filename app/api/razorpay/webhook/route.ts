@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/server-admin'
-import { getPlanByRazorpayId } from '@/lib/razorpay'
+import { getPlanByRazorpayId, type PlanConfig } from '@/lib/razorpay'
+import { trackServer, setPeopleServer, trackChargeServer } from '@/lib/analytics/server'
+import { EVENTS } from '@/lib/analytics/events'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
@@ -36,6 +38,9 @@ interface RazorpaySubEntity {
   customer_id?: string | null
   current_end?: number | null
   charge_at?: number | null
+  // Number of successful charges so far. Lets us tell a first payment
+  // (conversion) from a renewal without an extra query.
+  paid_count?: number | null
   notes?: Record<string, string | number> | null
 }
 
@@ -86,7 +91,7 @@ export async function POST(request: NextRequest) {
   // --- 4. Apply the change (idempotent). Only subscription.* events matter here.
   try {
     if (sub && (GRANT_EVENTS.has(eventType) || REVOKE_EVENTS.has(eventType) || eventType === 'subscription.cancelled')) {
-      await applySubscriptionEvent(admin, eventType, sub)
+      await applySubscriptionEvent(admin, eventType, sub, eventId)
     }
   } catch (e) {
     // Record NOTHING and return 500 so Razorpay retries. Because writes are
@@ -123,6 +128,7 @@ async function applySubscriptionEvent(
   admin: SupabaseClient,
   eventType: string,
   sub: RazorpaySubEntity,
+  eventId: string,
 ) {
   // Resolve which of our users owns this subscription. Primary source: the row
   // we wrote in /api/subscribe. Fallback: the note we set at creation.
@@ -188,6 +194,66 @@ async function applySubscriptionEvent(
   if (grant) {
     await recordReferralIfNeeded(admin, userId, existingRow?.id ?? null, sub)
   }
+
+  // 4) Analytics: the authoritative Payment Completed event. ONLY on
+  //    subscription.charged — that's when money actually moves (activated is a
+  //    state change, not a charge). Best-effort and fully isolated: it runs
+  //    LAST, after access is granted, and cannot throw (see below), so a
+  //    Mixpanel outage never turns into a 500 that would make Razorpay retry.
+  if (eventType === 'subscription.charged') {
+    await trackPaymentCompleted(userId, sub, plan, eventId)
+  }
+}
+
+/**
+ * Fire Payment Completed + revenue to Mixpanel from the trusted server side.
+ * distinct_id = our user id, which is exactly what the client uses in
+ * MixpanelProvider.identify — so this event attaches to the same profile.
+ *
+ * Every call is best-effort; wrapped in allSettled so no single failure (or a
+ * timeout) can reject and bubble up into the webhook's 500 path.
+ */
+async function trackPaymentCompleted(
+  userId: string,
+  sub: RazorpaySubEntity,
+  plan: PlanConfig | null,
+  eventId: string,
+) {
+  // plan.amount is the integer smallest-unit price (e.g. 1699 = $16.99).
+  const amountMajor = plan ? plan.amount / 100 : undefined
+  const isFirstPayment =
+    typeof sub.paid_count === 'number' ? sub.paid_count <= 1 : undefined
+
+  await Promise.allSettled([
+    trackServer({
+      event: EVENTS.PAYMENT_COMPLETED,
+      distinctId: userId,
+      // Dedupe retried webhook deliveries so revenue is never double-counted.
+      insertId: eventId || undefined,
+      properties: {
+        plan: plan?.planKey ?? null,
+        plan_type: plan?.planType ?? null,
+        amount: amountMajor ?? null,
+        currency: plan?.currency ?? null,
+        subscription_id: sub.id,
+        subscription_status: sub.status,
+        paid_count: sub.paid_count ?? null,
+        is_first_payment: isFirstPayment ?? null,
+        source: 'razorpay_webhook',
+      },
+    }),
+    setPeopleServer(userId, {
+      'Plan Type': plan?.planType ?? sub.status,
+      'Subscription Status': sub.status,
+      'Last Payment At': new Date().toISOString(),
+    }),
+    amountMajor !== undefined
+      ? trackChargeServer(userId, amountMajor, {
+          plan: plan?.planKey,
+          currency: plan?.currency,
+        })
+      : Promise.resolve(),
+  ])
 }
 
 /**
