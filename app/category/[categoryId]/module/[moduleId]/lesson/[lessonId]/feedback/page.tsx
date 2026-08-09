@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { checkSessionLimitServer } from '@/lib/check-session-limit-server'
-import { computeStreak } from '@/lib/streaks'
+import { computeStreak, toDayKey } from '@/lib/streaks'
 import { resolveTone } from '@/lib/tones'
 import { readPreferences } from '@/lib/preferences'
 import { FeedbackView } from '@/components/feedback/FeedbackView'
@@ -58,7 +58,7 @@ export default async function FeedbackPage({
 
   if (!session) notFound()
 
-  const [lessonRes, siblingsRes, historyRes, profileRes, limit] = await Promise.all([
+  const [lessonRes, siblingsRes, historyRes, profileRes, limit, maxModuleRes] = await Promise.all([
     supabase
       .from('lessons')
       .select('level_title')
@@ -88,6 +88,14 @@ export default async function FeedbackPage({
       reason: 'ok' as const,
       sessionsRemainingToday: 9999,
     })),
+    // Highest module number in this category — to detect category completion.
+    supabase
+      .from('lessons')
+      .select('module_number')
+      .eq('category', categoryName)
+      .order('module_number', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ])
 
   const soundEnabled = readPreferences(profileRes.data?.preferences).soundEffects ?? true
@@ -118,6 +126,22 @@ export default async function FeedbackPage({
   })
   const newlyCompleted = passed && !earlierPass
 
+  // FIRST-EVER completion (activation milestone): this session passed and there
+  // is no earlier passing session across ANY level. Reuses `history` (already
+  // fetched for the streak) — no extra query. Fed to FeedbackView, which fires
+  // First Lesson Completed exactly once from the client.
+  const priorPass = history.some((s) => {
+    if (s.id === session.id) return false
+    if (
+      new Date(s.created_at as string).getTime() >=
+      new Date(session.created_at as string).getTime()
+    )
+      return false
+    const f = (s.feedback ?? {}) as Record<string, unknown>
+    return Boolean(f.passed ?? Number(f.overall_score ?? 0) >= 70)
+  })
+  const isFirstCompletion = passed && !priorPass
+
   const streak = computeStreak(history.map((s) => s.created_at as string))
 
   // Which sticker did they just earn? The one for today's slot on the dashboard
@@ -127,6 +151,30 @@ export default async function FeedbackPage({
   const levels = (siblingsRes.data ?? []).map((l) => Number(l.level_number)).sort((a, b) => a - b)
   const idx = levels.indexOf(parseInt(lessonId))
   const nextLevel = idx >= 0 && idx < levels.length - 1 ? levels[idx + 1] : null
+
+  // Module milestone: they just cleared (first pass of) the LAST lesson in this
+  // module. `newlyCompleted` guarantees fire-once; `nextLevel === null` means no
+  // further lesson in the module. Passed to FeedbackView to fire client-side.
+  const isModuleComplete = newlyCompleted && nextLevel === null
+
+  // Category milestone: module-complete AND this is the last module of the
+  // category (sequential curriculum → clearing the final lesson completes it).
+  const maxModule = Number(maxModuleRes.data?.module_number ?? moduleNumber)
+  const isCategoryComplete = isModuleComplete && moduleNumber === maxModule
+
+  // Streak milestone: fire once, on the FIRST session of the day the streak
+  // reaches a threshold. `streak` already reflects today (they just practised),
+  // so gating on first-session-of-day makes it fire exactly once per milestone.
+  const STREAK_MILESTONES = [3, 7, 14, 30, 50, 100, 200, 365]
+  const sessionDayKey = toDayKey(new Date(session.created_at as string))
+  const isFirstSessionOfDay = !history.some(
+    (s) =>
+      s.id !== session.id &&
+      toDayKey(new Date(s.created_at as string)) === sessionDayKey &&
+      new Date(s.created_at as string).getTime() < new Date(session.created_at as string).getTime(),
+  )
+  const streakMilestone =
+    isFirstSessionOfDay && STREAK_MILESTONES.includes(streak) ? streak : null
 
   const tone = resolveTone(session.tone as string)
   const toneQ = `?tone=${encodeURIComponent(tone)}`
@@ -175,6 +223,10 @@ export default async function FeedbackPage({
       exampleText={String(session.ai_example_text ?? '')}
       exampleAudioUrl={String(session.ai_example_audio_url ?? '')}
       newlyCompleted={newlyCompleted}
+      isFirstCompletion={isFirstCompletion}
+      isModuleComplete={isModuleComplete}
+      isCategoryComplete={isCategoryComplete}
+      streakMilestone={streakMilestone}
       streak={streak}
       dayLabel={DAYS[dayIdx]}
       stickerIcon={STICKER_ICONS[dayIdx]}

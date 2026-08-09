@@ -6,6 +6,8 @@ import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
 import { Icon } from '@/components/ui/icons'
 import { Mascot, type MascotMood } from '@/components/landing/Mascot'
 import { StickerUnlock } from './StickerUnlock'
+import Mixpanel from '@/lib/mixpanel'
+import { EVENTS, USER_PROPERTIES } from '@/lib/analytics/events'
 
 export interface FeedbackData {
   sessionId: string
@@ -42,6 +44,14 @@ export interface FeedbackData {
   exampleAudioUrl: string
   /** First time this level has ever been passed → the sticker is new. */
   newlyCompleted: boolean
+  /** First lesson this user has EVER completed (activation milestone). */
+  isFirstCompletion: boolean
+  /** Just cleared the last lesson of this module (progression milestone). */
+  isModuleComplete: boolean
+  /** Just cleared the last lesson of the last module — category done. */
+  isCategoryComplete: boolean
+  /** Streak length if this session hit a milestone today, else null. */
+  streakMilestone: number | null
   streak: number
   dayLabel: string
   stickerIcon: string
@@ -82,6 +92,63 @@ export function FeedbackView(d: FeedbackData) {
   // (backHref points at /history), we never show it — reviewing isn't
   // completing, and the popup is jarring in that context.
   const isReview = Boolean(d.backHref && d.backHref.startsWith('/history'))
+
+  // Feedback-screen analytics. THIS component (not the orphaned
+  // FeedbackPageClient) is what actually renders, so without this the entire
+  // post-lesson screen was dark. Fire once on mount.
+  useEffect(() => {
+    try {
+      Mixpanel.track(EVENTS.FEEDBACK_VIEWED, {
+        session_id: d.sessionId,
+        lesson_id: d.lessonId,
+        category: d.categoryId,
+        module_number: Number(d.moduleId),
+        level_number: Number(d.lessonId),
+        coaching_style: d.tone,
+        overall_score: d.score,
+        passed: d.passed,
+        is_review: isReview,
+      })
+
+      // Activation milestone — only on a genuine first completion, never when
+      // reviewing an old session from History (which would otherwise re-fire it).
+      if (d.isFirstCompletion && !isReview) {
+        Mixpanel.track(EVENTS.FIRST_LESSON_COMPLETED, {
+          session_id: d.sessionId,
+          lesson_id: d.lessonId,
+          category: d.categoryId,
+          overall_score: d.score,
+        })
+        Mixpanel.people.set({ [USER_PROPERTIES.FIRST_LESSON_COMPLETE]: true })
+        Mixpanel.people.setOnce({ 'First Lesson Completed At': new Date().toISOString() })
+      }
+
+      // Progression milestone — first clear of the module's last lesson. Same
+      // fire-once guarantee (server computes it from newlyCompleted), guarded
+      // against re-firing on a History review.
+      if (d.isModuleComplete && !isReview) {
+        Mixpanel.track(EVENTS.MODULE_COMPLETED, {
+          category: d.categoryId,
+          module_number: Number(d.moduleId),
+        })
+      }
+
+      // Category cleared (last lesson of last module). Server-computed fire-once.
+      if (d.isCategoryComplete && !isReview) {
+        Mixpanel.track(EVENTS.CATEGORY_COMPLETED, { category: d.categoryId })
+      }
+
+      // Streak milestone — server sends the streak length only on the first
+      // session of the day it was hit (else null), so this fires once per milestone.
+      if (d.streakMilestone && !isReview) {
+        Mixpanel.track(EVENTS.STREAK_MILESTONE, { streak_days: d.streakMilestone })
+      }
+    } catch {
+      // analytics must never break the feedback screen
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const [showSticker, setShowSticker] = useState(d.newlyCompleted && d.passed && !isReview)
   const scoreVisible = !showSticker
   const shown = useCountUp(d.score, 1100, scoreVisible)
@@ -116,6 +183,48 @@ export function FeedbackView(d: FeedbackData) {
     }
   }
 
+  // Feedback-screen interaction tracking. These events were coded in the
+  // orphaned FeedbackPageClient (never rendered); they live here now, on the
+  // component that actually renders.
+  const navProps = () => ({
+    lesson_id: d.lessonId,
+    category: d.categoryId,
+    module_number: Number(d.moduleId),
+    level_number: Number(d.lessonId),
+    coaching_style: d.tone,
+    final_score: d.score,
+    passed: d.passed,
+  })
+  const onNextLesson = () => {
+    try {
+      Mixpanel.track(EVENTS.NEXT_LESSON_CLICKED, navProps())
+    } catch {}
+  }
+  const onRetryLesson = () => {
+    try {
+      Mixpanel.track(EVENTS.RETRY_LESSON_CLICKED, {
+        ...navProps(),
+        previous_score: d.score,
+        reason: d.passed ? 'want_better_score' : 'failed',
+      })
+      Mixpanel.people.increment('Total Lesson Retries', 1)
+    } catch {}
+  }
+  const onBackToLessons = () => {
+    try {
+      Mixpanel.track('Back to Lessons Clicked', { ...navProps(), from_page: 'feedback' })
+    } catch {}
+  }
+  const onExamplePlay = () => {
+    try {
+      Mixpanel.track(EVENTS.AI_EXAMPLE_PLAYED, {
+        lesson_id: d.lessonId,
+        coaching_style: d.tone,
+        session_id: d.sessionId,
+      })
+    } catch {}
+  }
+
   const ringColor = d.passed ? lc.green : lc.orange
   const focusEntries = Object.entries(d.focusAreaScores || {})
 
@@ -148,6 +257,7 @@ export function FeedbackView(d: FeedbackData) {
           <Link
             href={d.backHref || `/category/${d.categoryId}/modules?tone=${encodeURIComponent(d.tone)}&module=${d.moduleId}`}
             aria-label="Back"
+            onClick={onBackToLessons}
             style={{
               width: 42,
               height: 42,
@@ -477,7 +587,7 @@ export function FeedbackView(d: FeedbackData) {
                       </span>
                     </div>
                     {example.audioUrl ? (
-                      <ComparePlayer src={example.audioUrl} caption={example.text} accent={lc.green} accentDark={lc.greenDark} />
+                      <ComparePlayer src={example.audioUrl} caption={example.text} accent={lc.green} accentDark={lc.greenDark} onPlay={onExamplePlay} />
                     ) : (
                       <button
                         type="button"
@@ -563,6 +673,7 @@ export function FeedbackView(d: FeedbackData) {
         >
           <Link
             href={d.nextHref}
+            onClick={onNextLesson}
             style={{
               ...actionBtn,
               background: lc.green,
@@ -575,6 +686,7 @@ export function FeedbackView(d: FeedbackData) {
           </Link>
           <Link
             href={d.retryHref}
+            onClick={onRetryLesson}
             style={{
               ...actionBtn,
               background: '#fff',
@@ -588,6 +700,7 @@ export function FeedbackView(d: FeedbackData) {
           </Link>
           <Link
             href={`/category/${d.categoryId}/modules?tone=${encodeURIComponent(d.tone)}&module=${d.moduleId}`}
+            onClick={onBackToLessons}
             style={{
               ...actionBtn,
               background: '#fff',
@@ -695,11 +808,14 @@ function ComparePlayer({
   caption,
   accent,
   accentDark,
+  onPlay,
 }: {
   src: string
   caption: string
   accent: string
   accentDark: string
+  /** Fired when playback starts. Used to track AI-example plays. */
+  onPlay?: () => void
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
@@ -730,7 +846,10 @@ function ComparePlayer({
         ref={audioRef}
         src={src}
         preload="none"
-        onPlay={() => setPlaying(true)}
+        onPlay={() => {
+          setPlaying(true)
+          onPlay?.()
+        }}
         onPause={() => setPlaying(false)}
         onEnded={() => setPlaying(false)}
         onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}

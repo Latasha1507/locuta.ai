@@ -5,7 +5,9 @@ import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
 import { Icon } from '@/components/ui/icons'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import type { FounderPromo } from '@/components/dashboard/SidebarPromo'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Mixpanel from '@/lib/mixpanel'
+import { EVENTS, USER_PROPERTIES } from '@/lib/analytics/events'
 
 export interface HistoryItem {
   sessionId: string
@@ -57,6 +59,29 @@ function scoreColor(s: number): string {
 }
 
 export function HistoryView(d: HistoryData) {
+  // History Page Viewed — the auto Page Viewed records the hit; this adds the
+  // engagement context (how much history they have, which filter/page).
+  useEffect(() => {
+    try {
+      Mixpanel.track(EVENTS.HISTORY_PAGE_VIEWED, {
+        total_sessions: d.totalCount,
+        avg_score: d.avgScore,
+        active_category: d.activeCategoryId ?? null,
+        page: d.page,
+      })
+      // Populate the aggregate profile stats — computed here already, and empty
+      // on the profile until now. Segmentable in Mixpanel (e.g. avg-score cohorts).
+      Mixpanel.people.set({
+        [USER_PROPERTIES.SESSIONS_TOTAL]: d.totalCount,
+        [USER_PROPERTIES.AVERAGE_SCORE]: d.avgScore,
+        [USER_PROPERTIES.BEST_SCORE]: d.bestScore,
+        [USER_PROPERTIES.PASS_RATE]: d.passRate,
+      })
+    } catch {
+      // analytics must never break the page
+    }
+  }, [d.totalCount, d.avgScore, d.bestScore, d.passRate, d.activeCategoryId, d.page])
+
   return (
     <div className="flex min-h-screen flex-col lg:flex-row" style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}>
       <Sidebar isAdmin={d.isAdmin} promo={d.promo} />
@@ -263,6 +288,20 @@ function SessionRow({ s, activeCategoryId }: { s: HistoryItem; activeCategoryId:
           </div>
           <Link
             href={reviewHref}
+            onClick={() => {
+              try {
+                Mixpanel.track(EVENTS.SESSION_REVIEWED, {
+                  session_id: s.sessionId,
+                  category: s.categoryId,
+                  module_number: s.moduleNumber,
+                  level_number: s.levelNumber,
+                  score: s.score,
+                  passed: s.passed,
+                })
+              } catch {
+                // analytics must never block navigation
+              }
+            }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 12, fontSize: 12.5, fontWeight: 800, color: lc.green, textDecoration: 'none' }}
           >
             Open full review <Icon name="arrow" size={12} color={lc.green} />

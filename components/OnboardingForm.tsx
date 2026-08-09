@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Icon } from '@/components/ui/icons'
+import Mixpanel from '@/lib/mixpanel'
+import { EVENTS, USER_PROPERTIES } from '@/lib/analytics/events'
 
 interface OnboardingFormProps {
   userId: string
@@ -38,6 +40,15 @@ export default function OnboardingForm({ userId, onComplete }: OnboardingFormPro
   })
 
   const supabase = createClient()
+
+  // Onboarding is a key activation step — track that the user reached it.
+  useEffect(() => {
+    try {
+      Mixpanel.track(EVENTS.ONBOARDING_STARTED)
+    } catch {
+      // analytics must never break the form
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -83,7 +94,30 @@ export default function OnboardingForm({ userId, onComplete }: OnboardingFormPro
         .eq('id', userId)
       
       if (error) throw error
-      
+
+      // Record completion + populate the profile properties we segment on
+      // (these were all empty before). onComplete() is a soft router.refresh(),
+      // not a page unload, so the client events have time to send.
+      try {
+        Mixpanel.track(EVENTS.ONBOARDING_COMPLETED, {
+          age_range: formData.age_range,
+          gender: formData.gender,
+          primary_goal: formData.primary_goal,
+          current_proficiency: formData.current_proficiency,
+          has_use_case: Boolean(formData.use_case.trim()),
+        })
+        Mixpanel.people.set({
+          $name: formData.full_name,
+          [USER_PROPERTIES.AGE_RANGE]: formData.age_range,
+          [USER_PROPERTIES.PRIMARY_GOAL]: formData.primary_goal,
+          Gender: formData.gender,
+          Proficiency: formData.current_proficiency,
+          [USER_PROPERTIES.ONBOARDING_COMPLETE]: true,
+        })
+      } catch {
+        // analytics must never block onboarding completion
+      }
+
       console.log('✅ Onboarding completed')
       onComplete()
     } catch (error) {

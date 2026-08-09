@@ -12,6 +12,8 @@ import {
   trackAudioSubmission,
   trackLessonCompletion,
   trackError,
+  trackLessonAbandoned,
+  trackRecordingAbandoned,
 } from '@/lib/analytics/helpers'
 import UpgradeModal from '@/components/UpgradeModal'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
@@ -112,6 +114,12 @@ export function PracticeView(d: PracticeData) {
   const audioCtxRef = useRef<AudioContext | null>(null)
   const submittingRef = useRef(false)
   const mimeRef = useRef<string | undefined>(undefined)
+  // Abandonment tracking state (refs so the unload/unmount handler reads current
+  // values, not a stale closure).
+  const completedRef = useRef(false)
+  const recordingStartedRef = useRef(false)
+  const abandonFiredRef = useRef(false)
+  const blockedRef = useRef(blocked)
 
   const audio = useSequentialAudio(greetingAudio, introAudio)
 
@@ -132,6 +140,29 @@ export function PracticeView(d: PracticeData) {
       lessonNumber: parseInt(d.lessonId),
       coachingStyle: d.tone,
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Abandonment: reached the practice screen but left without a completed
+  // submission. Fires RECORDING_ABANDONED if they'd started recording, else
+  // LESSON_ABANDONED. `pagehide` covers hard unloads (tab close / refresh);
+  // the cleanup covers in-app (SPA) navigation away. Guarded so it fires at
+  // most once, never after a real completion, and not when the user was blocked
+  // by the daily/trial limit (that's not a drop-off).
+  useEffect(() => {
+    const fireAbandon = (via: string) => {
+      if (completedRef.current || abandonFiredRef.current || blockedRef.current) return
+      abandonFiredRef.current = true
+      const payload = { lessonId: d.lessonId, category: d.categoryId, coachingStyle: d.tone, via }
+      if (recordingStartedRef.current) trackRecordingAbandoned(payload)
+      else trackLessonAbandoned(payload)
+    }
+    const onPageHide = () => fireAbandon('pagehide')
+    window.addEventListener('pagehide', onPageHide)
+    return () => {
+      window.removeEventListener('pagehide', onPageHide)
+      fireAbandon('navigation')
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -269,6 +300,7 @@ export function PracticeView(d: PracticeData) {
       setElapsed(0)
       setAudioBlob(null)
 
+      recordingStartedRef.current = true
       trackRecordingStart({ lessonId: d.lessonId, coachingStyle: d.tone, attemptNumber: 1 })
 
       // Live level meter for the waveform.
@@ -384,6 +416,8 @@ export function PracticeView(d: PracticeData) {
         const body = await res.json().catch(() => ({}))
         setUpgradeReason(body.reason === 'trial_expired' ? 'trial_expired' : 'daily_limit')
         setShowUpgrade(true)
+        // Hitting the limit is not "abandonment" — they were blocked, not dropped.
+        blockedRef.current = true
         submittingRef.current = false
         setSubmitting(false)
         return
@@ -410,6 +444,7 @@ export function PracticeView(d: PracticeData) {
         fillerWordsCount: 0,
       })
 
+      completedRef.current = true
       teardown()
       // DELIBERATELY leave `submitting` true here. router.push() only STARTS
       // the navigation — the feedback page still has to render on the server.

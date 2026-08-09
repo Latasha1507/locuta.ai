@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Mixpanel from '@/lib/mixpanel'
+import { EVENTS, USER_PROPERTIES } from '@/lib/analytics/events'
 import TrialWelcomeModal from '@/components/TrialWelcomeModal'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
 import { Icon } from '@/components/ui/icons'
@@ -55,11 +56,13 @@ export function DashboardClient(d: DashboardData) {
       // Here we only enrich the profile with domain data the dashboard already
       // knows, and fire the screen-view event.
       Mixpanel.people.set({
-        'Plan State': d.planState,
-        'Lessons Completed': d.lessonsCompleted,
-        'Current Streak': d.streak,
+        [USER_PROPERTIES.PLAN_TYPE]: d.planState,
+        [USER_PROPERTIES.TOTAL_LESSONS_COMPLETED]: d.lessonsCompleted,
+        [USER_PROPERTIES.CURRENT_STREAK]: d.streak,
+        [USER_PROPERTIES.DAYS_ACTIVE]: d.daysPractised,
+        [USER_PROPERTIES.BEST_SCORE]: d.bestScore,
       })
-      Mixpanel.track('Dashboard Viewed', {
+      Mixpanel.track(EVENTS.DASHBOARD_VIEWED, {
         streak: d.streak,
         lessons_completed: d.lessonsCompleted,
         practiced_today: d.practicedToday,
@@ -403,8 +406,18 @@ export function DashboardClient(d: DashboardData) {
         </div>
 
         <form action="/auth/signout" method="post" className="mt-2 lg:hidden">
+          {/* Reset Mixpanel synchronously before the server-side sign-out
+              POST unloads the page — onAuthStateChange('SIGNED_OUT') won't
+              fire in time. Prevents identity bleed on shared devices. */}
           <button
             type="submit"
+            onClick={() => {
+              try {
+                Mixpanel.reset()
+              } catch {
+                // never block sign-out on analytics
+              }
+            }}
             style={{
               width: '100%',
               padding: 13,

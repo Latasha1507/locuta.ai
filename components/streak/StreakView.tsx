@@ -1,6 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
+import Mixpanel from '@/lib/mixpanel'
+import { USER_PROPERTIES } from '@/lib/analytics/events'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
 import { Icon } from '@/components/ui/icons'
 import { Mascot } from '@/components/landing/Mascot'
@@ -27,6 +30,19 @@ const WEEK_ICONS = ['mic', 'star', 'chat', 'flame', 'bulb', 'gift', 'crown']
 const WEEK_COLORS = [lc.green, lc.yellow, lc.blue, lc.coral, lc.purple, lc.teal, lc.pink]
 
 export function StreakView(d: StreakData) {
+  // Longest Streak lives only here (computed by lib/streaks.longestStreak) — set
+  // it on the profile so retention cohorts (e.g. longest-streak buckets) work.
+  useEffect(() => {
+    try {
+      Mixpanel.people.set({
+        [USER_PROPERTIES.CURRENT_STREAK]: d.streak,
+        [USER_PROPERTIES.LONGEST_STREAK]: d.longestStreak,
+      })
+    } catch {
+      // analytics must never break the page
+    }
+  }, [d.streak, d.longestStreak])
+
   const heroLine = d.streak === 0
     ? "Let's light the first flame."
     : d.practicedToday

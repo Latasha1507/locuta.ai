@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import Mixpanel from '@/lib/mixpanel';
+import { EVENTS } from '@/lib/analytics/events';
 
 interface Tone {
   id: string;
@@ -37,7 +38,7 @@ export default function ToneSelector({
     setHoverTimes({ ...hoverTimes, [toneId]: Date.now() });
     
     // Track tone hover (browsing behavior)
-    Mixpanel.track('Tone Card Hovered', {
+    Mixpanel.track(EVENTS.TONE_CARD_HOVERED, {
       tone: toneId,
       lesson_id: lessonId,
       category: categoryName
@@ -63,8 +64,10 @@ export default function ToneSelector({
   };
 
   const handleToneClick = (tone: Tone) => {
-    // Track tone selection with rich context
-    Mixpanel.track('Lesson Started', {
+    // Tone selection = lesson-start INTENT. The canonical "Lesson Started" fires
+    // on the practice screen mount (PracticeView); firing it here too
+    // double-counted every lesson start. This is the distinct tone-pick event.
+    Mixpanel.track(EVENTS.TONE_SELECTED, {
       lesson_id: lesson.id,
       lesson_title: lesson.level_title,
       category: categoryName,
@@ -72,7 +75,6 @@ export default function ToneSelector({
       level_number: lessonId,
       coaching_style: tone.id,
       coaching_style_name: tone.name,
-      isFirstLesson: false
     });
     
     // Track tone preference (for user profiling)

@@ -3,6 +3,7 @@ import { Icon } from '@/components/landing/icons'
 import { Button } from '@/components/ui/Button'
 import { MarketingShell } from '@/components/marketing/MarketingShell'
 import { SubscribeButton } from '@/components/billing/SubscribeButton'
+import { PricingPageTracker } from '@/components/PricingPageTracker'
 import { PRICING, FREE_TRIAL_CARD } from '@/lib/pricing'
 
 export const metadata = { title: 'Pricing · Locuta' }
@@ -53,7 +54,7 @@ const TIERS = [
 export default async function PricingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ plan?: string }>
+  searchParams: Promise<{ plan?: string; from?: string }>
 }) {
   // ?plan=annual|monthly (set when a signed-out user is sent to signup and
   // returns here) auto-opens Razorpay for that plan — so a new paying user
@@ -62,6 +63,7 @@ export default async function PricingPage({
   const autoPlan = sp?.plan === 'annual' || sp?.plan === 'monthly' ? sp.plan : null
   return (
     <MarketingShell eyebrow="JOIN THE CLUB" title="Start free. Keep improving." subtitle="One 60-second rep a day. Pick a plan when you're ready. The trial needs no card.">
+      <PricingPageTracker autoPlan={autoPlan} source={sp?.from ?? null} />
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:items-stretch">
         {TIERS.map((t) => (
           <div

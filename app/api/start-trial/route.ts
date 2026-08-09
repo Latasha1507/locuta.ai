@@ -1,6 +1,32 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/server-admin'
+import { trackServer, setPeopleServer } from '@/lib/analytics/server'
+import { EVENTS } from '@/lib/analytics/events'
+
+/**
+ * Fire Trial Started once, on the real explore→trial transition. Server-side
+ * (not on the button) because the client immediately does a full-page reload,
+ * which can drop an in-flight browser event; the route is also the authority on
+ * whether a trial actually started. Best-effort, runs after the response.
+ */
+function fireTrialStarted(userId: string, userEmail: string | null) {
+  after(async () => {
+    await Promise.allSettled([
+      trackServer({
+        event: EVENTS.TRIAL_STARTED,
+        distinctId: userId,
+        insertId: `trial-${userId}`, // one trial per user → dedupes any retry
+        properties: { source: 'start_trial_api' },
+      }),
+      setPeopleServer(userId, {
+        'Plan Type': 'trial',
+        'Trial Started At': new Date().toISOString(),
+        ...(userEmail ? { $email: userEmail } : {}),
+      }),
+    ])
+  })
+}
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -91,8 +117,10 @@ export async function POST() {
         { status: 500 },
       )
     }
+    fireTrialStarted(user.id, user.email ?? null)
     return NextResponse.json({ status: 'started', profile: created[0] })
   }
 
+  fireTrialStarted(user.id, user.email ?? null)
   return NextResponse.json({ status: 'started', profile: updated[0] })
 }

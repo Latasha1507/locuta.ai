@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import Mixpanel from '@/lib/mixpanel'
+import { EVENTS, USER_PROPERTIES } from '@/lib/analytics/events'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
 import { Icon } from '@/components/ui/icons'
 import { Sidebar } from '@/components/dashboard/Sidebar'
@@ -144,6 +146,12 @@ export function SettingsView(d: SettingsData) {
             value={tone}
             options={TONES.map((t) => t.name)}
             onChange={(v) => {
+              try {
+                Mixpanel.track(EVENTS.COACHING_STYLE_CHANGED, { from: tone, to: v })
+                Mixpanel.people.set({ [USER_PROPERTIES.FAVORITE_COACHING_STYLE]: v })
+              } catch {
+                // analytics must never block the setting
+              }
               setTone(v)
               save({ preferences: { defaultTone: v } })
             }}
@@ -221,7 +229,22 @@ export function SettingsView(d: SettingsData) {
 
         {/* SIGN OUT */}
         <form action="/auth/signout" method="post">
-          <button type="submit" style={signOutBtn}>
+          {/* Sign-out is a server-side form POST, so the client Supabase
+              onAuthStateChange('SIGNED_OUT') never fires before the page
+              unloads. Reset Mixpanel HERE (synchronous localStorage write)
+              so the next person on a shared device doesn't inherit this
+              user's identity/super-props. */}
+          <button
+            type="submit"
+            style={signOutBtn}
+            onClick={() => {
+              try {
+                Mixpanel.reset()
+              } catch {
+                // never block sign-out on analytics
+              }
+            }}
+          >
             <Icon name="out" size={17} color="#c04333" />
             Sign out
           </button>
