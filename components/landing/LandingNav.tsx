@@ -8,10 +8,12 @@ import { pressable } from '@/components/ui/buttonSkins'
 import { LocutaLogo } from '@/components/ui/LocutaLogo'
 
 const NAV_LINKS = [
-  { label: 'How it works', href: '#loop' },
-  { label: 'Paths', href: '#categories' },
-  { label: 'Coaches', href: '#tones' },
-  { label: 'Pricing', href: '#pricing' },
+  { label: 'Pricing', href: '/pricing' },
+  { label: 'About', href: '/about' },
+  { label: 'Use cases', href: '/use-cases' },
+  { label: 'Blog', href: '/blog' },
+  { label: 'FAQ', href: '/faq' },
+  { label: 'Contact', href: '/contact' },
 ]
 
 export function LandingNav() {
@@ -38,15 +40,15 @@ export function LandingNav() {
           <LocutaLogo />
         </Link>
 
-        <div className="hidden items-center gap-[30px] lg:flex">
+        <div className="hidden items-center gap-[22px] lg:flex">
           {NAV_LINKS.map((l) => (
-            <a
+            <Link
               key={l.href}
               href={l.href}
               style={{ textDecoration: 'none', color: '#7a8a72', fontWeight: 800, fontSize: 14 }}
             >
               {l.label}
-            </a>
+            </Link>
           ))}
         </div>
 
@@ -102,7 +104,7 @@ export function LandingNav() {
       {open && (
         <div className="flex flex-col px-[18px] pb-[18px] lg:hidden">
           {NAV_LINKS.map((l) => (
-            <a
+            <Link
               key={l.href}
               href={l.href}
               onClick={() => setOpen(false)}
@@ -116,7 +118,7 @@ export function LandingNav() {
               }}
             >
               {l.label}
-            </a>
+            </Link>
           ))}
           <Link
             href="/auth/login"

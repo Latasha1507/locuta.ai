@@ -562,7 +562,11 @@ Be encouraging but honest. If non-English content detected, reduce overall score
         user_transcript: userTranscript,
         user_audio_url: userAudioUrl,
         ai_example_text: aiExampleText,
-        ai_example_audio: aiAudioBase64,
+        // Only fall back to inline base64 if the Storage upload FAILED. Writing
+        // the ~450 KB blob into the row unconditionally (as this used to) is what
+        // bloated `sessions` to 75 MB — the audio is already at
+        // ai_example_audio_url. Same pattern as /api/generate-example.
+        ai_example_audio: exampleAudioUrl ? '' : aiAudioBase64,
         ai_example_audio_url: exampleAudioUrl,
         feedback: feedback,
         overall_score: feedback.overall_score,

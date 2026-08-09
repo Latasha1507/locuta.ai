@@ -76,12 +76,10 @@ const PLANS = [
 ]
 
 const FOOTER_LINKS = [
-  { label: 'Pricing', href: '/pricing' },
-  { label: 'About', href: '/about' },
-  { label: 'Use cases', href: '/use-cases' },
-  { label: 'Blog', href: '/blog' },
-  { label: 'FAQ', href: '/faq' },
-  { label: 'Contact', href: '/contact' },
+  { label: 'How it works', href: '#loop' },
+  { label: 'Paths', href: '#categories' },
+  { label: 'Coaches', href: '#tones' },
+  { label: 'Pricing', href: '#pricing' },
 ]
 
 // Shared bits ---------------------------------------------------------------
@@ -759,12 +757,12 @@ export function LandingPage() {
           <LocutaLogo size={28} />
           <nav aria-label="Footer" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 22px' }}>
             {FOOTER_LINKS.map((l) => (
-              <Link key={l.href} href={l.href} style={{ textDecoration: 'none', color: '#7a8a72', fontWeight: 700, fontSize: 13 }}>
+              <a key={l.href} href={l.href} style={{ textDecoration: 'none', color: '#7a8a72', fontWeight: 700, fontSize: 13 }}>
                 {l.label}
-              </Link>
+              </a>
             ))}
           </nav>
-          <div style={{ fontSize: 13, color: lc.faint, fontWeight: 700 }}>© 2026 Locuta.ai. Train your speaking brain.</div>
+          <div style={{ fontSize: 13, color: lc.faint, fontWeight: 700 }}>© 2026 Locuta. Train your speaking brain.</div>
         </div>
       </footer>
     </div>

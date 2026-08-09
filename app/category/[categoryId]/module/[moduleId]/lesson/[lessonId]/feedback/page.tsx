@@ -51,7 +51,13 @@ export default async function FeedbackPage({
 
   const { data: session } = await supabase
     .from('sessions')
-    .select('*')
+    // Explicit columns ONLY — never select('*') here. The row also carries
+    // `ai_example_audio` (legacy inline base64, up to ~1.5 MB); the compare
+    // player uses ai_example_audio_url, so pulling the blob just slowed this
+    // page down and dragged dead weight over the wire on every feedback view.
+    .select(
+      'id, created_at, tone, module_number, feedback, user_transcript, user_audio_url, ai_example_text, ai_example_audio_url',
+    )
     .eq('id', sessionId)
     .eq('user_id', user.id) // ownership: never render someone else's session
     .single()
