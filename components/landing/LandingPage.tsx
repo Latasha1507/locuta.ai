@@ -170,10 +170,55 @@ function PrimaryCta({ children, big = false }: { children: React.ReactNode; big?
 
 // Page ----------------------------------------------------------------------
 
+function LaunchBanner() {
+  return (
+    <Link
+      href="/pricing?plan=annual"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        width: '100%',
+        background: `linear-gradient(90deg, ${lc.green}, ${lc.greenDark})`,
+        color: '#fff',
+        textDecoration: 'none',
+        padding: '9px 16px',
+        fontFamily: fontDisplay,
+        fontWeight: 800,
+        fontSize: 13.5,
+        letterSpacing: '0.01em',
+        textAlign: 'center',
+      }}
+    >
+      <span aria-hidden style={{ fontSize: 14 }}>🎉</span>
+      <span>
+        Launch offer — get <span style={{ textDecorationLine: 'underline', textUnderlineOffset: 2 }}>40% off</span> your first year on the annual plan
+      </span>
+      <span
+        aria-hidden
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 3,
+          background: 'rgba(255,255,255,0.22)',
+          borderRadius: 999,
+          padding: '2px 9px',
+          fontSize: 12,
+          fontWeight: 800,
+        }}
+      >
+        Claim it →
+      </span>
+    </Link>
+  )
+}
+
 export function LandingPage() {
   return (
     <div style={{ background: lc.pageBg, overflowX: 'hidden', color: lc.ink }}>
       <ButtonStyles />
+      <LaunchBanner />
       <LandingNav />
 
       {/* HERO */}
