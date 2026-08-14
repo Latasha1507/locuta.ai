@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/server-admin'
 import { checkSessionLimitServer } from '@/lib/check-session-limit-server'
 import { uploadAudio, userRecordingPath, exampleAudioPath } from '@/lib/audio-storage'
+import { getRequestMeta } from '@/lib/request-meta'
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
@@ -550,6 +551,11 @@ Be encouraging but honest. If non-English content detected, reduce overall score
       console.error('⚠️ Failed to store coach example audio (non-critical):', e)
     }
 
+    // Analytics dimensions from the request (no IP stored). These feed the admin
+    // analytics browser/device/country charts, which were only ever showing
+    // "Unknown" because this insert never populated them.
+    const meta = getRequestMeta(request)
+
     const { data: sessionData, error: insertError } = await supabase
       .from('sessions')
       .insert({
@@ -570,6 +576,10 @@ Be encouraging but honest. If non-English content detected, reduce overall score
         ai_example_audio_url: exampleAudioUrl,
         feedback: feedback,
         overall_score: feedback.overall_score,
+        browser_type: meta.browserType,
+        device_type: meta.deviceType,
+        user_country: meta.userCountry,
+        user_city: meta.userCity,
         status: 'completed',
         completed_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
