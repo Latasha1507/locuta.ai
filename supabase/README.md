@@ -38,3 +38,5 @@ dashboard.
 | 20260814143151 | fix_cached_lesson_intros_dead_lesson_number | Drop dead NOT-NULL column that silently broke intro caching |
 | 20260814180222 | lock_down_profiles_writable_columns | CRITICAL: stop users writing plan_type/trial/etc to their own profile |
 | 20260814181907 | restrict_lesson_audio_public_read_to_shared_prefixes | Stop anon enumeration of user voice recordings |
+| 20260814184209 | lock_down_direct_session_progress_writes | Users can no longer fake sessions/progress via direct DB writes |
+| 20260814184247 | founder_call_unique_user_and_server_only_insert | One booking/user; bookings server-only |
