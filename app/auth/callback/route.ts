@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server-admin'
 import { NextResponse, after } from 'next/server'
 import { trackServer, setPeopleServer } from '@/lib/analytics/server'
 import { EVENTS } from '@/lib/analytics/events'
@@ -87,12 +88,19 @@ export async function GET(request: Request) {
           String(profile?.plan_type ?? '').toLowerCase(),
         )
 
+        // plan_type / trial_* are privileged columns — the authenticated role can
+        // no longer write them (profiles column GRANT), so these self-heal writes
+        // go through the service-role client. This also FIXES the missing-profile
+        // upsert, which RLS previously blocked (profiles has no INSERT policy for
+        // the user role), so the "self-heal" never actually healed before.
+        const admin = createAdminClient()
+
         if (!profile) {
           // No profile row yet (e.g. the auto-create trigger didn't run for this
           // account). CREATE it as explore — otherwise the user has no profile
           // and trial/gating/dashboard all break with "0 rows updated". This is
           // the self-heal for a missing profiles row.
-          await supabase
+          await admin
             .from('profiles')
             .upsert(
               {
@@ -108,7 +116,7 @@ export async function GET(request: Request) {
         } else if (!profile.trial_started_at && !isPaid) {
           // Existing row, brand-new state → normalise to explore. Never overwrite
           // an active trial or a paid user.
-          await supabase
+          await admin
             .from('profiles')
             .update({
               plan_type: 'explore',

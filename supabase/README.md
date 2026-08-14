@@ -36,3 +36,5 @@ dashboard.
 | 20260814124608 | optimize_rls_auth_uid_initplan | `(select auth.uid())` + drop duplicate sessions policies |
 | 20260814124657 | drop_duplicate_user_progress_index | Remove identical duplicate index |
 | 20260814143151 | fix_cached_lesson_intros_dead_lesson_number | Drop dead NOT-NULL column that silently broke intro caching |
+| 20260814180222 | lock_down_profiles_writable_columns | CRITICAL: stop users writing plan_type/trial/etc to their own profile |
+| 20260814181907 | restrict_lesson_audio_public_read_to_shared_prefixes | Stop anon enumeration of user voice recordings |

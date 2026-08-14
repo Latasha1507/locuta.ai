@@ -601,36 +601,42 @@ Be encouraging but honest. If non-English content detected, reduce overall score
 
     console.log('✅ Session saved successfully:', sessionId)
 
-    // Step 6: Increment daily session counter for trial users
+    // Step 6: Increment daily session counter for trial users.
+    // The COUNTER WRITES GO THROUGH THE SERVICE-ROLE CLIENT. daily_sessions_used
+    // and last_session_date are trial-limit state — the authenticated role must
+    // NOT be able to write them (or a user could reset their own daily counter to
+    // dodge the limit). The profiles column GRANT now blocks the user client from
+    // these columns, so this must use the admin client.
     try {
-      const { data: profile } = await supabase
+      const counterAdmin = createAdminClient()
+      const { data: profile } = await counterAdmin
         .from('profiles')
         .select('plan_type, last_session_date, daily_sessions_used')
         .eq('id', user.id)
         .single()
-      
+
       if (profile && profile.plan_type === 'trial') {
         const today = new Date().toISOString().split('T')[0]
         const lastSessionDate = profile.last_session_date
-        
+
         if (lastSessionDate === today) {
-          await supabase
+          await counterAdmin
             .from('profiles')
-            .update({ 
-              daily_sessions_used: (profile.daily_sessions_used || 0) + 1 
+            .update({
+              daily_sessions_used: (profile.daily_sessions_used || 0) + 1
             })
             .eq('id', user.id)
-          
+
           console.log('✅ Daily session counted:', (profile.daily_sessions_used || 0) + 1)
         } else {
-          await supabase
+          await counterAdmin
             .from('profiles')
-            .update({ 
+            .update({
               last_session_date: today,
-              daily_sessions_used: 1 
+              daily_sessions_used: 1
             })
             .eq('id', user.id)
-          
+
           console.log('✅ New day, session count reset to 1')
         }
       }
