@@ -13,8 +13,7 @@ interface FounderCallModalProps {
 export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: FounderCallModalProps) {
   const [step, setStep] = useState<'form' | 'success'>('form')
   const [loading, setLoading] = useState(false)
-  const [userId, setUserId] = useState<string>('')
-  
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -25,11 +24,8 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
     const loadUser = async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setUserId(user.id)
-        if (user.email) {
-          setFormData(prev => ({ ...prev, email: user.email! }))
-        }
+      if (user?.email) {
+        setFormData(prev => ({ ...prev, email: user.email! }))
       }
     }
     loadUser()
@@ -44,62 +40,38 @@ export default function FounderCallModal({ slotsRemaining, onClose, onBooked }: 
     setLoading(true)
 
     try {
-      const supabase = createClient()
-      
-      const { data: existingBooking } = await supabase
-        .from('founder_call_bookings')
-        .select('id')
-        .eq('user_id', userId)
-        .single()
-
-      if (existingBooking) {
-        alert('You already have a call booked!')
-        setLoading(false)
-        onClose()
-        return
-      }
-
-      await supabase
-        .from('founder_call_bookings')
-        .insert({
-          user_id: userId,
-          name: formData.name,
-          email: formData.email,
-          speaking_challenge: formData.speaking_challenge,
-          status: 'pending'
-        })
-
-      const { data: settings } = await supabase
-        .from('founder_call_settings')
-        .select('slots_used')
-        .eq('id', 1)
-        .single()
-
-      if (settings) {
-        await supabase
-          .from('founder_call_settings')
-          .update({ slots_used: (settings.slots_used || 0) + 1 })
-          .eq('id', 1)
-      }
-
-      await fetch('/api/founder-call-notification', {
+      // Booking is created SERVER-SIDE now (identity from the session, cap +
+      // one-per-user enforced there). The browser no longer writes the DB.
+      const res = await fetch('/api/founder-call-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
-          email: formData.email,
-          speaking_challenge: formData.speaking_challenge
-        })
+          speaking_challenge: formData.speaking_challenge,
+        }),
       })
 
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
+        if (data.error === 'already_booked') {
+          alert('You already have a call booked!')
+          setLoading(false)
+          onClose()
+          return
+        }
+        alert(data.message || 'Failed to save. Please try again.')
+        setLoading(false)
+        return
+      }
+
       onBooked()
-      
+
       window.open('https://cal.com/latasha-ukey/founder-feedback', '_blank')
-      
+
       setTimeout(() => {
         setStep('success')
       }, 1000)
-      
+
     } catch (error) {
       console.error('Error:', error)
       alert('Failed to save. Please try again.')

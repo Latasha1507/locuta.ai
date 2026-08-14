@@ -514,10 +514,14 @@ Be encouraging but honest. If non-English content detected, reduce overall score
     // page beside the coach version. The blob was already read for Whisper;
     // we upload the same bytes. Non-fatal: if it fails, the compare UI simply
     // falls back to "recording unavailable" rather than blocking feedback.
-    // Storage writes go through the SERVICE-ROLE client: the audio bucket's RLS
-    // blocks the user-scoped client, which is the other reason the recording
-    // never persisted. Admin client bypasses RLS for these server-side writes.
-    const storage = createAdminClient()
+    // One SERVICE-ROLE client for every privileged write below — audio uploads
+    // AND the sessions insert / user_progress upsert / trial counter. The audio
+    // bucket's RLS blocks the user client; and just as importantly, sessions
+    // (overall_score) and user_progress (completed/best_score) drive gating and
+    // lesson unlocks, so they must NOT be writable by the user client — otherwise
+    // a user could INSERT a fake 100 straight to the DB and unlock content. All of
+    // it now goes through the admin client on the trusted server.
+    const admin = createAdminClient()
 
     let userAudioUrl = ''
     try {
@@ -528,7 +532,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
       const baseType = rawType.split(';')[0].trim() || 'audio/webm'
       // Reuse the bytes we read before Whisper (audioFile's stream is spent).
       const url = await uploadAudio(
-        storage,
+        admin,
         userRecordingPath(user.id, sessionId),
         userAudioBytes,
         baseType,
@@ -541,7 +545,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
     let exampleAudioUrl = ''
     try {
       const url = await uploadAudio(
-        storage,
+        admin,
         exampleAudioPath(user.id, sessionId),
         aiAudioBuffer,
         'audio/mpeg',
@@ -556,7 +560,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
     // "Unknown" because this insert never populated them.
     const meta = getRequestMeta(request)
 
-    const { data: sessionData, error: insertError } = await supabase
+    const { data: sessionData, error: insertError } = await admin
       .from('sessions')
       .insert({
         id: sessionId,
@@ -608,8 +612,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
     // dodge the limit). The profiles column GRANT now blocks the user client from
     // these columns, so this must use the admin client.
     try {
-      const counterAdmin = createAdminClient()
-      const { data: profile } = await counterAdmin
+      const { data: profile } = await admin
         .from('profiles')
         .select('plan_type, last_session_date, daily_sessions_used')
         .eq('id', user.id)
@@ -620,7 +623,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
         const lastSessionDate = profile.last_session_date
 
         if (lastSessionDate === today) {
-          await counterAdmin
+          await admin
             .from('profiles')
             .update({
               daily_sessions_used: (profile.daily_sessions_used || 0) + 1
@@ -629,7 +632,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
 
           console.log('✅ Daily session counted:', (profile.daily_sessions_used || 0) + 1)
         } else {
-          await counterAdmin
+          await admin
             .from('profiles')
             .update({
               last_session_date: today,
@@ -691,7 +694,7 @@ Be encouraging but honest. If non-English content detected, reduce overall score
 
       console.log('💾 About to upsert progress:', progressData)
 
-      const { data: upsertedData, error: upsertError } = await supabase
+      const { data: upsertedData, error: upsertError } = await admin
         .from('user_progress')
         .upsert(progressData, {
           onConflict: 'user_id,category,module_number,level_number'
