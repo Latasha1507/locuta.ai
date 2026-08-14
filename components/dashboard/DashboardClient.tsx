@@ -124,6 +124,10 @@ export function DashboardClient(d: DashboardData) {
       <Sidebar isAdmin={d.isAdmin} promo={d.promo} />
 
       <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-9 pt-5 lg:gap-[22px] lg:px-10 lg:pb-11 lg:pt-[30px]">
+        {/* Launch offer — only for users who could still convert (explore/trial),
+            never for active subscribers. Dismissible, and the dismissal sticks. */}
+        {d.planState !== 'paid' && <DashboardLaunchBanner />}
+
         {/* TOP BAR */}
         <div className="flex flex-wrap items-start justify-between gap-4 lg:items-center">
           <div>
@@ -446,6 +450,104 @@ export function DashboardClient(d: DashboardData) {
  * No form, no card — one click flips the user to trial (via /api/start-trial)
  * and reloads so the dashboard + lessons unlock immediately.
  */
+function DashboardLaunchBanner() {
+  // Dismissible, and the choice sticks per browser so we don't nag returning
+  // users. Starts hidden until we've checked storage, to avoid a flash for
+  // someone who already dismissed it.
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('lc_launch_banner_dismissed') !== '1') setVisible(true)
+    } catch {
+      setVisible(true)
+    }
+  }, [])
+
+  if (!visible) return null
+
+  function dismiss() {
+    try {
+      localStorage.setItem('lc_launch_banner_dismissed', '1')
+    } catch {
+      // ignore — worst case it shows again next load
+    }
+    setVisible(false)
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        background: `linear-gradient(90deg, ${lc.green}, ${lc.greenDark})`,
+        color: '#fff',
+        borderRadius: 16,
+        padding: '11px 12px 11px 16px',
+      }}
+    >
+      <span aria-hidden style={{ fontSize: 15 }}>🎉</span>
+      <Link
+        href="/pricing?plan=annual"
+        style={{
+          flex: 1,
+          minWidth: 0,
+          color: '#fff',
+          textDecoration: 'none',
+          fontFamily: fontDisplay,
+          fontWeight: 800,
+          fontSize: 13.5,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexWrap: 'wrap',
+        }}
+      >
+        <span>
+          Launch offer — <span style={{ textDecorationLine: 'underline', textUnderlineOffset: 2 }}>40% off</span> your first year on the annual plan
+        </span>
+        <span
+          aria-hidden
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 3,
+            background: 'rgba(255,255,255,0.22)',
+            borderRadius: 999,
+            padding: '2px 10px',
+            fontSize: 12,
+            fontWeight: 800,
+          }}
+        >
+          Claim it →
+        </span>
+      </Link>
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label="Dismiss"
+        style={{
+          flex: 'none',
+          width: 26,
+          height: 26,
+          borderRadius: '50%',
+          border: 'none',
+          background: 'rgba(255,255,255,0.2)',
+          color: '#fff',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 15,
+          lineHeight: 1,
+        }}
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
+
 function ExploreTrialNudge() {
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
