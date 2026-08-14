@@ -35,3 +35,4 @@ dashboard.
 | 20260814124314 | harden_trigger_function_search_paths | Pin search_path; lock down handle_new_user RPC |
 | 20260814124608 | optimize_rls_auth_uid_initplan | `(select auth.uid())` + drop duplicate sessions policies |
 | 20260814124657 | drop_duplicate_user_progress_index | Remove identical duplicate index |
+| 20260814143151 | fix_cached_lesson_intros_dead_lesson_number | Drop dead NOT-NULL column that silently broke intro caching |

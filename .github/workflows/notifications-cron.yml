@@ -1,0 +1,43 @@
+name: Notifications cron
+
+# Vercel Hobby only runs crons once per day, but the notification route decides
+# what to send based on each user's LOCAL hour — so it must be pinged hourly.
+# GitHub Actions gives us that for free. It hits the same CRON_SECRET-gated
+# endpoint the Vercel cron would have.
+#
+# REQUIRED repo secrets (Settings → Secrets and variables → Actions):
+#   CRON_SECRET    — the exact same value set in the Vercel env var CRON_SECRET
+#   CRON_ENDPOINT  — full URL, e.g. https://locuta.ai/api/cron/notifications
+#
+# Notes:
+#  - Scheduled workflows run only from the DEFAULT branch (main).
+#  - GitHub cron timing is best-effort and can be delayed a few minutes under
+#    load; that's fine for hourly reminders.
+
+on:
+  schedule:
+    - cron: '0 * * * *' # top of every hour (UTC)
+  workflow_dispatch: {} # allow manual "Run workflow" for testing
+
+# If a run is still going when the next hour fires, don't stack them.
+concurrency:
+  group: notifications-cron
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger notification endpoint
+        run: |
+          if [ -z "${{ secrets.CRON_ENDPOINT }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "::error::CRON_ENDPOINT and CRON_SECRET repo secrets must be set."
+            exit 1
+          fi
+          code=$(curl -sS -o /tmp/body -w '%{http_code}' \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.CRON_ENDPOINT }}")
+          echo "HTTP $code"
+          cat /tmp/body || true
+          # Fail the run on a non-200 so a broken secret/URL is visible in Actions.
+          test "$code" = "200"
