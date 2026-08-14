@@ -20,6 +20,7 @@ import {
 } from '@/lib/quick-score'
 import { signScore } from '@/lib/quick-score-token'
 import { recordResult, percentileFor } from '@/lib/quick-score-stats'
+import { createAdminClient } from '@/lib/supabase/server-admin'
 
 // PUBLIC endpoint — no auth. Scores a ~30s anonymous recording and returns a
 // signed token ONLY. The number itself is never returned here: the reveal is
@@ -51,6 +52,34 @@ function rateLimited(ip: string): boolean {
   recent.push(now)
   hits.set(ip, recent)
   return recent.length > MAX_PER_WINDOW
+}
+
+// Durable GLOBAL daily ceiling on OpenAI spend for this public endpoint. Unlike
+// the in-memory per-IP limiter above (per-instance, resets on cold start), this
+// is a hard cap across every serverless instance and survives restarts, so no
+// amount of IP rotation can run the bill past it. ~2 cents/call → this bounds
+// worst-case daily spend to roughly DAILY_CAP × $0.02. Tune as real traffic lands.
+const DAILY_CAP = 1500
+
+/**
+ * Atomically counts one attempt against today's global budget and returns true
+ * when we're OVER the cap. Fails OPEN on any error: a transient DB blip must not
+ * take down the top-of-funnel tool — the per-IP limiter still applies, and the
+ * cap resumes the moment the DB is reachable again.
+ */
+async function overDailyCap(): Promise<boolean> {
+  try {
+    const admin = createAdminClient()
+    const { data, error } = await admin.rpc('bump_quick_score_usage')
+    if (error) {
+      console.error('quick-score daily cap check failed (failing open):', error.message)
+      return false
+    }
+    return typeof data === 'number' && data > DAILY_CAP
+  } catch (err) {
+    console.error('quick-score daily cap check threw (failing open):', err)
+    return false
+  }
 }
 
 /** Whisper word-level timing. The SDK's verbose type doesn't always declare
@@ -166,6 +195,15 @@ export async function POST(request: NextRequest) {
     const prompt = promptById(promptId)
     if (!prompt) {
       return NextResponse.json({ error: 'bad_prompt', message: 'Unknown prompt.' }, { status: 400 })
+    }
+
+    // Global budget ceiling — counted BEFORE any OpenAI spend, so even garbage
+    // attempts that later fail still count toward (and are stopped by) the cap.
+    if (await overDailyCap()) {
+      return NextResponse.json(
+        { error: 'rate_limited', message: 'This is really popular right now — try again a bit later.' },
+        { status: 429 },
+      )
     }
 
     // Whisper with WORD timestamps — gives real speech time and pause data.
