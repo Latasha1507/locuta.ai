@@ -92,7 +92,7 @@ export default function ImportLessonsPage() {
                 <p className="text-sm text-slate-600">Upload CSV files to import lessons</p>
               </div>
             </div>
-            <img src="/Icon.png" alt="Locuta.ai" className="w-10 h-10" />
+            <img src="/Icon.png" alt="Locuta" className="w-10 h-10" />
           </div>
         </div>
       </div>

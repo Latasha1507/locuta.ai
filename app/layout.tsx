@@ -31,7 +31,7 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "Locuta.ai - Master Your Speaking Skills with AI",
+  title: "Locuta - Master Your Speaking Skills with AI",
   description: "Practice real-world speaking scenarios with personalized AI-powered feedback. Build confidence in public speaking, storytelling, workplace communication, and more.",
   icons: {
     icon: [

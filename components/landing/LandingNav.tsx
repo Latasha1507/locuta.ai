@@ -8,7 +8,7 @@ import { pressable } from '@/components/ui/buttonSkins'
 import { LocutaLogo } from '@/components/ui/LocutaLogo'
 
 const NAV_LINKS = [
-  { label: 'Pricing', href: '/pricing' },
+  { label: 'Home', href: '/' },
   { label: 'About', href: '/about' },
   { label: 'Use cases', href: '/use-cases' },
   { label: 'Blog', href: '/blog' },
