@@ -61,7 +61,7 @@ export function PathsView(d: PathsData) {
         @media (prefers-reduced-motion:reduce){.pv-pulse{animation:none}}
       `}</style>
 
-      <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-12 pt-5 lg:gap-6 lg:px-10 lg:pb-16 lg:pt-8">
+      <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-24 pt-5 lg:gap-6 lg:px-10 lg:pb-16 lg:pt-8">
         {/* HEADER — top-right profile button removed. */}
         <div>
           <h1

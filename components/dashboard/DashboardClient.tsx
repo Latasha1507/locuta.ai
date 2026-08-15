@@ -6,6 +6,7 @@ import Mixpanel from '@/lib/mixpanel'
 import { EVENTS, USER_PROPERTIES } from '@/lib/analytics/events'
 import TrialWelcomeModal from '@/components/TrialWelcomeModal'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
+import { pressable } from '@/components/ui/buttonSkins'
 import { Icon } from '@/components/ui/icons'
 import { Sidebar } from './Sidebar'
 import { HeroMascot } from './HeroMascot'
@@ -123,58 +124,39 @@ export function DashboardClient(d: DashboardData) {
     >
       <Sidebar isAdmin={d.isAdmin} promo={d.promo} />
 
-      <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-9 pt-5 lg:gap-[22px] lg:px-10 lg:pb-11 lg:pt-[30px]">
+      <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-24 pt-5 lg:gap-[22px] lg:px-10 lg:pb-11 lg:pt-[30px]">
         {/* Launch offer — only for users who could still convert (explore/trial),
             never for active subscribers. Dismissible, and the dismissal sticks. */}
         {d.planState !== 'paid' && <DashboardLaunchBanner />}
 
         {/* TOP BAR */}
-        <div className="flex flex-wrap items-start justify-between gap-4 lg:items-center">
-          <div>
-            <h1
-              className="text-[26px] lg:text-[32px]"
-              style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-0.5px', lineHeight: 1.05, margin: 0 }}
-            >
-              Welcome back, {d.firstName}
-            </h1>
-            <p style={{ fontSize: 14.5, color: lc.muted, fontWeight: 600, margin: '4px 0 0' }}>
-              Ready to improve your speaking skills today?
-            </p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {/* TRIAL: calm status pill — days left + sessions left today. */}
-            {d.planState === 'trial' && d.trial?.active && (
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 7,
-                  background: '#eafaef',
-                  border: '2px solid #c7edd2',
-                  padding: '8px 13px',
-                  borderRadius: 999,
-                  fontFamily: fontDisplay,
-                  fontWeight: 800,
-                  fontSize: 13,
-                  color: lc.greenDark,
-                  whiteSpace: 'nowrap',
-                }}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h1
+                className="text-[20px] lg:text-[32px]"
+                style={{ fontFamily: fontDisplay, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.08, margin: 0 }}
               >
-                {d.trial.daysLeft} {d.trial.daysLeft === 1 ? 'day' : 'days'} to end free trial
-                <span style={{ opacity: 0.5 }}>·</span>
-                {d.trial.sessionsLeft}/10 sessions
-              </span>
-            )}
-            {/* EXPLORE: a free-trial nudge (no status counters). One click, no form. */}
-            {d.planState === 'explore' && <ExploreTrialNudge />}
+                Welcome back, {d.firstName}
+              </h1>
+              <p
+                className="text-[13px] lg:text-[14.5px]"
+                style={{ color: lc.muted, fontWeight: 600, margin: '2px 0 0' }}
+              >
+                Ready to improve your speaking skills today?
+              </p>
+            </div>
+            {/* Streak flame — now sits beside the greeting on every viewport
+                rather than wrapping to its own line on mobile. */}
             <span
+              className="flex-none"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 7,
                 background: '#fff3d6',
                 border: '2px solid #ffdb6e',
-                padding: '8px 13px',
+                padding: '7px 12px',
                 borderRadius: 999,
               }}
               title={`${d.streak} day streak`}
@@ -185,15 +167,47 @@ export function DashboardClient(d: DashboardData) {
               </span>
             </span>
           </div>
+
+          {/* Plan-state row: trial status or the explore nudge. On its own line
+              so it never squeezes the greeting/streak row on mobile. */}
+          {((d.planState === 'trial' && d.trial?.active) || d.planState === 'explore') && (
+            <div className="flex flex-wrap items-center gap-3">
+              {/* TRIAL: calm status pill — days left + sessions left today. */}
+              {d.planState === 'trial' && d.trial?.active && (
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    background: '#eafaef',
+                    border: '2px solid #c7edd2',
+                    padding: '8px 13px',
+                    borderRadius: 999,
+                    fontFamily: fontDisplay,
+                    fontWeight: 800,
+                    fontSize: 13,
+                    color: lc.greenDark,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {d.trial.daysLeft} {d.trial.daysLeft === 1 ? 'day' : 'days'} to end free trial
+                  <span style={{ opacity: 0.5 }}>·</span>
+                  {d.trial.sessionsLeft}/10 sessions
+                </span>
+              )}
+              {/* EXPLORE: a free-trial nudge (no status counters). One click, no form. */}
+              {d.planState === 'explore' && <ExploreTrialNudge />}
+            </div>
+          )}
         </div>
 
         {/* HERO */}
         <div
-          className="flex items-center justify-between gap-6 p-6 lg:px-9 lg:py-8"
+          className="flex items-center justify-between gap-6 p-5 lg:px-9 lg:py-8"
           style={{
             background: 'linear-gradient(135deg,#eafaef,#dff5e6)',
             border: '2px solid #cdeacf',
-            borderRadius: 26,
+            borderRadius: 22,
             boxShadow: '0 6px 0 #d4ead2',
           }}
         >
@@ -220,13 +234,13 @@ export function DashboardClient(d: DashboardData) {
                   : `✦ DAY ${d.streak + 1} · YOUR TURN`}
             </div>
             <h2
-              className="text-[28px] lg:text-[38px]"
+              className="text-[25px] lg:text-[38px]"
               style={{
                 fontFamily: fontDisplay,
                 fontWeight: 800,
-                lineHeight: 1.02,
-                letterSpacing: '-0.8px',
-                margin: '0 0 18px',
+                lineHeight: 1.04,
+                letterSpacing: '-0.7px',
+                margin: '0 0 16px',
               }}
             >
               {d.practicedToday ? (
@@ -252,21 +266,17 @@ export function DashboardClient(d: DashboardData) {
             <div className="flex flex-wrap items-center gap-[14px]">
               <Link
                 href={d.nextHref}
+                className={pressable(d.practicedToday ? 'secondary' : 'primary').className}
                 style={{
-                  background: d.practicedToday ? '#fff' : lc.green,
+                  ...pressable(d.practicedToday ? 'secondary' : 'primary').style,
                   color: d.practicedToday ? lc.greenDark : '#fff',
-                  border: d.practicedToday ? '2px solid #c7edd2' : 0,
                   padding: '15px 24px',
                   borderRadius: 15,
                   fontFamily: fontDisplay,
                   fontWeight: 800,
                   fontSize: 14.5,
                   letterSpacing: '0.02em',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
                   gap: 10,
-                  boxShadow: `0 5px 0 ${d.practicedToday ? '#d4ead2' : lc.greenDark}`,
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -549,21 +559,18 @@ function ExploreTrialNudge() {
         type="button"
         onClick={startTrial}
         disabled={loading}
+        className={pressable('primary').className}
         style={{
+          ...pressable('primary').style,
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          background: lc.green,
-          border: `2px solid ${lc.greenDark}`,
-          boxShadow: `0 3px 0 ${lc.greenDark}`,
           color: '#fff',
           padding: '10px 16px',
           borderRadius: 12,
           fontFamily: fontDisplay,
           fontWeight: 800,
           fontSize: 13.5,
-          cursor: loading ? 'wait' : 'pointer',
-          opacity: loading ? 0.75 : 1,
           whiteSpace: 'nowrap',
         }}
       >

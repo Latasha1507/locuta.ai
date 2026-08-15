@@ -54,7 +54,7 @@ const CATEGORY_META: Record<string, { name: string; desc: string; icon: string; 
     name: 'Pitch Anything',
     desc: 'Win over investors, customers and teams.',
     icon: 'target',
-    color: lc.green,
+    color: lc.teal,
   },
 }
 

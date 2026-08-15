@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import Mixpanel from '@/lib/mixpanel'
 import { EVENTS, USER_PROPERTIES } from '@/lib/analytics/events'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
+import { pressable } from '@/components/ui/buttonSkins'
 import { Icon } from '@/components/ui/icons'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import type { FounderPromo } from '@/components/dashboard/SidebarPromo'
@@ -97,7 +98,7 @@ export function SettingsView(d: SettingsData) {
     <div className="flex min-h-screen flex-col lg:flex-row" style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}>
       <Sidebar isAdmin={d.isAdmin} promo={d.promo} />
 
-      <main className="mx-auto flex w-full max-w-[820px] flex-1 flex-col gap-[18px] px-4 pb-16 pt-5 lg:gap-5 lg:px-8 lg:pt-8">
+      <main className="mx-auto flex w-full max-w-[820px] flex-1 flex-col gap-[18px] px-4 pb-24 pt-5 lg:gap-5 lg:px-8 lg:pb-16 lg:pt-8">
         {/* HEADER */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
@@ -132,7 +133,12 @@ export function SettingsView(d: SettingsData) {
                 {age !== null && <span style={{ fontSize: 12, color: lc.faint, fontWeight: 700 }}>{age} yrs</span>}
               </div>
             </div>
-            <button type="button" onClick={() => setEditing(true)} style={editBtn}>
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className={pressable('secondary').className}
+              style={{ ...editBtn, ...pressable('secondary').style }}
+            >
               Edit profile
             </button>
           </div>
@@ -398,8 +404,8 @@ function EditProfileModal({
         {error && <p role="alert" style={{ fontSize: 12.5, color: '#c0392b', fontWeight: 700, margin: '0 0 12px' }}>{error}</p>}
 
         <div style={{ display: 'flex', gap: 10 }}>
-          <button type="button" onClick={onClose} style={{ ...ghostBtn, flex: 1 }}>Cancel</button>
-          <button type="button" onClick={submit} disabled={saving} style={{ ...primaryBtn, flex: 2, opacity: saving ? 0.7 : 1 }}>
+          <button type="button" onClick={onClose} className={pressable('secondary').className} style={{ ...ghostBtn, ...pressable('secondary').style, flex: 1 }}>Cancel</button>
+          <button type="button" onClick={submit} disabled={saving} className={pressable('primary').className} style={{ ...primaryBtn, ...pressable('primary').style, flex: 2 }}>
             {saving ? 'Saving…' : 'Save changes'}
           </button>
         </div>
@@ -442,7 +448,7 @@ function PasswordRow({ supabase, onDone }: { supabase: ReturnType<typeof createC
           <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="New password (min 8)" autoComplete="new-password" style={input} />
           <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="Confirm new password" autoComplete="new-password" style={input} />
           {err && <p role="alert" style={{ fontSize: 12, color: '#c0392b', fontWeight: 700, margin: 0 }}>{err}</p>}
-          <button type="button" onClick={submit} disabled={saving || !pw || !pw2} style={{ ...primaryBtn, alignSelf: 'flex-start', opacity: pw && pw2 ? 1 : 0.6 }}>
+          <button type="button" onClick={submit} disabled={saving || !pw || !pw2} className={pressable('primary').className} style={{ ...primaryBtn, ...pressable('primary').style, alignSelf: 'flex-start' }}>
             {saving ? 'Updating…' : 'Save password'}
           </button>
         </div>
@@ -462,15 +468,15 @@ const planPill: React.CSSProperties = {
 }
 const editBtn: React.CSSProperties = {
   flex: 'none', background: '#fff', color: lc.greenDark, border: `2px solid ${lc.cardBorder}`, borderRadius: 12,
-  padding: '10px 16px', fontFamily: fontDisplay, fontWeight: 800, fontSize: 13, cursor: 'pointer', boxShadow: `0 3px 0 ${lc.cardBorder}`,
+  padding: '10px 16px', fontFamily: fontDisplay, fontWeight: 800, fontSize: 13, cursor: 'pointer',
 }
 const input: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 12, border: `2px solid ${lc.cardBorder}`,
   background: '#fff', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: lc.ink, outline: 'none', marginBottom: 14,
 }
 const primaryBtn: React.CSSProperties = {
-  background: lc.green, color: '#fff', border: 0, borderRadius: 12, padding: '11px 20px', fontFamily: fontDisplay,
-  fontWeight: 800, fontSize: 13.5, cursor: 'pointer', boxShadow: `0 4px 0 ${lc.greenDark}`,
+  background: lc.green, color: '#fff', border: `2px solid ${lc.greenDark}`, borderRadius: 12, padding: '11px 20px', fontFamily: fontDisplay,
+  fontWeight: 800, fontSize: 13.5, cursor: 'pointer',
 }
 const ghostBtn: React.CSSProperties = {
   background: '#fff', color: lc.muted, border: `2px solid ${lc.cardBorder}`, borderRadius: 12, padding: '11px 20px',
@@ -482,7 +488,7 @@ const linkBtn: React.CSSProperties = {
 }
 const signOutBtn: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 9, background: '#fff5f3', color: '#c04333', border: '2px solid #ffdcd6',
-  borderRadius: 13, padding: '12px 18px', fontFamily: fontDisplay, fontWeight: 800, fontSize: 13.5, cursor: 'pointer', boxShadow: '0 4px 0 #ffdcd6',
+  borderRadius: 13, padding: '12px 18px', fontFamily: fontDisplay, fontWeight: 800, fontSize: 13.5, cursor: 'pointer',
 }
 
 function Divider() {

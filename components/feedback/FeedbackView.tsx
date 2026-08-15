@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
+import { pressable } from '@/components/ui/buttonSkins'
 import { Icon } from '@/components/ui/icons'
 import { Mascot, type MascotMood } from '@/components/landing/Mascot'
 import { StickerUnlock } from './StickerUnlock'
@@ -674,11 +675,11 @@ export function FeedbackView(d: FeedbackData) {
           <Link
             href={d.nextHref}
             onClick={onNextLesson}
+            className={pressable('primary').className}
             style={{
               ...actionBtn,
-              background: lc.green,
+              ...pressable('primary').style,
               color: '#fff',
-              boxShadow: `0 5px 0 ${lc.greenDark}`,
             }}
           >
             Next lesson
@@ -687,12 +688,11 @@ export function FeedbackView(d: FeedbackData) {
           <Link
             href={d.retryHref}
             onClick={onRetryLesson}
+            className={pressable('secondary').className}
             style={{
               ...actionBtn,
-              background: '#fff',
+              ...pressable('secondary').style,
               color: lc.greenDark,
-              border: `2px solid ${lc.green}`,
-              boxShadow: `0 5px 0 #cfe9c6`,
             }}
           >
             <Icon name="arrow" size={16} color={lc.greenDark} style={{ transform: 'scaleX(-1)' }} />
@@ -701,12 +701,11 @@ export function FeedbackView(d: FeedbackData) {
           <Link
             href={`/category/${d.categoryId}/modules?tone=${encodeURIComponent(d.tone)}&module=${d.moduleId}`}
             onClick={onBackToLessons}
+            className={pressable('secondary').className}
             style={{
               ...actionBtn,
-              background: '#fff',
+              ...pressable('secondary').style,
               color: lc.muted,
-              border: `2px solid ${lc.cardBorder}`,
-              boxShadow: `0 5px 0 ${lc.cardBorder}`,
             }}
           >
             Back to lessons

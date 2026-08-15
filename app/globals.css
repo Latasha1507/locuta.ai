@@ -293,8 +293,85 @@ button:not(.lc-btn):not(.lc-ctl):not(:disabled):not([aria-disabled="true"]):acti
   button:not(.lc-btn):not(.lc-ctl):hover,
   button:not(.lc-btn):not(.lc-ctl):active { transform: none; }
 }
-/* Keyboard focus ring stays visible. */
+/* Keyboard focus ring stays visible. Uses OUTLINE, not box-shadow: nearly every
+   chunky button sets its 3D edge as an INLINE box-shadow, and inline styles beat
+   the stylesheet — so a box-shadow ring here was silently overridden and never
+   appeared. Outline can't be clobbered by an inline box-shadow. */
 button:not(.lc-btn):not(.lc-ctl):focus-visible {
-  box-shadow: 0 0 0 4px rgba(63, 206, 111, 0.45);
+  outline: 3px solid rgba(63, 206, 111, .55);
+  outline-offset: 2px;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   .lc-btn — the homepage press mechanic, made global.
+   It lived only in <ButtonStyles/> (mounted on landing pages), so the app's
+   own CTAs never had it and fell back to a dead static `0 5px 0` drop-shadow.
+   Defining it here lets pressable() work on every screen: weight from a border,
+   a solid "key edge" that COLLAPSES on press (not a decorative shadow), and a
+   real focus ring. :hover is gated to hover-capable pointers so a tap on mobile
+   doesn't leave the key stuck half-pressed.
+   ─────────────────────────────────────────────────────────────────────────── */
+.lc-btn {
+  --lc-drop: 0px;
+  --lc-edge-h: 5px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-baloo), 'Baloo 2', system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: .01em;
+  text-decoration: none;
+  cursor: pointer;
+  border: 2px solid var(--lc-border);
+  background: var(--lc-bg);
+  box-shadow: 0 var(--lc-edge-h) 0 var(--lc-edge);
+  transform: translateY(var(--lc-drop));
+  transition: transform .1s ease-out, box-shadow .1s ease-out, background-color .1s ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) {
+  .lc-btn:hover:not(:disabled):not([aria-disabled="true"]) {
+    --lc-drop: 3px;
+    --lc-edge-h: 2px;
+    background: var(--lc-bg-hover);
+  }
+}
+.lc-btn:active:not(:disabled):not([aria-disabled="true"]) {
+  --lc-drop: 5px;
+  --lc-edge-h: 0px;
+  background: var(--lc-bg-hover);
+}
+.lc-btn:focus-visible {
   outline: none;
+  box-shadow: 0 var(--lc-edge-h) 0 var(--lc-edge), 0 0 0 4px var(--lc-ring);
+}
+.lc-btn:disabled,
+.lc-btn[aria-disabled="true"] {
+  opacity: .5;
+  cursor: not-allowed;
+  --lc-drop: 0px;
+  --lc-edge-h: 5px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lc-btn { transition: background-color .1s ease; }
+  .lc-btn:hover:not(:disabled),
+  .lc-btn:active:not(:disabled) { --lc-drop: 0px; --lc-edge-h: 5px; }
+}
+
+/* Bottom-bar Practice FAB presses like the other keys (its circle can't be an
+   .lc-btn because of the white ring, so it gets its own press). */
+.lc-fab > span:first-child { transition: transform .1s ease, box-shadow .1s ease; }
+.lc-fab:active > span:first-child { transform: translateY(3px); box-shadow: 0 1px 0 #2fa552; }
+@media (prefers-reduced-motion: reduce) { .lc-fab:active > span:first-child { transform: none; } }
+
+/* App-wide keyboard focus for LINKS and non-button controls. Buttons already
+   get a ring above; links (the entire nav) had none, leaving the app keyboard-
+   invisible. Outline — not box-shadow — so it never fights an element's own
+   chunky edge. .lc-btn draws its own ring, so exclude it. */
+a:not(.lc-btn):focus-visible,
+[role="button"]:not(.lc-btn):focus-visible,
+[tabindex]:not(.lc-btn):focus-visible {
+  outline: 3px solid rgba(63, 206, 111, .55);
+  outline-offset: 2px;
 }

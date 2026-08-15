@@ -17,6 +17,7 @@ import {
 } from '@/lib/analytics/helpers'
 import UpgradeModal from '@/components/UpgradeModal'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
+import { pressable } from '@/components/ui/buttonSkins'
 import { Icon } from '@/components/ui/icons'
 import { Mascot, type MascotMood } from '@/components/landing/Mascot'
 
@@ -671,16 +672,15 @@ export function PracticeView(d: PracticeData) {
               <button
                 type="button"
                 onClick={() => void loadIntro()}
+                className={pressable('secondary').className}
                 style={{
-                  background: '#fff',
-                  border: `2px solid ${lc.cardBorder}`,
+                  ...pressable('secondary').style,
                   borderRadius: 10,
                   padding: '7px 12px',
                   fontFamily: fontDisplay,
                   fontWeight: 800,
                   fontSize: 12,
                   color: lc.greenDark,
-                  cursor: 'pointer',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -908,7 +908,6 @@ export function PracticeView(d: PracticeData) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: `0 5px 0 ${recording ? lc.coralDark : lc.greenDark}`,
               }}
             >
               {recording && (
@@ -982,20 +981,18 @@ export function PracticeView(d: PracticeData) {
                 type="button"
                 onClick={reRecord}
                 disabled={submitting}
+                className={pressable('secondary').className}
                 style={{
+                  ...pressable('secondary').style,
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 7,
-                  background: '#fff',
-                  border: '2px solid #e2e9da',
                   color: '#5f6d58',
                   fontFamily: fontDisplay,
                   fontWeight: 800,
                   fontSize: 13.5,
                   padding: '12px 20px',
                   borderRadius: 14,
-                  cursor: submitting ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 4px 0 #e2e9da',
                 }}
               >
                 Re-record
@@ -1005,20 +1002,18 @@ export function PracticeView(d: PracticeData) {
                 onClick={submit}
                 disabled={submitting || tooShort}
                 title={tooShort ? 'That was very short — try recording a bit more.' : undefined}
+                className={pressable('primary').className}
                 style={{
+                  ...pressable('primary').style,
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
-                  background: submitting || tooShort ? '#a8ddb9' : lc.green,
-                  border: 0,
                   color: '#fff',
                   fontFamily: fontDisplay,
                   fontWeight: 800,
                   fontSize: 14,
                   padding: '13px 24px',
                   borderRadius: 14,
-                  cursor: submitting || tooShort ? 'not-allowed' : 'pointer',
-                  boxShadow: `0 5px 0 ${submitting || tooShort ? '#8fc9a1' : lc.greenDark}`,
                 }}
               >
                 {submitting ? SUBMIT_LOADING[loaderIdx] : 'Get my feedback'}
@@ -1159,7 +1154,6 @@ function AudioPlayer({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: `0 4px 0 ${lc.greenDark}`,
             }}
           >
             {audio.isPlaying ? (
@@ -1225,5 +1219,4 @@ const secBtn: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  boxShadow: '0 3px 0 #e2e9da',
 }

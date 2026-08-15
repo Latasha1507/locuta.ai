@@ -15,8 +15,8 @@ const META: Record<string, { icon: string; color: string }> = {
   storytelling: { icon: 'book', color: '#ffc531' },
   'creator-speaking': { icon: 'camera', color: '#ff6f61' },
   'casual-conversation': { icon: 'chat', color: '#1cb0f6' },
-  'workplace-communication': { icon: 'briefcase', color: '#a56cf5' },
-  'pitch-anything': { icon: 'target', color: '#3fce6f' },
+  'workplace-communication': { icon: 'briefcase', color: '#c774f0' },
+  'pitch-anything': { icon: 'target', color: '#1ec8c8' },
 }
 
 interface FeedbackShape {

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Mixpanel from '@/lib/mixpanel'
 import { USER_PROPERTIES } from '@/lib/analytics/events'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
+import { pressable } from '@/components/ui/buttonSkins'
 import { Icon } from '@/components/ui/icons'
 import { Mascot } from '@/components/landing/Mascot'
 import { Sidebar } from '@/components/dashboard/Sidebar'
@@ -56,7 +57,7 @@ export function StreakView(d: StreakData) {
     >
       <Sidebar isAdmin={d.isAdmin} promo={d.promo} />
 
-      <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-12 pt-5 lg:gap-5 lg:px-10 lg:pb-16 lg:pt-8">
+      <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-24 pt-5 lg:gap-5 lg:px-10 lg:pb-16 lg:pt-8">
         {/* HERO */}
         <div
           className="flex items-center justify-between gap-5 overflow-hidden p-6 lg:px-9 lg:py-7"
@@ -103,19 +104,18 @@ export function StreakView(d: StreakData) {
             {!d.practicedToday && (
               <Link
                 href={d.nextHref}
+                className={pressable('primary').className}
                 style={{
+                  ...pressable('primary').style,
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 9,
-                  background: lc.green,
                   color: '#fff',
                   padding: '13px 22px',
                   borderRadius: 14,
                   fontFamily: fontDisplay,
                   fontWeight: 800,
                   fontSize: 14,
-                  textDecoration: 'none',
-                  boxShadow: `0 5px 0 ${lc.greenDark}`,
                 }}
               >
                 <Icon name="mic" size={17} color="#fff" />

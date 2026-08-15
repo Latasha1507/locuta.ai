@@ -65,7 +65,7 @@ const CATEGORIES = [
   { name: 'Creator Speaking', desc: 'Sound natural and hold attention on video, podcasts and recordings.', icon: 'camera', color: lc.coral },
   { name: 'Casual Conversation', desc: 'Build easy confidence for small talk and quick conversations.', icon: 'chat', color: lc.blue },
   { name: 'Workplace Communication', desc: 'Own meetings, reviews and the tough conversations that count.', icon: 'briefcase', color: lc.purple },
-  { name: 'Pitch Anything', desc: 'Win over investors, customers and your team with clarity.', icon: 'target', color: lc.green },
+  { name: 'Pitch Anything', desc: 'Win over investors, customers and your team with clarity.', icon: 'target', color: lc.teal },
 ]
 
 // Trial terms mirror lib/check-session-limit.ts: 14 days, 10 sessions/day.

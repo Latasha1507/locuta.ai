@@ -2,6 +2,7 @@
 
 import { useId, useState } from 'react'
 import { lc, fontDisplay } from '@/components/landing/tokens'
+import { pressable } from '@/components/ui/buttonSkins'
 
 // Chunky-3D form primitives matching the Locuta design system.
 // Every input is properly labelled and keyboard-focusable — this is a
@@ -139,25 +140,23 @@ export function PrimaryButton({
   onClick?: () => void
 }) {
   const off = loading || disabled
+  const press = pressable('primary')
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={off}
+      className={press.className}
       style={{
+        ...press.style,
         width: '100%',
-        background: off ? '#a8ddb9' : lc.green,
         color: '#fff',
-        border: 0,
         padding: 15,
         borderRadius: 15,
         fontFamily: fontDisplay,
         fontWeight: 800,
         fontSize: 15,
         letterSpacing: '0.02em',
-        cursor: off ? 'not-allowed' : 'pointer',
-        boxShadow: `0 5px 0 ${off ? '#8fc9a1' : lc.greenDark}`,
-        transition: 'background .15s ease',
       }}
     >
       {loading ? 'ONE SEC…' : children}
@@ -174,28 +173,26 @@ export function GoogleButton({
   disabled?: boolean
   label: string
 }) {
+  const press = pressable('secondary')
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
+      className={press.className}
       style={{
+        ...press.style,
         width: '100%',
-        background: '#fff',
         color: '#5f6d58',
-        border: '2px solid #e2ead9',
         padding: 14,
         borderRadius: 15,
         fontFamily: fontDisplay,
         fontWeight: 800,
         fontSize: 14,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        boxShadow: '0 4px 0 #e2ead9',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 10,
-        opacity: disabled ? 0.6 : 1,
       }}
     >
       <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">

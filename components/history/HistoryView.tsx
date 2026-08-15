@@ -86,7 +86,7 @@ export function HistoryView(d: HistoryData) {
     <div className="flex min-h-screen flex-col lg:flex-row" style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}>
       <Sidebar isAdmin={d.isAdmin} promo={d.promo} />
 
-      <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-14 pt-5 lg:gap-5 lg:px-10 lg:pt-8">
+      <main className="flex min-w-0 flex-1 flex-col gap-[18px] px-4 pb-24 pt-5 lg:gap-5 lg:px-10 lg:pb-14 lg:pt-8">
         {/* HEADER */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
