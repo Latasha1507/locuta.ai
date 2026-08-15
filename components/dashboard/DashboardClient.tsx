@@ -408,36 +408,8 @@ export function DashboardClient(d: DashboardData) {
             </Link>
           ))}
         </div>
-
-        <form action="/auth/signout" method="post" className="mt-2 lg:hidden">
-          {/* Reset Mixpanel synchronously before the server-side sign-out
-              POST unloads the page — onAuthStateChange('SIGNED_OUT') won't
-              fire in time. Prevents identity bleed on shared devices. */}
-          <button
-            type="submit"
-            onClick={() => {
-              try {
-                Mixpanel.reset()
-              } catch {
-                // never block sign-out on analytics
-              }
-            }}
-            style={{
-              width: '100%',
-              padding: 13,
-              borderRadius: 13,
-              background: '#fff5f3',
-              border: '2px solid #ffdcd6',
-              fontFamily: fontDisplay,
-              fontWeight: 800,
-              fontSize: 14,
-              color: '#c04333',
-              cursor: 'pointer',
-            }}
-          >
-            Sign out
-          </button>
-        </form>
+        {/* Sign-out lives in Settings (reachable from the nav on every
+            viewport) — it was removed from the dashboard bottom on purpose. */}
       </main>
 
       {showWelcome && <TrialWelcomeModal onClose={() => setShowWelcome(false)} daysLeft={d.trial?.daysLeft ?? 14} />}

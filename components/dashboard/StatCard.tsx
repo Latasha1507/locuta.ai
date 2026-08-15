@@ -53,11 +53,11 @@ export function StatCard({ label, value, suffix, placeholder, hint, icon, color,
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className="flex items-center gap-3.5 p-4 lg:p-[18px]"
+      className="flex items-center gap-3 p-3.5 lg:gap-3.5 lg:p-[18px]"
       style={{
         background: '#fff',
         border: `2px solid ${hover ? color : lc.cardBorder}`,
-        borderRadius: 20,
+        borderRadius: 18,
         boxShadow: `0 ${hover ? 6 : 4}px 0 ${hover ? color : lc.cardBorder}`,
         transform: hover ? 'translateY(-2px)' : 'none',
         transition: 'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
@@ -65,10 +65,9 @@ export function StatCard({ label, value, suffix, placeholder, hint, icon, color,
       }}
     >
       <span
+        className="h-11 w-11 lg:h-12 lg:w-12"
         style={{
-          width: 48,
-          height: 48,
-          borderRadius: 14,
+          borderRadius: 13,
           background: color,
           display: 'flex',
           alignItems: 'center',
@@ -79,10 +78,10 @@ export function StatCard({ label, value, suffix, placeholder, hint, icon, color,
           transition: 'transform .2s cubic-bezier(.34,1.56,.64,1)',
         }}
       >
-        <Icon name={icon} size={24} color="#fff" />
+        <Icon name={icon} size={22} color="#fff" />
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: 12.5, color: lc.faint, fontWeight: 800, marginBottom: 3 }}>
+        <span style={{ display: 'block', fontSize: 12, color: lc.faint, fontWeight: 800, marginBottom: 2, lineHeight: 1.2 }}>
           {label}
         </span>
         <span
@@ -90,7 +89,7 @@ export function StatCard({ label, value, suffix, placeholder, hint, icon, color,
             display: 'block',
             fontFamily: fontDisplay,
             fontWeight: 800,
-            fontSize: 24,
+            fontSize: 23,
             color: lc.ink,
             lineHeight: 1,
           }}
@@ -100,10 +99,11 @@ export function StatCard({ label, value, suffix, placeholder, hint, icon, color,
         <span
           style={{
             display: 'block',
-            fontSize: 11.5,
+            fontSize: 11,
             color: warm ? '#d08a1a' : lc.faint,
             fontWeight: 700,
-            marginTop: 4,
+            marginTop: 3,
+            lineHeight: 1.3,
           }}
         >
           {hint}

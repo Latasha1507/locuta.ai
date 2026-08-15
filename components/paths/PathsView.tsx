@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
 import { Sidebar } from '@/components/dashboard/Sidebar'
+import { Icon } from '@/components/ui/icons'
 import { Mascot, type MascotMood } from '@/components/landing/Mascot'
 import type { FounderPromo } from '@/components/dashboard/SidebarPromo'
 import type { ModuleNode, LevelNode } from '@/lib/category-map'
@@ -74,9 +75,12 @@ export function PathsView(d: PathsData) {
           </p>
         </div>
 
-        {/* CATEGORY SWITCHER — wraps to rows (no horizontal scroll); each pill
-            carries a tiny mascot instead of a flat icon. */}
-        <div className="flex flex-wrap gap-2.5">
+        {/* CATEGORY SWITCHER — an even grid (2-up on mobile, 3-up above) so the
+            pills line up instead of wrapping ragged, and each path wears its
+            OWN colour (icon + active fill) so the map reads as six distinct
+            paths rather than one wall of green. Mirrors the dashboard's
+            coloured category chips. */}
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {d.categories.map((c) => {
             const active = c.id === tab
             const pct = c.total > 0 ? Math.round((c.completed / c.total) * 100) : 0
@@ -88,12 +92,13 @@ export function PathsView(d: PathsData) {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 9,
-                  padding: '8px 14px 8px 9px',
+                  gap: 10,
+                  padding: '10px 12px',
                   borderRadius: 14,
                   textDecoration: 'none',
                   background: active ? c.color : '#fff',
                   border: `2px solid ${active ? c.color : lc.cardBorder}`,
+                  boxShadow: active ? `0 3px 0 ${shade(c.color)}` : 'none',
                 }}
               >
                 <span
@@ -101,25 +106,24 @@ export function PathsView(d: PathsData) {
                     width: 34,
                     height: 34,
                     borderRadius: 10,
-                    background: active ? 'rgba(255,255,255,.22)' : `${c.color}14`,
+                    background: active ? 'rgba(255,255,255,.22)' : `${c.color}1f`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flex: 'none',
-                    overflow: 'hidden',
                   }}
                 >
-                  <MiniMascot mood={active ? 'cheer' : 'happy'} box={30} />
+                  <Icon name={c.icon} size={20} color={active ? '#fff' : c.color} />
                 </span>
-                <span>
+                <span style={{ minWidth: 0 }}>
                   <span
                     style={{
                       display: 'block',
                       fontFamily: fontDisplay,
                       fontWeight: 800,
-                      fontSize: 13.5,
+                      fontSize: 13,
+                      lineHeight: 1.15,
                       color: active ? '#fff' : lc.ink,
-                      whiteSpace: 'nowrap',
                     }}
                   >
                     {c.name}
@@ -127,8 +131,9 @@ export function PathsView(d: PathsData) {
                   <span
                     style={{
                       display: 'block',
-                      fontSize: 11,
+                      fontSize: 10.5,
                       fontWeight: 800,
+                      marginTop: 2,
                       color: active ? 'rgba(255,255,255,.9)' : lc.faint,
                     }}
                   >

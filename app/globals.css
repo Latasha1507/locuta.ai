@@ -272,12 +272,17 @@ button:not(.lc-btn):not(.lc-ctl):not(:disabled):not([aria-disabled="true"]) {
   -webkit-tap-highlight-color: transparent;
   will-change: transform;
 }
-/* HOVER — cursor arrives, the key starts sinking (like landing's half-press). */
-button:not(.lc-btn):not(.lc-ctl):not(:disabled):not([aria-disabled="true"]):hover {
-  transform: translateY(2px);
-  filter: brightness(0.98);
+/* HOVER — cursor arrives, the key starts sinking (like landing's half-press).
+   Gated to real hover-capable pointers: on touchscreens :hover STICKS after a
+   tap, which left every button frozen 2px into its own shadow — reading as
+   "stuck / not responsive". Touch devices get the :active press below only. */
+@media (hover: hover) and (pointer: fine) {
+  button:not(.lc-btn):not(.lc-ctl):not(:disabled):not([aria-disabled="true"]):hover {
+    transform: translateY(2px);
+    filter: brightness(0.98);
+  }
 }
-/* ACTIVE — bottomed out on click. */
+/* ACTIVE — bottomed out on click/tap (fires on press, releases on lift). */
 button:not(.lc-btn):not(.lc-ctl):not(:disabled):not([aria-disabled="true"]):active {
   transform: translateY(4px);
   filter: brightness(0.96);

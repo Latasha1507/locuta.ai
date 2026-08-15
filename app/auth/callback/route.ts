@@ -53,8 +53,31 @@ export async function GET(request: Request) {
 
     if (exchangeError) {
       console.error('❌ Error exchanging code for session:', exchangeError)
+
+      // Mobile browsers (and prefetchers) sometimes hit this callback TWICE for
+      // one login. The auth code is single-use: the first exchange succeeds and
+      // consumes the flow state; the second comes back as "flow_state_not_found"
+      // — even though the user is, at that point, already signed in. So before
+      // treating this as a failure, check whether a session now exists. If it
+      // does, the duplicate hit is harmless — send the user on to their
+      // destination instead of bouncing them to /login with a scary error.
+      const {
+        data: { user: alreadySignedIn },
+      } = await supabase.auth.getUser()
+      if (alreadySignedIn) {
+        return NextResponse.redirect(new URL(destination, request.url))
+      }
+
+      // Genuine failure (link truly expired, or opened on a different device/
+      // browser than it was started on). Show a plain, recoverable message —
+      // never the raw "invalid flow state, no valid flow state found".
+      const isFlowState =
+        exchangeError.code === 'flow_state_not_found' || /flow state/i.test(exchangeError.message)
+      const friendly = isFlowState
+        ? 'That sign-in link was already used or has expired. Please sign in again.'
+        : exchangeError.message
       return NextResponse.redirect(
-        new URL(`/auth/login?error=${encodeURIComponent(exchangeError.message)}`, request.url)
+        new URL(`/auth/login?error=${encodeURIComponent(friendly)}`, request.url)
       )
     }
 
