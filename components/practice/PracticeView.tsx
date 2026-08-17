@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSequentialAudio } from '@/lib/hooks/useSequentialAudio'
+import type { WordTiming } from '@/lib/word-timings'
 import { playSound } from '@/lib/sounds'
 import {
   trackLessonStart,
@@ -79,6 +80,7 @@ export function PracticeView(d: PracticeData) {
   const [introAudio, setIntroAudio] = useState('')
   const [greetingAudio, setGreetingAudio] = useState('')
   const [introTranscript, setIntroTranscript] = useState('')
+  const [wordTimings, setWordTimings] = useState<WordTiming[]>([])
   const [greetingText, setGreetingText] = useState('')
 
   const [rec, setRec] = useState<'idle' | 'recording' | 'done'>('idle')
@@ -224,6 +226,7 @@ export function PracticeView(d: PracticeData) {
       setGreetingAudio(data.greetingAudioUrl || data.greetingAudio || '')
       setIntroAudio(data.audioUrl || data.audioBase64 || '')
       setIntroTranscript(data.transcript || '')
+      setWordTimings(Array.isArray(data.wordTimings) ? data.wordTimings : [])
       setGreetingText(data.greetingText || '')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Try again.')
@@ -617,7 +620,7 @@ export function PracticeView(d: PracticeData) {
           />
 
           {introTranscript || audio.duration > 0 ? (
-            <AudioPlayer audio={audio} transcript={introTranscript} />
+            <AudioPlayer audio={audio} transcript={introTranscript} wordTimings={wordTimings} />
           ) : introLoading ? (
             <div
               style={{
@@ -1047,12 +1050,28 @@ function StepHead({ n, icon, iconColor, title, subtitle }: { n?: number; icon?: 
 function AudioPlayer({
   audio,
   transcript,
+  wordTimings,
 }: {
   audio: ReturnType<typeof useSequentialAudio>
   transcript: string
+  wordTimings: WordTiming[]
 }) {
   const pct = audio.duration > 0 ? (audio.currentTime / audio.duration) * 100 : 0
   const t = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
+
+  // Read-along highlight. currentTime is on the COMBINED timeline (greeting then
+  // lesson); the transcript is the lesson, so shift by the greeting's length.
+  // Before the lesson starts (still greeting, or reset to 0) lessonTime < 0 and
+  // nothing is highlighted. Words are time-ordered, so the active one is the
+  // last whose start has passed.
+  const lessonTime = audio.currentTime - audio.greetingDuration
+  let activeIdx = -1
+  if (wordTimings.length > 0 && lessonTime >= 0) {
+    for (let i = 0; i < wordTimings.length; i++) {
+      if (wordTimings[i].start <= lessonTime) activeIdx = i
+      else break
+    }
+  }
 
   return (
     <>
@@ -1149,7 +1168,36 @@ function AudioPlayer({
           >
             WHAT YOUR COACH SAID
           </div>
-          <p style={{ fontSize: 14, lineHeight: 1.6, color: lc.muted, fontWeight: 600, margin: 0 }}>{transcript}</p>
+          {wordTimings.length > 0 ? (
+            // Karaoke read-along: the current word is a green pill, words already
+            // spoken stay in the brand green, upcoming words are muted. Extra
+            // line-height gives the highlighted pill room so lines don't collide.
+            <p style={{ fontSize: 14, lineHeight: 1.85, fontWeight: 600, margin: 0 }}>
+              {wordTimings.map((w, i) => {
+                const active = i === activeIdx
+                const spoken = i < activeIdx
+                return (
+                  <span
+                    key={i}
+                    style={{
+                      padding: '1px 3px',
+                      borderRadius: 6,
+                      background: active ? lc.green : 'transparent',
+                      color: active ? '#fff' : spoken ? lc.greenDark : lc.muted,
+                      fontWeight: active ? 800 : 600,
+                      transition: 'background .12s linear, color .12s linear',
+                      WebkitBoxDecorationBreak: 'clone',
+                      boxDecorationBreak: 'clone',
+                    }}
+                  >
+                    {w.word}{' '}
+                  </span>
+                )
+              })}
+            </p>
+          ) : (
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: lc.muted, fontWeight: 600, margin: 0 }}>{transcript}</p>
+          )}
         </div>
       )}
     </>

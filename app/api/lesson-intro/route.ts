@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { checkSessionLimitServer } from '@/lib/check-session-limit-server'
 import { introPath, greetingPath, uploadAudio, audioExists, publicUrl } from '@/lib/audio-storage'
+import { alignWordTimings, alignWordTimingsFromUrl } from '@/lib/word-timings'
 import { createClient as createServiceClient, type SupabaseClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
@@ -293,6 +294,23 @@ export async function POST(request: Request) {
         }
       }
 
+      // Word timings for the read-along highlight. Cached on the row; if this is
+      // a legacy row from before the feature, align it once now and store it so
+      // the next visitor gets it for free. Non-fatal — no timings just means the
+      // transcript renders without highlighting.
+      let wordTimings = Array.isArray(cachedIntro.intro_word_timings)
+        ? cachedIntro.intro_word_timings
+        : []
+      if (wordTimings.length === 0 && audioUrl) {
+        wordTimings = await alignWordTimingsFromUrl(getOpenAI(), audioUrl)
+        if (wordTimings.length > 0) {
+          await supabaseAdmin
+            .from('cached_lesson_intros')
+            .update({ intro_word_timings: wordTimings })
+            .eq('id', cachedIntro.id)
+        }
+      }
+
       const greeting = await generatePersonalGreeting(userName, tone, daypart, supabaseAdmin)
 
       // The worked example is cached on the row. Regenerate if it's missing OR
@@ -327,6 +345,7 @@ export async function POST(request: Request) {
         greetingAudio: greeting.audio,
         greetingText: greeting.text,
         transcript: cachedIntro.intro_text,
+        wordTimings,
         lessonTitle: cachedIntro.lesson_title,
         practice_prompt: cachedIntro.practice_prompt,
         practice_example: workedExample,
@@ -424,6 +443,15 @@ Remember: You're a ${tone} coach speaking privately to ONE learner as "you" — 
 
     const buffer = Buffer.from(await mp3Response.arrayBuffer())
 
+    // Align the fresh audio to word-level timings for the read-along highlight.
+    // Non-fatal: a failure here must not block the lesson from loading.
+    let wordTimings: Awaited<ReturnType<typeof alignWordTimings>> = []
+    try {
+      wordTimings = await alignWordTimings(getOpenAI(), buffer)
+    } catch (e) {
+      console.error('⚠️ Word-timing alignment failed (non-critical):', e)
+    }
+
     // Push the mp3 to Storage so every future listener streams it from the CDN
     // instead of pulling a base64 blob out of Postgres.
     const path = introPath(categoryName, parseInt(moduleId), parseInt(lessonId), tone)
@@ -439,6 +467,7 @@ Remember: You're a ${tone} coach speaking privately to ONE learner as "you" — 
         .update({
           generation_count: cachedIntro.generation_count + 1,
           intro_audio_url: audioUrl,
+          intro_word_timings: wordTimings.length ? wordTimings : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', cachedIntro.id)
@@ -455,6 +484,7 @@ Remember: You're a ${tone} coach speaking privately to ONE learner as "you" — 
           intro_text: lessonContent, // WITHOUT name
           intro_audio_url: audioUrl, // streams from the CDN
           intro_audio_base64: audioBase64, // fallback only; '' when the upload worked
+          intro_word_timings: wordTimings.length ? wordTimings : null,
           practice_prompt: practicePrompt,
           practice_example_ai: workedExample ? `[v2]${workedExample}` : null,
           lesson_title: levelTitle,
@@ -475,6 +505,7 @@ Remember: You're a ${tone} coach speaking privately to ONE learner as "you" — 
       greetingAudio: greeting.audio,
       greetingText: greeting.text,
       transcript: lessonContent,
+      wordTimings,
       lessonTitle: lesson.level_title || 'Lesson',
       moduleTitle: lesson.module_title || 'Module',
       practice_prompt: lesson.practice_prompt || 'Practice speaking clearly and confidently.',

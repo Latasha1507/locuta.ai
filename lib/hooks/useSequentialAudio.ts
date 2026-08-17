@@ -18,10 +18,13 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  
+  // Exposed so consumers can map the combined-timeline currentTime back onto the
+  // LESSON clip (the greeting plays first). lessonTime = currentTime - greetingDuration.
+  const [greetingDuration, setGreetingDuration] = useState(0)
+
   const greetingAudioRef = useRef<HTMLAudioElement | null>(null)
   const lessonAudioRef = useRef<HTMLAudioElement | null>(null)
-  const greetingDuration = useRef<number>(0)
+  const greetingDurationRef = useRef<number>(0)
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Initialize audio elements
@@ -32,7 +35,8 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
       greetingAudioRef.current = greetingAudio
       
       greetingAudio.addEventListener('loadedmetadata', () => {
-        greetingDuration.current = greetingAudio.duration
+        greetingDurationRef.current = greetingAudio.duration
+        setGreetingDuration(greetingAudio.duration)
         updateTotalDuration()
       })
     }
@@ -79,7 +83,7 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
         if (!greeting.paused) {
           setCurrentTime(greeting.currentTime)
         } else if (!lesson.paused) {
-          setCurrentTime(greetingDuration.current + lesson.currentTime)
+          setCurrentTime(greetingDurationRef.current + lesson.currentTime)
         }
       }, 100) // Update every 100ms for smooth progress
     } else {
@@ -101,7 +105,7 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
 
     if (!greeting || !lesson) return
 
-    const greetingDur = greetingDuration.current
+    const greetingDur = greetingDurationRef.current
 
     setIsPlaying(true)
 
@@ -165,7 +169,7 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
 
     if (!greeting || !lesson) return
 
-    const greetingDur = greetingDuration.current
+    const greetingDur = greetingDurationRef.current
     const wasPlaying = isPlaying
 
     // Pause both
@@ -247,6 +251,7 @@ export function useSequentialAudio(greetingBase64: string, lessonBase64: string)
     isPlaying,
     currentTime,
     duration,
+    greetingDuration,
     play,
     pause,
     seek,
