@@ -143,6 +143,30 @@ export async function POST(request: NextRequest) {
     console.log('✅ User authenticated:', user.id)
 
     // ---------------------------------------------------------------------
+    // SECURITY / COST: the browser caps recording length (maxSeconds), but that
+    // is bypassable — anyone can POST an arbitrary file straight to this route.
+    // Reject oversized or non-audio uploads BEFORE we buffer them into memory
+    // and pay OpenAI to transcribe them. A 3-minute recording is well under 1MB;
+    // 12MB is generous headroom for higher-bitrate formats.
+    // ---------------------------------------------------------------------
+    const MAX_AUDIO_BYTES = 12 * 1024 * 1024
+    if (audioFile.size > MAX_AUDIO_BYTES) {
+      console.warn('⛔ Audio too large:', audioFile.size)
+      return NextResponse.json(
+        { error: 'That recording is too large. Please keep it under a couple of minutes.' },
+        { status: 413 },
+      )
+    }
+    const audioType = audioFile.type || ''
+    if (audioType && !audioType.startsWith('audio/')) {
+      console.warn('⛔ Non-audio upload rejected:', audioType)
+      return NextResponse.json(
+        { error: 'Unsupported file type — please submit an audio recording.' },
+        { status: 415 },
+      )
+    }
+
+    // ---------------------------------------------------------------------
     // SECURITY / COST: enforce the trial + daily limit HERE, on the server,
     // before we spend anything on Whisper or GPT-4. The browser check in
     // lib/check-session-limit.ts is only a UX affordance — anyone can POST

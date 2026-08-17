@@ -99,7 +99,7 @@ export function Field({
             aria-label={reveal ? 'Hide password' : 'Show password'}
             style={{
               position: 'absolute',
-              right: 12,
+              right: 6,
               top: '50%',
               transform: 'translateY(-50%)',
               background: 'none',
@@ -107,10 +107,15 @@ export function Field({
               cursor: 'pointer',
               fontFamily: fontDisplay,
               fontWeight: 800,
-              fontSize: 11,
+              fontSize: 12,
               letterSpacing: '0.04em',
               color: '#9aa891',
-              padding: 6,
+              // ≥44px tap target (the label stays small; the hit area is large).
+              minHeight: 44,
+              minWidth: 44,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             {reveal ? 'HIDE' : 'SHOW'}

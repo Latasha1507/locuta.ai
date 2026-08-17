@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { lc, fontDisplay } from '@/components/landing/tokens'
 import { LocutaLogo } from '@/components/ui/LocutaLogo'
 import { Icon } from '@/components/ui/icons'
-import { SidebarPromo, type FounderPromo } from './SidebarPromo'
+import { SidebarPromo, FOUNDER_CALL_URL, REQUIRED_SESSIONS, type FounderPromo } from './SidebarPromo'
 
 // The full nav (desktop left rail). `soon: true` = the route does not exist yet
 // and renders as a visible-but-inert SOON row rather than a link that 404s.
@@ -274,6 +274,9 @@ export function Sidebar({ isAdmin, promo }: { isAdmin: boolean; promo: FounderPr
             }}
           >
             <div style={{ width: 40, height: 5, borderRadius: 999, background: '#e2ead9', margin: '2px auto 14px' }} />
+            {promo && !promo.hasBooked && promo.slotsRemaining > 0 && (
+              <FounderCallSheetItem promo={promo} onNav={() => setSheetOpen(false)} />
+            )}
             <SheetLink href="/history" icon="clock" label="History" onNav={() => setSheetOpen(false)} />
             <SheetLink href="/settings" icon="cog" label="Settings" onNav={() => setSheetOpen(false)} />
             {isAdmin && <SheetLink href="/admin" icon="shield" label="Admin" onNav={() => setSheetOpen(false)} />}
@@ -323,5 +326,106 @@ function SheetLink({ href, icon, label, onNav }: { href: string; icon: string; l
       <Icon name={icon} size={20} color="#6f7d67" />
       <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 14.5, color: lc.ink }}>{label}</span>
     </Link>
+  )
+}
+
+/** The founder 1:1 offer, brought to mobile (the sidebar promo is desktop-only).
+    Eligible users get a book link; everyone else sees their progress to unlock. */
+function FounderCallSheetItem({ promo, onNav }: { promo: FounderPromo; onNav: () => void }) {
+  const done = Math.min(promo.sessionsCompleted, REQUIRED_SESSIONS)
+  const toGo = Math.max(0, REQUIRED_SESSIONS - promo.sessionsCompleted)
+  const eligible = toGo === 0
+  const pct = Math.round((done / REQUIRED_SESSIONS) * 100)
+
+  if (eligible) {
+    return (
+      <a
+        href={FOUNDER_CALL_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={onNav}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '13px 14px',
+          borderRadius: 14,
+          textDecoration: 'none',
+          background: `linear-gradient(150deg, ${lc.green}, ${lc.greenDark})`,
+          color: '#fff',
+          marginBottom: 4,
+        }}
+      >
+        <span
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,.22)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: 'none',
+          }}
+        >
+          <Icon name="gift" size={18} color="#fff" />
+        </span>
+        <span style={{ minWidth: 0 }}>
+          <span style={{ display: 'block', fontFamily: fontDisplay, fontWeight: 800, fontSize: 14.5 }}>
+            Book your 1:1 with the founder
+          </span>
+          <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,.9)' }}>
+            1 year free · {promo.slotsRemaining} {promo.slotsRemaining === 1 ? 'spot' : 'spots'} left
+          </span>
+        </span>
+      </a>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '13px 14px',
+        borderRadius: 14,
+        background: '#f4f8f1',
+        border: `2px solid ${lc.cardBorder}`,
+        marginBottom: 4,
+      }}
+    >
+      <span
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: '50%',
+          background: '#e4efdb',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flex: 'none',
+        }}
+      >
+        <Icon name="gift" size={18} color={lc.greenDark} />
+      </span>
+      <span style={{ minWidth: 0, flex: 1 }}>
+        <span style={{ display: 'block', fontFamily: fontDisplay, fontWeight: 800, fontSize: 14, color: lc.ink }}>
+          1:1 with the founder
+        </span>
+        <span
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          style={{ display: 'block', height: 6, background: '#e2ead9', borderRadius: 4, margin: '6px 0 4px', overflow: 'hidden' }}
+        >
+          <span style={{ display: 'block', height: '100%', width: `${pct}%`, background: lc.green, borderRadius: 4 }} />
+        </span>
+        <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: lc.faint }}>
+          {done} of {REQUIRED_SESSIONS} sessions · {toGo} to unlock
+        </span>
+      </span>
+    </div>
   )
 }

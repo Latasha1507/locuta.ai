@@ -82,6 +82,13 @@ const FOOTER_LINKS = [
   { label: 'Pricing', href: '#pricing' },
 ]
 
+// Fazier launch badge is temporary — it shows for ~2 days after the
+// 2026-08-17 launch, then auto-hides. The homepage renders per request
+// (it reads auth cookies), so this date check is re-evaluated live with no
+// redeploy needed. To keep it up longer, bump the date; to pull it now,
+// set the date to the past or delete the footer block that uses it.
+const FAZIER_BADGE_UNTIL = Date.parse('2026-08-19T00:00:00Z')
+
 // Shared bits ---------------------------------------------------------------
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
@@ -215,6 +222,8 @@ function LaunchBanner() {
 }
 
 export function LandingPage() {
+  const showFazierBadge = Date.now() < FAZIER_BADGE_UNTIL
+
   return (
     <div style={{ background: lc.pageBg, overflowX: 'hidden', color: lc.ink }}>
       <ButtonStyles />
@@ -809,6 +818,30 @@ export function LandingPage() {
           </nav>
           <div style={{ fontSize: 13, color: lc.faint, fontWeight: 700 }}>© 2026 Locuta. Train your speaking brain.</div>
         </div>
+
+        {/* Fazier launch badge — temporary. Auto-hides after FAZIER_BADGE_UNTIL
+            (~2 days from the 2026-08-17 launch). Delete this block to remove. */}
+        {showFazierBadge && (
+          <div
+            className="mx-auto flex max-w-[1100px] justify-center px-[18px] pb-7 pt-5 lg:pb-9"
+            style={{ borderTop: `2px solid ${lc.cardBorder}` }}
+          >
+            <a
+              href="https://fazier.com/launches/locuta.in"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'inline-flex', lineHeight: 0 }}
+            >
+              <img
+                src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=launched&theme=neutral"
+                width={120}
+                alt="Locuta — launched on Fazier"
+                loading="lazy"
+                style={{ height: 'auto' }}
+              />
+            </a>
+          </div>
+        )}
       </footer>
     </div>
   )

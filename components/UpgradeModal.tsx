@@ -1,5 +1,9 @@
 'use client'
+
 import { PRICING } from '@/lib/pricing'
+import { lc, fontDisplay } from '@/components/landing/tokens'
+import { Icon } from '@/components/ui/icons'
+import { pressable } from '@/components/ui/buttonSkins'
 
 interface UpgradeModalProps {
   reason: 'trial_expired' | 'daily_limit'
@@ -7,115 +11,219 @@ interface UpgradeModalProps {
   onClose: () => void
 }
 
+// Rebuilt in the chunky-3D green system (was old purple/indigo gradients + emoji).
+// This is a revenue-critical screen, so it must read as the same product as the
+// rest of the app. The overlay scrolls and the card is margin-auto centred, so
+// on a short mobile viewport the CTA is always reachable.
 export default function UpgradeModal({ reason, daysRemaining, onClose }: UpgradeModalProps) {
-  const message = reason === 'trial_expired' 
-    ? "Your 14-day trial has ended"
-    : "You've used all 10 sessions today"
-  
-  const subtitle = reason === 'trial_expired'
-    ? "Upgrade to continue practicing and improving your speaking skills"
-    : `Come back tomorrow for 10 more free sessions, or upgrade now for unlimited access! (${daysRemaining} days left in trial)`
-    
-  return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
-      <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl animate-in fade-in zoom-in duration-300">
-        {/* Icon */}
-        <div className="relative mb-6 text-center">
-          <div className="text-6xl">{reason === 'trial_expired' ? '🚀' : '⏰'}</div>
-        </div>
+  const trialEnded = reason === 'trial_expired'
+  const annual = PRICING.annual
+  const monthly = PRICING.monthly
 
-        {/* Heading */}
-        <h2 className="text-3xl font-bold text-slate-900 mb-3 text-center">
-          {message}
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={trialEnded ? 'Upgrade to keep practising' : "You've used today's sessions"}
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 50,
+        background: 'rgba(30,40,28,.5)',
+        overflowY: 'auto',
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          margin: 'auto',
+          width: '100%',
+          maxWidth: 460,
+          background: '#fff',
+          border: `2px solid ${lc.cardBorder}`,
+          borderRadius: 24,
+          boxShadow: '0 8px 0 #e3ebdd',
+          padding: 22,
+          position: 'relative',
+        }}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            border: 0,
+            background: '#f4f7f0',
+            color: lc.muted,
+            cursor: 'pointer',
+            fontSize: 18,
+            fontWeight: 800,
+            lineHeight: 1,
+          }}
+        >
+          ✕
+        </button>
+
+        {/* HEADER */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+          <span
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: '#eafaef',
+              border: '2px solid #c7edd2',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name={trialEnded ? 'crown' : 'clock'} size={28} color={lc.greenDark} />
+          </span>
+        </div>
+        <h2
+          style={{
+            fontFamily: fontDisplay,
+            fontWeight: 800,
+            fontSize: 23,
+            letterSpacing: '-0.4px',
+            textAlign: 'center',
+            color: lc.ink,
+            margin: '14px 0 6px',
+            lineHeight: 1.1,
+          }}
+        >
+          {trialEnded ? 'Your free trial has ended' : "That's all 10 sessions today"}
         </h2>
-        
-        {/* Subheading */}
-        <p className="text-lg text-slate-600 mb-6 text-center">
-          {subtitle}
+        <p style={{ fontSize: 14, fontWeight: 600, color: lc.muted, textAlign: 'center', margin: '0 0 18px', lineHeight: 1.5 }}>
+          {trialEnded
+            ? 'Upgrade to keep practising and get unlimited feedback.'
+            : `Your mic unlocks again tomorrow${
+                typeof daysRemaining === 'number' ? ` · ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} left in trial` : ''
+              } — or upgrade now for unlimited.`}
         </p>
 
-        {/* Only show pricing if trial expired */}
-        {reason === 'trial_expired' && (
+        {trialEnded && (
           <>
-            {/* Pricing Options */}
-            <div className="space-y-3 mb-6">
-              {/* Monthly Plan */}
-              <div className="border-2 border-purple-500 rounded-xl p-5 bg-purple-50/50 hover:shadow-lg transition-all cursor-pointer">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <p className="font-bold text-lg text-slate-900">Monthly Plan</p>
-                    <p className="text-sm text-slate-600">Unlimited sessions</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-3xl font-bold text-purple-600">{PRICING.monthly.price}</p>
-                    <p className="text-xs text-slate-500">/month</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  <span className="text-xs bg-white px-2 py-1 rounded-full text-slate-700">✓ Unlimited sessions</span>
-                  <span className="text-xs bg-white px-2 py-1 rounded-full text-slate-700">✓ All categories</span>
-                  <span className="text-xs bg-white px-2 py-1 rounded-full text-slate-700">✓ AI feedback</span>
-                </div>
+            {/* ANNUAL — highlighted best value */}
+            <div
+              style={{
+                border: `2px solid ${lc.green}`,
+                borderRadius: 18,
+                background: '#f4fbf0',
+                boxShadow: `0 4px 0 #cfe9c6`,
+                padding: 16,
+                marginBottom: 12,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 16, color: lc.ink }}>{annual.name}</span>
+                {annual.badge && (
+                  <span
+                    style={{
+                      fontFamily: fontDisplay,
+                      fontWeight: 800,
+                      fontSize: 12,
+                      color: '#fff',
+                      background: lc.green,
+                      padding: '3px 10px',
+                      borderRadius: 999,
+                    }}
+                  >
+                    {annual.badge}
+                  </span>
+                )}
               </div>
-              
-              {/* Yearly Plan */}
-              <div className="border-2 border-green-500 rounded-xl p-5 bg-green-50/50 hover:shadow-lg transition-all cursor-pointer relative">
-                <span className="absolute -top-3 right-4 bg-green-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-md">
-                  {PRICING.annual.badge.includes("40%") ? "40% OFF" : "SALE"}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 30, color: lc.greenDark, lineHeight: 1 }}>
+                  {annual.price}
                 </span>
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <p className="font-bold text-lg text-slate-900">Yearly Plan</p>
-                    <p className="text-sm text-slate-600">Best value</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-3xl font-bold text-green-600">{PRICING.annual.price}</p>
-                    <p className="text-xs text-slate-500">/month</p>
-                  </div>
-                </div>
-                <p className="text-sm text-slate-600 mt-2">Billed annually at ${(PRICING.annual.amountCents / 100).toFixed(2)}</p>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  <span className="text-xs bg-white px-2 py-1 rounded-full text-slate-700">✓ Everything in Monthly</span>
-                  <span className="text-xs bg-white px-2 py-1 rounded-full text-slate-700">✓ Priority support</span>
-                </div>
+                {annual.wasPrice && (
+                  <span style={{ fontSize: 14, fontWeight: 700, color: lc.faint, textDecoration: 'line-through' }}>
+                    {annual.wasPrice}
+                  </span>
+                )}
+                <span style={{ fontSize: 13, fontWeight: 700, color: lc.muted }}>{annual.period}</span>
+              </div>
+              <p style={{ fontSize: 12.5, fontWeight: 600, color: lc.muted, margin: '6px 0 10px' }}>{annual.note}</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {annual.features.slice(0, 4).map((f) => (
+                  <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 700, color: '#4b5a45' }}>
+                    <Icon name="check" size={13} color={lc.green} />
+                    {f}
+                  </span>
+                ))}
               </div>
             </div>
 
-            {/* CTA Buttons */}
-            <div className="space-y-3">
-              <button 
-                onClick={() => window.location.href = '/pricing'}
-                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-[1.02] transition-all"
-              >
-                View Pricing & Upgrade
-              </button>
-              <button 
-                onClick={onClose}
-                className="w-full text-slate-600 hover:text-slate-800 text-sm font-medium"
-              >
-                Maybe later
-              </button>
+            {/* MONTHLY — compact alternative */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: 8,
+                border: `2px solid ${lc.cardBorder}`,
+                borderRadius: 16,
+                padding: '12px 16px',
+                marginBottom: 18,
+              }}
+            >
+              <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 15, color: lc.ink }}>{monthly.name}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: lc.muted }}>
+                <strong style={{ fontFamily: fontDisplay, fontSize: 16, color: lc.ink }}>{monthly.price}</strong> {monthly.period}
+              </span>
             </div>
           </>
         )}
 
-        {/* For daily limit, just show close button */}
-        {reason === 'daily_limit' && (
-          <div className="space-y-3">
-            <button 
-              onClick={onClose}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-[1.02] transition-all"
-            >
-              Got it, see you tomorrow!
-            </button>
-            <button 
-              onClick={() => window.location.href = '/pricing'}
-              className="w-full text-purple-600 hover:text-purple-700 text-sm font-semibold"
-            >
-              Or upgrade now for unlimited access
-            </button>
-          </div>
-        )}
+        {/* CTAs */}
+        <button
+          type="button"
+          onClick={() => (window.location.href = '/pricing')}
+          className={pressable('primary').className}
+          style={{
+            ...pressable('primary').style,
+            width: '100%',
+            color: '#fff',
+            padding: 15,
+            borderRadius: 15,
+            fontFamily: fontDisplay,
+            fontWeight: 800,
+            fontSize: 15,
+          }}
+        >
+          {trialEnded ? 'See plans & upgrade' : 'Upgrade for unlimited'}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            width: '100%',
+            marginTop: 10,
+            background: 'none',
+            border: 0,
+            cursor: 'pointer',
+            fontFamily: fontDisplay,
+            fontWeight: 800,
+            fontSize: 13.5,
+            color: lc.muted,
+            padding: 8,
+          }}
+        >
+          {trialEnded ? 'Maybe later' : 'Got it, see you tomorrow'}
+        </button>
       </div>
     </div>
   )
