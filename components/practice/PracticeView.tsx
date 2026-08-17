@@ -30,9 +30,6 @@ export interface PracticeData {
   lessonTitle: string
   practicePrompt: string
   lessonExplanation: string
-  /** Optional: a lesson row may have no example, and older callers may not pass
-      it. Defensive so a missing prop can never fail the build or the render. */
-  practiceExample?: string
   expectedDurationSec: number
   /** Server-computed. The API enforces this too — this is just the UX. */
   limit: {
@@ -83,9 +80,6 @@ export function PracticeView(d: PracticeData) {
   const [greetingAudio, setGreetingAudio] = useState('')
   const [introTranscript, setIntroTranscript] = useState('')
   const [greetingText, setGreetingText] = useState('')
-  // Worked example arrives with the coach audio. Seeded from the server prop so
-  // it can render instantly when already known.
-  const [coachExample, setCoachExample] = useState(d.practiceExample || '')
 
   const [rec, setRec] = useState<'idle' | 'recording' | 'done'>('idle')
   const [elapsed, setElapsed] = useState(0)
@@ -231,10 +225,6 @@ export function PracticeView(d: PracticeData) {
       setIntroAudio(data.audioUrl || data.audioBase64 || '')
       setIntroTranscript(data.transcript || '')
       setGreetingText(data.greetingText || '')
-      // Keep the FIRST example for the whole session. The server seeds one and
-      // this intro fetch can return a different one — swapping it mid-session is
-      // what made the "Here's one way to do it" example look like it rotated.
-      if (data.practice_example) setCoachExample((cur) => cur || data.practice_example)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Try again.')
       trackError({
@@ -693,58 +683,12 @@ export function PracticeView(d: PracticeData) {
 
         </div>
 
-        {/* RIGHT COLUMN — everything the user acts on: example, then task, then mic */}
+        {/* RIGHT COLUMN — everything the user acts on: task, then mic.
+            No worked example on purpose: learners must produce their own answer
+            rather than paraphrase a model one. */}
         <div className="lg:sticky lg:top-4 flex flex-col gap-2.5 lg:gap-3">
 
-        {/* EXAMPLE (top of the right column) — a model answer at the learner's own
-            level and in their coach's tone, so they see an achievable target
-            before they read the task and record. */}
-        {(coachExample || introLoading) && (
-          <section
-            className="lsn-card p-[18px] lg:px-6 lg:py-5"
-            style={{
-              background: 'linear-gradient(135deg,#f3f9ff,#eef5ff)',
-              border: '2px solid #d5e6fb',
-              borderRadius: 20,
-              boxShadow: '0 5px 0 #dce9fb',
-            }}
-          >
-            <StepHead icon="star" iconColor={lc.blue} title="Here's one way to do it" subtitle="A model answer for this task — yours can be totally different." />
-            {coachExample ? (
-              <div
-                style={{
-                  position: 'relative',
-                  marginTop: 4,
-                  padding: '12px 14px 12px 18px',
-                  background: '#fff',
-                  border: '2px solid #dcecfb',
-                  borderRadius: 14,
-                  fontSize: 14.5,
-                  lineHeight: 1.6,
-                  color: '#3c4f63',
-                  fontStyle: 'italic',
-                  fontWeight: 600,
-                }}
-              >
-                <span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 4, borderRadius: 4, background: lc.blue }} />
-                {coachExample}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, color: lc.faint, fontWeight: 700, fontSize: 13 }}>
-                <span
-                  style={{
-                    width: 18, height: 18, borderRadius: '50%',
-                    border: `3px solid #d5e6fb`, borderTopColor: lc.blue,
-                    animation: 'lp-spin .8s linear infinite', flex: 'none',
-                  }}
-                />
-                Writing an example for you…
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* TASK — below the example, directly above the mic so the instruction and button
+        {/* TASK — directly above the mic so the instruction and button
             to answer it are one glance apart. Server-rendered, on screen the
             instant the page paints. */}
         <section

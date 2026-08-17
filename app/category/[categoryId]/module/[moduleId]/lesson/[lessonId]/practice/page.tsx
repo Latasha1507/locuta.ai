@@ -46,7 +46,7 @@ export default async function PracticePage({
   const [lessonRes, limit, profileRes] = await Promise.all([
     supabase
       .from('lessons')
-      .select('level_title, lesson_explanation, practice_prompt, practice_example, expected_duration_sec')
+      .select('level_title, lesson_explanation, practice_prompt, expected_duration_sec')
       .eq('category', categoryName)
       .eq('module_number', moduleNumber)
       .eq('level_number', levelNumber)
@@ -87,7 +87,6 @@ export default async function PracticePage({
       lessonTitle={lesson.level_title || `Lesson ${levelNumber}`}
       practicePrompt={lesson.practice_prompt || 'Speak clearly and confidently about the topic.'}
       lessonExplanation={lesson.lesson_explanation || ''}
-      practiceExample={lesson.practice_example || ''}
       expectedDurationSec={lesson.expected_duration_sec || 60}
       limit={{
         allowed: limit.allowed,
