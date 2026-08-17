@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/server-admin'
 import { checkSessionLimitServer } from '@/lib/check-session-limit-server'
 import { uploadAudio, userRecordingPath, exampleAudioPath } from '@/lib/audio-storage'
 import { getRequestMeta } from '@/lib/request-meta'
+import { generateModelAnswerText, synthesizeModelAnswer } from '@/lib/model-answer'
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
@@ -27,14 +28,6 @@ const categoryMap: { [key: string]: string } = {
   'casual-conversation': 'Casual Conversation',
   'workplace-communication': 'Workplace Communication',
   'pitch-anything': 'Pitch Anything',
-}
-
-const toneVoiceMap: { [key: string]: string } = {
-  'Supportive': 'nova',
-  'Challenging': 'onyx',
-  'Funny': 'alloy',
-  'Diplomatic': 'shimmer',
-  'Normal': 'shimmer',
 }
 
 const SCORING_WEIGHTS = {
@@ -241,59 +234,10 @@ export async function POST(request: NextRequest) {
       console.warn('⚠️ Non-English content detected, but proceeding with transcription')
     }
 
-    // Step 2: Generate AI example
-    console.log('🎯 Generating AI example response...')
-    // Length comes from the lesson's own expected_duration_sec (set by the
-    // curriculum author per task) — NOT a fixed 30–60s. A "repeat this line
-    // three times" task has a small duration; an open-ended one has a larger
-    // one. ~130 words per minute of natural speech. This mirrors how
-    // /api/generate-example sizes its answer, so the two stay consistent.
-    const exampleDurationSec = Number(lesson.expected_duration_sec) || 30
-    const exampleTargetWords = Math.max(12, Math.round((exampleDurationSec / 60) * 130))
-    const aiExamplePrompt = `You are demonstrating how to complete this exact speaking task for a Level ${levelNumber} learner, in a ${tone} coaching style.
-
-**Task:** ${lesson.practice_prompt}
-
-Produce ONLY what a strong speaker would actually SAY to complete THIS task — nothing else.
-
-Rules:
-- Length: about ${exampleTargetWords} words (~${exampleDurationSec} seconds spoken). Do not exceed the length the task needs.
-- Speak the task the way a real person actually would — naturally, once through. If the task lists several phrases or starters to practise, say each ONE naturally with the right tone, as a short flowing example. Do NOT chant or repeat any phrase multiple times. Only say a line more than once if the task LITERALLY tells you to repeat that one exact line a set number of times. If it's open-ended, give one strong, natural response of the target length.
-- Do NOT re-teach, coach, narrate breathing, or add warm-ups, intros, or encouragement ("take a deep breath", "great job", "one more time"). Only the spoken answer.
-- No meta-commentary, no stage directions, no wrapping quotation marks.
-
-Respond with ONLY the example speech text.`
-
-    const aiExampleResponse = await getOpenAI().chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert speaking coach who demonstrates a task by speaking ONLY the answer, naturally, at the length the task needs. You never pad, never re-teach, never add breathing cues or pep talk. If the task lists several phrases or starters, you say each ONE naturally with good tone — as a flowing example, never chanting or repeating a phrase multiple times. You only repeat a line if the task literally instructs repeating that one exact line a set number of times. If the task is open-ended, you give one natural answer of the requested length.`,
-        },
-        { role: 'user', content: aiExamplePrompt },
-      ],
-      temperature: 0.6,
-      max_tokens: 400,
-    })
-
-    const aiExampleText = aiExampleResponse.choices[0].message.content || 
-                          'Example not available.'
-    console.log('✅ AI example generated:', aiExampleText.substring(0, 50) + '...')
-
-    // Step 3: Generate audio for AI example
-    console.log('🔊 Generating AI audio...')
-    const voice = toneVoiceMap[tone] || 'shimmer'
-    const aiAudioResponse = await getOpenAI().audio.speech.create({
-      model: 'tts-1',
-      voice: voice as any,
-      input: aiExampleText,
-    })
-
-    const aiAudioBuffer = Buffer.from(await aiAudioResponse.arrayBuffer())
-    const aiAudioBase64 = aiAudioBuffer.toString('base64')
-    console.log('✅ AI audio generated')
-    // Step 4: Generate comprehensive feedback
+    // Step 2: Generate comprehensive feedback
+    // NOTE: feedback is generated BEFORE the coach model answer on purpose. The
+    // model answer needs the grammar_fixes / improvements this step produces, so
+    // it can demonstrate the exact corrections the learner is told about.
     console.log('💬 Generating feedback...')
     
     const focusAreas = Array.isArray(lesson.feedback_focus_areas) 
@@ -530,7 +474,42 @@ Be encouraging but honest. If non-English content detected, reduce overall score
       )
     }
 
-    // Step 5: Save session to database
+    // Step 3: Generate the PERSONALISED coach model answer — the student's OWN
+    // answer rewritten the way it should have been said, applying the exact
+    // grammar_fixes / improvements the feedback above just surfaced. Shared logic
+    // with /api/generate-example (lib/model-answer.ts) so the two never diverge.
+    //
+    // Non-fatal: a blip here must NEVER cost the learner their score. If it
+    // fails, ai_example_text stays empty and the feedback page regenerates it on
+    // demand via /api/generate-example (identical logic), so the compare still
+    // works — it just costs the user one click.
+    console.log('🎯 Generating personalised coach model answer...')
+    let aiExampleText = ''
+    let aiAudioBuffer: Buffer | null = null
+    let aiAudioBase64 = ''
+    try {
+      const { text } = await generateModelAnswerText(getOpenAI(), {
+        transcript: userTranscript,
+        practicePrompt: lesson.practice_prompt,
+        lessonTitle: lesson.level_title,
+        lessonExplanation: lesson.lesson_explanation,
+        focusAreas: focusAreasStr,
+        expectedDurationSec: Number(lesson.expected_duration_sec) || 30,
+        tone,
+        grammarFixes: Array.isArray(feedback.grammar_fixes) ? feedback.grammar_fixes : [],
+        improvements: Array.isArray(feedback.improvements) ? feedback.improvements : [],
+      })
+      if (text) {
+        aiExampleText = text
+        aiAudioBuffer = await synthesizeModelAnswer(getOpenAI(), text, tone)
+        aiAudioBase64 = aiAudioBuffer.toString('base64')
+        console.log('✅ Coach model answer generated:', aiExampleText.substring(0, 50) + '…')
+      }
+    } catch (e) {
+      console.error('⚠️ Coach model answer generation failed (non-critical):', e)
+    }
+
+    // Step 4: Save session to database
     console.log('💾 Attempting to save session...')
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
@@ -567,16 +546,18 @@ Be encouraging but honest. If non-English content detected, reduce overall score
     }
 
     let exampleAudioUrl = ''
-    try {
-      const url = await uploadAudio(
-        admin,
-        exampleAudioPath(user.id, sessionId),
-        aiAudioBuffer,
-        'audio/mpeg',
-      )
-      if (url) exampleAudioUrl = url
-    } catch (e) {
-      console.error('⚠️ Failed to store coach example audio (non-critical):', e)
+    if (aiAudioBuffer) {
+      try {
+        const url = await uploadAudio(
+          admin,
+          exampleAudioPath(user.id, sessionId),
+          aiAudioBuffer,
+          'audio/mpeg',
+        )
+        if (url) exampleAudioUrl = url
+      } catch (e) {
+        console.error('⚠️ Failed to store coach example audio (non-critical):', e)
+      }
     }
 
     // Analytics dimensions from the request (no IP stored). These feed the admin

@@ -595,8 +595,10 @@ export function PracticeView(d: PracticeData) {
         )}
 
         {/* Two columns on desktop: everything you need (task + mic) is on one
-            screen, no scrolling. Stacks on mobile. */}
-        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-4">
+            screen, no scrolling. Stacks on mobile. Equal widths (grid-cols-2 =
+            two minmax(0,1fr) tracks) so the "listen" and "act" halves read as a
+            balanced pair, not one column dominating. */}
+        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2 lg:gap-4">
 
         {/* LEFT COLUMN — listen. Just the coach: hear the lesson in your coach's
             voice. Everything you act on (example, task, mic) is on the right. */}
@@ -685,15 +687,16 @@ export function PracticeView(d: PracticeData) {
 
         {/* RIGHT COLUMN — everything the user acts on: task, then mic.
             No worked example on purpose: learners must produce their own answer
-            rather than paraphrase a model one. */}
-        <div className="lg:sticky lg:top-4 flex flex-col gap-2.5 lg:gap-3">
+            rather than paraphrase a model one. Same gap as the left column and
+            the grid gutter so the vertical rhythm matches across both halves. */}
+        <div className="lg:sticky lg:top-4 flex flex-col gap-3 lg:gap-4">
 
         {/* TASK — directly above the mic so the instruction and button
             to answer it are one glance apart. Server-rendered, on screen the
             instant the page paints. */}
         <section
           className="lsn-card p-[18px] lg:px-6 lg:py-5"
-          style={{ background: '#eef8ea', border: '2px solid #cfe9c6', borderRadius: 20, boxShadow: '0 5px 0 #d8ecd0' }}
+          style={{ background: '#eef8ea', border: '2px solid #cfe9c6', borderRadius: 22, boxShadow: '0 5px 0 #d8ecd0' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <Icon name="target" size={20} color={lc.greenDark} />

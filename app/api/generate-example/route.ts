@@ -11,6 +11,7 @@ import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/server-admin'
 import { uploadAudio, AUDIO_BUCKET } from '@/lib/audio-storage'
+import { generateModelAnswerText, synthesizeModelAnswer } from '@/lib/model-answer'
 
 let _openai: OpenAI | null = null
 function getOpenAI(): OpenAI {
@@ -20,25 +21,6 @@ function getOpenAI(): OpenAI {
     _openai = new OpenAI({ apiKey })
   }
   return _openai
-}
-
-const VOICE_MAP: Record<string, string> = {
-  Normal: 'shimmer',
-  Supportive: 'nova',
-  Inspiring: 'fable',
-  Funny: 'onyx',
-  Diplomatic: 'nova',
-  Bossy: 'echo',
-}
-
-// How the model answer should *sound*, per coach. Same content, different voice.
-const TONE_STYLE: Record<string, string> = {
-  Normal: 'clear, plain and conversational',
-  Supportive: 'warm, gentle and encouraging',
-  Inspiring: 'energetic and passionate, building to a strong finish',
-  Funny: 'light and playful, with a touch of humour, but still on task',
-  Diplomatic: 'calm, measured and professional',
-  Bossy: 'direct, punchy and commanding, no hedging',
 }
 
 export async function POST(request: NextRequest) {
@@ -59,7 +41,7 @@ export async function POST(request: NextRequest) {
     const { data: session } = await supabase
       .from('sessions')
       .select(
-        'id, user_id, ai_example_text, ai_example_audio, ai_example_audio_url, user_transcript, category, module_number, level_number, tone',
+        'id, user_id, ai_example_text, ai_example_audio, ai_example_audio_url, user_transcript, category, module_number, level_number, tone, feedback',
       )
       .eq('id', sessionId)
       .eq('user_id', user.id)
@@ -102,90 +84,47 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // The lesson itself — this is what the model answer must demonstrate.
+    // The lesson (the framework the answer must demonstrate) plus the fixes the
+    // feedback already surfaced for THIS attempt — so the rewrite applies the
+    // exact corrections the learner was told about. Single source of truth for
+    // the prompt logic lives in lib/model-answer.ts, shared with /api/feedback.
     const { data: lesson } = await supabase
       .from('lessons')
-      .select('practice_prompt, level_title, lesson_explanation, practice_example, expected_duration_sec, feedback_focus_areas')
+      .select('practice_prompt, level_title, lesson_explanation, expected_duration_sec, feedback_focus_areas')
       .eq('category', session.category)
       .eq('module_number', session.module_number)
       .eq('level_number', session.level_number)
       .single()
 
-    const practicePrompt = lesson?.practice_prompt || 'Speak clearly and confidently.'
-    const lessonExplanation = lesson?.lesson_explanation || ''
-    const lessonTips = lesson?.practice_example || ''
-    const expectedDuration = lesson?.expected_duration_sec || 60
-    // ~130 words per minute of natural speech.
-    const targetWords = Math.max(40, Math.round((expectedDuration / 60) * 130))
     const focusAreas = Array.isArray(lesson?.feedback_focus_areas)
       ? lesson.feedback_focus_areas.join(', ')
       : lesson?.feedback_focus_areas || 'Clarity, Confidence, Delivery'
 
     const chosenTone = tone || session.tone || 'Normal'
-    const toneStyle = TONE_STYLE[chosenTone] || TONE_STYLE.Normal
+    const fb = (session.feedback ?? {}) as Record<string, unknown>
 
-    const transcript = (session.user_transcript || '').trim()
-    const hasTranscript = transcript.length > 15
-
-    const systemPrompt = `You are an expert speaking coach writing a MODEL ANSWER for a specific student.
-
-This is the single most valuable moment in the lesson: the student hears their OWN attempt, delivered the way it should have been. So the model answer must be recognisably theirs — same topic, same story, same examples, same ideas — but performed properly.
-
-Rules:
-- Keep the student's subject matter, anecdotes, names and specific details. Do NOT invent a different topic.
-- Fix grammar. Upgrade weak or repeated vocabulary. Cut filler ("um", "like", "you know", "basically").
-- Apply the framework the lesson teaches. This is the point of the exercise.
-- Sound like a confident person SPEAKING, not like an essay being read. Contractions, natural rhythm, short sentences where they land harder.
-- Deliver it in a ${toneStyle} voice.
-- Output ONLY the spoken words. No labels, no headings, no commentary, no quotation marks.`
-
-    const userPrompt = hasTranscript
-      ? `LESSON: ${lesson?.level_title || 'Speaking practice'}
-WHAT THE LESSON TEACHES: ${lessonExplanation.slice(0, 600)}
-${lessonTips ? `COACH'S TIP: ${lessonTips}` : ''}
-THE TASK: ${practicePrompt}
-SKILLS BEING ASSESSED: ${focusAreas}
-LENGTH: about ${targetWords} words (${expectedDuration} seconds spoken)
-
-WHAT THE STUDENT ACTUALLY SAID (verbatim, with all its mistakes):
-"""
-${transcript.slice(0, 1500)}
-"""
-
-Rewrite THIS answer as the student could have delivered it at their best.
-Keep their topic and their specific details — the moments, people and examples they chose.
-Apply the lesson's framework to it, fix the language, and remove the filler.
-They should hear it and think "that's my story, told properly."`
-      : // Fallback: they said almost nothing usable, so we can't personalise.
-        `LESSON: ${lesson?.level_title || 'Speaking practice'}
-WHAT THE LESSON TEACHES: ${lessonExplanation.slice(0, 600)}
-THE TASK: ${practicePrompt}
-SKILLS BEING ASSESSED: ${focusAreas}
-LENGTH: about ${targetWords} words (${expectedDuration} seconds spoken)
-
-The student's recording was too short to build on, so write a strong model answer for this task that clearly demonstrates the lesson's framework.`
-
-    const completion = await getOpenAI().chat.completions.create({
-      model: 'gpt-4o', // 4o-mini was noticeably worse at holding onto the student's own details
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      max_tokens: 700,
-      temperature: 0.7,
+    const { text: exampleText, personalised } = await generateModelAnswerText(getOpenAI(), {
+      transcript: session.user_transcript || '',
+      practicePrompt: lesson?.practice_prompt || 'Speak clearly and confidently.',
+      lessonTitle: lesson?.level_title || '',
+      lessonExplanation: lesson?.lesson_explanation || '',
+      focusAreas,
+      expectedDurationSec: Number(lesson?.expected_duration_sec) || 60,
+      tone: chosenTone,
+      grammarFixes: Array.isArray(fb.grammar_fixes)
+        ? (fb.grammar_fixes as { before?: string; after?: string }[])
+        : [],
+      improvements: Array.isArray(fb.improvements) ? (fb.improvements as string[]) : [],
     })
 
-    const exampleText = completion.choices[0]?.message?.content?.trim() || 'Example not available.'
+    if (!exampleText) {
+      return NextResponse.json(
+        { error: 'Failed to generate the model answer' },
+        { status: 500 },
+      )
+    }
 
-    const voice = VOICE_MAP[chosenTone] || 'shimmer'
-    const speech = await getOpenAI().audio.speech.create({
-      model: 'tts-1',
-      voice,
-      input: exampleText,
-      speed: chosenTone === 'Bossy' ? 1.05 : chosenTone === 'Supportive' ? 0.95 : 1.0,
-    })
-
-    const buffer = Buffer.from(await speech.arrayBuffer())
+    const buffer = await synthesizeModelAnswer(getOpenAI(), exampleText, chosenTone)
 
     const admin = createAdminClient()
 
@@ -217,7 +156,7 @@ The student's recording was too short to build on, so write a strong model answe
       text: exampleText,
       audioUrl: audioUrl || '',
       audio: audioBase64,
-      personalised: hasTranscript,
+      personalised,
       processingTime: Date.now() - started,
     })
   } catch (error) {
