@@ -1184,7 +1184,10 @@ function AudioPlayer({
                       borderRadius: 6,
                       background: active ? lc.green : 'transparent',
                       color: active ? '#fff' : spoken ? lc.greenDark : lc.muted,
-                      fontWeight: active ? 800 : 600,
+                      // Weight is CONSTANT across states on purpose: bolding the
+                      // active word changes its width and reflows the rest of the
+                      // paragraph on every tick. The green pill is the emphasis.
+                      fontWeight: 600,
                       transition: 'background .12s linear, color .12s linear',
                       WebkitBoxDecorationBreak: 'clone',
                       boxDecorationBreak: 'clone',

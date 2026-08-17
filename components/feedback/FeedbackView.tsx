@@ -228,6 +228,13 @@ export function FeedbackView(d: FeedbackData) {
 
   const ringColor = d.passed ? lc.green : lc.orange
   const focusEntries = Object.entries(d.focusAreaScores || {})
+  const wordsExist = Boolean(d.wordsToLearn && d.wordsToLearn.length > 0)
+  const grammarExist = Boolean(d.grammarFixes && d.grammarFixes.length > 0)
+  // The side-by-side compare renders when there's any user audio, coach audio,
+  // or coach text. Whenever it's shown, its coach tile already carries a
+  // generate button — so the big standalone "show me how" CTA must only appear
+  // when the compare block is absent, or the two duplicate each other.
+  const showCompare = Boolean(d.userAudioUrl || example.audioUrl || example.text)
 
   return (
     <div className="min-h-screen" style={{ background: lc.pageBg, color: lc.ink, fontFamily: fontBody }}>
@@ -315,46 +322,40 @@ export function FeedbackView(d: FeedbackData) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[380px_minmax(0,1fr)] lg:gap-4">
-          {/* LEFT — score */}
-          <div className="flex flex-col gap-3 lg:gap-4">
-            <section
-              className="p-6 text-center"
-              style={{ background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 22, boxShadow: `0 5px 0 ${lc.cardBorder}` }}
-            >
-              <div style={{ position: 'relative', width: 140, height: 140, margin: '0 auto 6px' }}>
-                <svg width="140" height="140" viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
-                  <circle cx="60" cy="60" r="54" fill="none" stroke="#eef2e8" strokeWidth="11" />
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="54"
-                    fill="none"
-                    stroke={ringColor}
-                    strokeWidth="11"
-                    strokeLinecap="round"
-                    strokeDasharray={RING}
-                    strokeDashoffset={RING - (RING * shown) / 100}
-                    style={{ transition: 'stroke-dashoffset .08s linear' }}
-                  />
-                </svg>
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 40, lineHeight: 1, color: lc.ink }}>
-                    {shown}
-                  </span>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: lc.faint }}>OUT OF 100</span>
-                </div>
+        <div className="flex flex-col gap-3 lg:gap-4">
+          {/* SCORE BANNER — full-width result summary: the ring, the pass status
+              + nudge, and the Content/Language split, side by side (stacks on
+              mobile). Replaces the narrow score card that left the rest of the
+              row empty and drove the whole two-column imbalance. */}
+          <section
+            className="flex flex-col items-center gap-5 p-5 text-center sm:flex-row sm:text-left lg:gap-7 lg:p-6"
+            style={{ background: '#fff', border: `2px solid ${lc.cardBorder}`, borderRadius: 22, boxShadow: `0 5px 0 ${lc.cardBorder}` }}
+          >
+            <div style={{ position: 'relative', width: 128, height: 128, flex: 'none' }}>
+              <svg width="128" height="128" viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx="60" cy="60" r="54" fill="none" stroke="#eef2e8" strokeWidth="11" />
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="54"
+                  fill="none"
+                  stroke={ringColor}
+                  strokeWidth="11"
+                  strokeLinecap="round"
+                  strokeDasharray={RING}
+                  strokeDashoffset={RING - (RING * shown) / 100}
+                  style={{ transition: 'stroke-dashoffset .08s linear' }}
+                />
+              </svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 38, lineHeight: 1, color: lc.ink }}>
+                  {shown}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: lc.faint }}>OUT OF 100</span>
               </div>
+            </div>
 
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div
                 style={{
                   display: 'inline-flex',
@@ -368,106 +369,33 @@ export function FeedbackView(d: FeedbackData) {
                   fontFamily: fontDisplay,
                   fontWeight: 800,
                   fontSize: 12.5,
-                  marginBottom: 12,
+                  marginBottom: 10,
                 }}
               >
                 <Icon name={d.passed ? 'check' : 'target'} size={14} color={d.passed ? lc.greenDark : '#a86a12'} />
                 {d.passed ? 'PASSED' : `${d.passThreshold} NEEDED TO PASS`}
               </div>
-
-              <p style={{ fontSize: 13.5, color: lc.muted, fontWeight: 600, lineHeight: 1.5, margin: '0 0 16px' }}>
+              <p style={{ fontSize: 14, color: lc.muted, fontWeight: 600, lineHeight: 1.5, margin: 0 }}>
                 {d.passed
                   ? 'Level complete. Your sticker is in the collection.'
                   : `You're ${d.passThreshold - d.score} point${d.passThreshold - d.score === 1 ? '' : 's'} away. One more go and it's yours.`}
               </p>
+            </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <MiniScore label="Content" value={d.contentScore} color={lc.blue} />
-                <MiniScore label="Language" value={d.linguisticScore} color={lc.purple} />
-              </div>
-            </section>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, width: '100%', maxWidth: 240 }}>
+              <MiniScore label="Content" value={d.contentScore} color={lc.blue} />
+              <MiniScore label="Language" value={d.linguisticScore} color={lc.purple} />
+            </div>
+          </section>
 
-            {/* Coach read moved into the LEFT column so it isn't stacked under
-                everything else on the right, and so both columns carry weight.
-                (Nav buttons removed here — the persistent action bar at the
-                bottom of the page already does Next / Practice again / Back.) */}
+            {/* Coach's read — the qualitative take, right under the score.
+                (Nav buttons live in the persistent action bar at the bottom.) */}
             <Card title={`Your ${d.tone} coach's read`} icon="chat" iconColor={lc.purple} mascot="happy">
               <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4a5645', fontWeight: 600, margin: 0 }}>
                 {d.detailedFeedback}
               </p>
             </Card>
 
-            {/* Words to learn — also on the left, under the coach read */}
-            {d.wordsToLearn && d.wordsToLearn.length > 0 && (
-              <Card title="Words to learn" icon="book" iconColor={lc.blue} mascot="shy">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {d.wordsToLearn.slice(0, 3).map((w, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        background: '#f3f9ff',
-                        border: '2px solid #d5e6fb',
-                        borderRadius: 14,
-                        padding: '12px 14px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 15, color: '#0f7fb8' }}>
-                          {w.word}
-                        </span>
-                        <span style={{ fontSize: 13, color: lc.muted, fontWeight: 600 }}>{w.meaning}</span>
-                      </div>
-                      {w.example && (
-                        <p style={{ margin: '6px 0 0', fontSize: 13, color: '#3c4f63', fontWeight: 600, fontStyle: 'italic' }}>
-                          &ldquo;{w.example}&rdquo;
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
-
-            {/* GRAMMAR FIXES — a small before/after from the user's OWN words.
-                Concrete and personal: "you said X, the cleaner version is Y".
-                Only shown when the coach found real mistakes. */}
-            {d.grammarFixes && d.grammarFixes.length > 0 && (
-              <Card title="Quick grammar fixes" icon="check" iconColor={lc.blue} mascot="oops">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {d.grammarFixes.slice(0, 3).map((g, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        border: `2px solid ${lc.cardBorder}`,
-                        borderRadius: 14,
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '9px 12px', background: '#fff6f2' }}>
-                        <Icon name="mic" size={13} color={lc.coral} style={{ marginTop: 2, flexShrink: 0 }} />
-                        <span style={{ fontSize: 13.5, color: '#8a5a4e', fontWeight: 600, textDecoration: 'line-through', textDecorationColor: '#e8a798' }}>
-                          {g.before}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '9px 12px', background: '#f2fbf4' }}>
-                        <Icon name="check" size={13} color={lc.greenDark} style={{ marginTop: 2, flexShrink: 0 }} />
-                        <span style={{ fontSize: 13.5, color: '#33482e', fontWeight: 700 }}>{g.after}</span>
-                      </div>
-                      {g.why && (
-                        <div style={{ padding: '6px 12px', fontSize: 11.5, color: lc.faint, fontWeight: 700, background: '#fff' }}>
-                          {g.why}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
-
-          </div>
-
-          {/* RIGHT — the detail */}
-          <div className="flex flex-col gap-3 lg:gap-4">
             {/* Focus areas */}
             {focusEntries.length > 0 && (
               <Card title="How you scored" icon="target" iconColor={lc.blue} mascot="cheer">
@@ -542,7 +470,7 @@ export function FeedbackView(d: FeedbackData) {
                   user audio, coach audio, or coach TEXT (old sessions have the
                   text but their audio still lives as base64 — the button in
                   the coach tile fetches/heals it on demand). */}
-              {(d.userAudioUrl || example.audioUrl || example.text) && (
+              {showCompare && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" style={{ marginBottom: 14 }}>
                   <div
                     style={{
@@ -620,7 +548,7 @@ export function FeedbackView(d: FeedbackData) {
                 </div>
               )}
 
-              {example.text ? null : (
+              {!showCompare && (
                 <>
                   <button
                     type="button"
@@ -656,6 +584,67 @@ export function FeedbackView(d: FeedbackData) {
               )}
             </Card>
 
+            {/* STUDY — words to learn + grammar fixes, moved BELOW the model
+                answer and shown side by side (each spans full width when it's the
+                only one). A long list here can no longer strand the rest of the
+                page in a tall, empty column. */}
+            {(wordsExist || grammarExist) && (
+              <div className={`grid grid-cols-1 gap-3 lg:gap-4${wordsExist && grammarExist ? ' sm:grid-cols-2' : ''}`}>
+                {wordsExist && (
+                  <Card title="Words to learn" icon="book" iconColor={lc.blue} mascot="shy">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {d.wordsToLearn.slice(0, 3).map((w, i) => (
+                        <div
+                          key={i}
+                          style={{ background: '#f3f9ff', border: '2px solid #d5e6fb', borderRadius: 14, padding: '12px 14px' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 15, color: '#0f7fb8' }}>
+                              {w.word}
+                            </span>
+                            <span style={{ fontSize: 13, color: lc.muted, fontWeight: 600 }}>{w.meaning}</span>
+                          </div>
+                          {w.example && (
+                            <p style={{ margin: '6px 0 0', fontSize: 13, color: '#3c4f63', fontWeight: 600, fontStyle: 'italic' }}>
+                              &ldquo;{w.example}&rdquo;
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+                {grammarExist && (
+                  <Card title="Quick grammar fixes" icon="check" iconColor={lc.blue} mascot="oops">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {d.grammarFixes.slice(0, 3).map((g, i) => (
+                        <div
+                          key={i}
+                          style={{ border: `2px solid ${lc.cardBorder}`, borderRadius: 14, overflow: 'hidden' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '9px 12px', background: '#fff6f2' }}>
+                            <Icon name="mic" size={13} color={lc.coral} style={{ marginTop: 2, flexShrink: 0 }} />
+                            <span style={{ fontSize: 13.5, color: '#8a5a4e', fontWeight: 600, textDecoration: 'line-through', textDecorationColor: '#e8a798' }}>
+                              {g.before}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '9px 12px', background: '#f2fbf4' }}>
+                            <Icon name="check" size={13} color={lc.greenDark} style={{ marginTop: 2, flexShrink: 0 }} />
+                            <span style={{ fontSize: 13.5, color: '#33482e', fontWeight: 700 }}>{g.after}</span>
+                          </div>
+                          {g.why && (
+                            <div style={{ padding: '6px 12px', fontSize: 12, color: lc.faint, fontWeight: 700, background: '#fff' }}>
+                              {g.why}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
+
             {d.sessionsRemainingToday <= 3 && d.sessionsRemainingToday < 9999 && (
               <p style={{ textAlign: 'center', fontSize: 12.5, color: lc.faint, fontWeight: 700 }}>
                 {d.sessionsRemainingToday} practice{' '}
@@ -663,7 +652,6 @@ export function FeedbackView(d: FeedbackData) {
               </p>
             )}
           </div>
-        </div>
 
         {/* ACTION BAR — the three things you can do next, always reachable at the
             end of the page: continue, retry, or go back. Previously the only
@@ -837,6 +825,30 @@ function ComparePlayer({
     a.currentTime = ((e.clientX - r.left) / r.width) * dur
   }
 
+  // Keyboard-operable scrubber: ←/→ nudge 5s, Home/End jump, Space/Enter toggle.
+  // Without this the element announced itself as a slider but couldn't be
+  // focused or moved by keyboard.
+  const seekKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const a = audioRef.current
+    if (!a) return
+    if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      a.currentTime = Math.min(dur, a.currentTime + 5)
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      a.currentTime = Math.max(0, a.currentTime - 5)
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      a.currentTime = 0
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      a.currentTime = dur
+    } else if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault()
+      toggle()
+    }
+  }
+
   const showCaption = (playing || pinned) && !!caption
 
   return (
@@ -844,7 +856,7 @@ function ComparePlayer({
       <audio
         ref={audioRef}
         src={src}
-        preload="none"
+        preload="metadata"
         onPlay={() => {
           setPlaying(true)
           onPlay?.()
@@ -886,7 +898,9 @@ function ComparePlayer({
             aria-valuemin={0}
             aria-valuemax={Math.round(dur)}
             aria-valuenow={Math.round(time)}
+            tabIndex={0}
             onClick={seek}
+            onKeyDown={seekKey}
             style={{ height: 10, background: 'rgba(0,0,0,.08)', borderRadius: 6, cursor: 'pointer', overflow: 'hidden' }}
           >
             <div
@@ -899,7 +913,7 @@ function ComparePlayer({
               }}
             />
           </div>
-          <div style={{ fontSize: 10.5, fontWeight: 800, color: lc.faint, marginTop: 4 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: lc.faint, marginTop: 4 }}>
             {fmt(time)} / {dur ? fmt(dur) : '–:––'}
           </div>
         </div>
@@ -956,7 +970,7 @@ function ComparePlayer({
 function MiniScore({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div style={{ background: '#f6faf2', border: `2px solid ${lc.cardBorder}`, borderRadius: 14, padding: '10px 8px' }}>
-      <div style={{ fontSize: 11, color: lc.faint, fontWeight: 800, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 12, color: lc.faint, fontWeight: 800, marginBottom: 2 }}>{label}</div>
       <div style={{ fontFamily: fontDisplay, fontWeight: 800, fontSize: 21, color }}>{value}</div>
     </div>
   )

@@ -302,7 +302,7 @@ export async function POST(request: Request) {
         ? cachedIntro.intro_word_timings
         : []
       if (wordTimings.length === 0 && audioUrl) {
-        wordTimings = await alignWordTimingsFromUrl(getOpenAI(), audioUrl)
+        wordTimings = await alignWordTimingsFromUrl(getOpenAI(), audioUrl, cachedIntro.intro_text || '')
         if (wordTimings.length > 0) {
           await supabaseAdmin
             .from('cached_lesson_intros')
@@ -447,7 +447,7 @@ Remember: You're a ${tone} coach speaking privately to ONE learner as "you" — 
     // Non-fatal: a failure here must not block the lesson from loading.
     let wordTimings: Awaited<ReturnType<typeof alignWordTimings>> = []
     try {
-      wordTimings = await alignWordTimings(getOpenAI(), buffer)
+      wordTimings = await alignWordTimings(getOpenAI(), buffer, lessonContent)
     } catch (e) {
       console.error('⚠️ Word-timing alignment failed (non-critical):', e)
     }
