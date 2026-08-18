@@ -1,0 +1,18 @@
+# Rendered video outputs (regenerate with `npm run render`)
+renders/*.mp4
+renders/*.webm
+renders/*.mov
+renders/*.gif
+renders/**/*.png
+
+# HyperFrames working / cache artifacts
+.hyperframes/
+.debug/
+*.proxy.*
+transcript.json
+
+# Node
+node_modules/
+
+# Keep the empty tracked dirs
+!**/.gitkeep
