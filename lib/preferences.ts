@@ -23,9 +23,7 @@ export interface UserPreferences {
   soundEffects?: boolean
   // Notification plumbing (set by the client / cron, not shown as toggles)
   timezone?: string // IANA tz, e.g. "America/New_York" — for local-time sends
-  lastDailyReminderAt?: string // ISO date we last sent each, for dedupe
-  lastStreakWarningAt?: string
-  lastWeeklyEmailAt?: string
+  lastNotifiedOn?: string // local day key (YYYY-MM-DD) of the last email — enforces 1/day
 }
 
 const BOOL_KEYS: (keyof UserPreferences)[] = [
@@ -41,7 +39,7 @@ const BOOL_KEYS: (keyof UserPreferences)[] = [
 
 // Defaults chosen so a brand-new user gets a sensible, non-annoying setup.
 export const PREFERENCE_DEFAULTS: Required<
-  Omit<UserPreferences, 'defaultTone' | 'defaultPath' | 'timezone' | 'lastDailyReminderAt' | 'lastStreakWarningAt' | 'lastWeeklyEmailAt'>
+  Omit<UserPreferences, 'defaultTone' | 'defaultPath' | 'timezone' | 'lastNotifiedOn'>
 > = {
   dailyGoal: 'Regular',
   dailyReminder: true,
@@ -64,9 +62,7 @@ export function readPreferences(raw: unknown): UserPreferences {
   if (p.dailyGoal === 'Casual' || p.dailyGoal === 'Regular' || p.dailyGoal === 'Serious') out.dailyGoal = p.dailyGoal
   if (typeof p.reminderTime === 'string') out.reminderTime = p.reminderTime
   if (typeof p.timezone === 'string') out.timezone = p.timezone
-  if (typeof p.lastDailyReminderAt === 'string') out.lastDailyReminderAt = p.lastDailyReminderAt
-  if (typeof p.lastStreakWarningAt === 'string') out.lastStreakWarningAt = p.lastStreakWarningAt
-  if (typeof p.lastWeeklyEmailAt === 'string') out.lastWeeklyEmailAt = p.lastWeeklyEmailAt
+  if (typeof p.lastNotifiedOn === 'string') out.lastNotifiedOn = p.lastNotifiedOn
   for (const k of BOOL_KEYS) {
     if (typeof p[k] === 'boolean') (out[k] as boolean) = p[k] as boolean
   }
@@ -76,8 +72,8 @@ export function readPreferences(raw: unknown): UserPreferences {
 /** Preferences merged over defaults — safe to read every field directly. */
 export function withDefaults(
   raw: unknown,
-): Required<Omit<UserPreferences, 'timezone' | 'lastDailyReminderAt' | 'lastStreakWarningAt' | 'lastWeeklyEmailAt'>> &
-  Pick<UserPreferences, 'timezone' | 'lastDailyReminderAt' | 'lastStreakWarningAt' | 'lastWeeklyEmailAt'> {
+): Required<Omit<UserPreferences, 'timezone' | 'lastNotifiedOn'>> &
+  Pick<UserPreferences, 'timezone' | 'lastNotifiedOn'> {
   const p = readPreferences(raw)
   return {
     defaultTone: p.defaultTone ?? 'Normal',
@@ -93,9 +89,7 @@ export function withDefaults(
     shareData: p.shareData ?? PREFERENCE_DEFAULTS.shareData,
     soundEffects: p.soundEffects ?? PREFERENCE_DEFAULTS.soundEffects,
     timezone: p.timezone,
-    lastDailyReminderAt: p.lastDailyReminderAt,
-    lastStreakWarningAt: p.lastStreakWarningAt,
-    lastWeeklyEmailAt: p.lastWeeklyEmailAt,
+    lastNotifiedOn: p.lastNotifiedOn,
   }
 }
 
