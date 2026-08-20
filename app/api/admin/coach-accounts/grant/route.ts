@@ -2,21 +2,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin'
 import { createAdminClient } from '@/lib/supabase/server-admin'
-import { COACH_DEFAULT_SESSION_CAP } from '@/lib/coach-account'
+import { grantCoachAccount } from '@/lib/coach-provision'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
- * Provisions (or re-provisions) a complimentary coach evaluation account:
- * 30 days from NOW, a fresh 100-session counter, all lessons unlocked.
- * Existing production learners are never touched — this only ever writes
- * the row identified by userId.
+ * Provisions (or re-provisions) a complimentary coach evaluation account for an
+ * EXISTING user: 30 days from NOW, a fresh session counter, all lessons
+ * unlocked. Onboarding a brand-new coach (create the account + send the invite
+ * email) is /api/admin/coach-accounts/invite — this route only flags a user who
+ * already exists (or re-provisions one whose 30 days/cap you want to reset).
  *
- * SECURITY: gated by requireAdmin() (app_metadata.is_admin, service-role
- * only — not user-writable). This route class (privileged write via the
- * service-role client) is exactly where two P1s were previously found in
- * this repo from a missing role check — don't repeat that here.
+ * The actual write lives in lib/coach-provision.ts, shared with the invite
+ * route so the two can never drift.
+ *
+ * SECURITY: gated by requireAdmin() (app_metadata.is_admin, service-role only —
+ * not user-writable). This route class (privileged write via the service-role
+ * client) is exactly where two P1s were previously found in this repo from a
+ * missing role check — don't repeat that here.
  *
  * Body: { userId: string, sessionCap?: number }
  */
@@ -29,39 +33,28 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => null)
   const userId = body?.userId as string | undefined
-  const sessionCap = Number.isFinite(Number(body?.sessionCap))
-    ? Math.max(1, Math.floor(Number(body.sessionCap)))
-    : COACH_DEFAULT_SESSION_CAP
-
   if (!userId) {
     return NextResponse.json({ error: 'userId is required' }, { status: 400 })
   }
 
   const admin = createAdminClient()
 
-  const { data, error } = await admin
-    .from('profiles')
-    .update({
-      plan_type: 'coach_complimentary',
-      coach_started_at: new Date().toISOString(),
-      coach_session_cap: sessionCap,
-      coach_sessions_used: 0,
-      coach_revoked_at: null,
-      coach_revoked_reason: null,
-    })
-    .eq('id', userId)
-    .select('id, email, plan_type, coach_started_at, coach_session_cap')
-
-  if (error) {
-    console.error('coach-accounts/grant update error:', error.message)
-    return NextResponse.json(
-      { error: 'Could not grant coach access.', detail: error.message },
-      { status: 500 },
-    )
+  try {
+    const result = await grantCoachAccount(admin, userId, body?.sessionCap)
+    if (!result.ok) {
+      if (result.reason === 'not_found') {
+        return NextResponse.json({ error: 'No profile found for that userId.' }, { status: 404 })
+      }
+      // paid_plan — refuse rather than silently downgrade a paying customer.
+      return NextResponse.json(
+        { error: `That account is on a paid plan (${result.currentPlan}); not overwriting it.` },
+        { status: 409 },
+      )
+    }
+    return NextResponse.json({ status: 'granted', profile: result.profile })
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : 'unknown error'
+    console.error('coach-accounts/grant error:', detail)
+    return NextResponse.json({ error: 'Could not grant coach access.', detail }, { status: 500 })
   }
-  if (!data || data.length === 0) {
-    return NextResponse.json({ error: 'No profile found for that userId.' }, { status: 404 })
-  }
-
-  return NextResponse.json({ status: 'granted', profile: data[0] })
 }
