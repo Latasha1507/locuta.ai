@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSequentialAudio } from '@/lib/hooks/useSequentialAudio'
 import type { WordTiming } from '@/lib/word-timings'
+import type { LimitReason } from '@/lib/check-session-limit-server'
 import { playSound } from '@/lib/sounds'
 import {
   trackLessonStart,
@@ -35,7 +36,7 @@ export interface PracticeData {
   /** Server-computed. The API enforces this too — this is just the UX. */
   limit: {
     allowed: boolean
-    reason: 'ok' | 'trial_expired' | 'daily_limit' | 'explore'
+    reason: LimitReason
     sessionsRemainingToday: number
   }
   /** From the user's Settings — gates the chimes/pops during practice. */

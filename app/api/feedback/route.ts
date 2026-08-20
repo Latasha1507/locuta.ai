@@ -619,11 +619,26 @@ Be encouraging but honest. If non-English content detected, reduce overall score
     try {
       const { data: profile } = await admin
         .from('profiles')
-        .select('plan_type, last_session_date, daily_sessions_used')
+        .select('plan_type, last_session_date, daily_sessions_used, coach_sessions_used')
         .eq('id', user.id)
         .single()
 
-      if (profile && profile.plan_type === 'trial') {
+      if (profile && profile.plan_type === 'coach_complimentary') {
+        // Coach complimentary accounts count every completed session against a
+        // one-time cap (not a daily counter). This runs only after the session
+        // above was saved, and re-recording via "Try Again" is a fresh POST, so
+        // it counts as a new session — matching how the cap was described to the
+        // coach. Written through the service-role client because authenticated
+        // has no UPDATE grant on coach_sessions_used (a coach can't reset it).
+        const nextUsed = (profile.coach_sessions_used || 0) + 1
+        await admin
+          .from('profiles')
+          .update({ coach_sessions_used: nextUsed })
+          .eq('id', user.id)
+          .eq('plan_type', 'coach_complimentary')
+
+        console.log('✅ Coach session counted:', nextUsed)
+      } else if (profile && profile.plan_type === 'trial') {
         const today = new Date().toISOString().split('T')[0]
         const lastSessionDate = profile.last_session_date
 

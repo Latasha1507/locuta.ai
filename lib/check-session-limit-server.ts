@@ -90,10 +90,7 @@ export async function checkSessionLimitServer(userId: string): Promise<ServerLim
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select(
-      'plan_type, trial_started_at, last_session_date, daily_sessions_used, ' +
-        'coach_started_at, coach_session_cap, coach_sessions_used, coach_revoked_at',
-    )
+    .select('plan_type, trial_started_at, last_session_date, daily_sessions_used, coach_started_at, coach_session_cap, coach_sessions_used, coach_revoked_at')
     .eq('id', userId)
     .maybeSingle()
 

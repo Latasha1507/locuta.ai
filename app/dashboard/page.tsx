@@ -8,6 +8,7 @@ import { ResultModal } from '@/components/quickscore/ResultModal'
 import { totalPracticeDays, computeStreak, weekStickers, stickersThisWeek, practicedToday } from '@/lib/streaks'
 import { DashboardClient, type CategoryStat } from '@/components/dashboard/DashboardClient'
 import { OnboardingGate } from '@/components/dashboard/OnboardingGate'
+import { getCoachStatus, type CoachProfileFields } from '@/lib/coach-account'
 
 import { lc } from '@/components/landing/tokens'
 
@@ -75,7 +76,7 @@ export default async function DashboardPage({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, onboarding_completed, trial_started_at, trial_sessions_used, plan_type, last_session_date, daily_sessions_used')
+    .select('full_name, onboarding_completed, trial_started_at, trial_sessions_used, plan_type, last_session_date, daily_sessions_used, coach_started_at, coach_session_cap, coach_sessions_used, coach_revoked_at')
     .eq('id', user.id)
     .single()
 
@@ -149,17 +150,39 @@ export default async function DashboardPage({
     trial = { active: daysLeft > 0, daysLeft, sessionsLeft }
   }
 
-  // The three onboarding states, derived from plan_type + trial_started_at:
+  // Coach complimentary status (30 days OR N sessions, whichever first). Uses
+  // the same pure helper as the server session gate so the pill can never
+  // disagree with what actually blocks a session.
+  const coachStatus = getCoachStatus((profile ?? {}) as unknown as CoachProfileFields)
+  let coach: { active: boolean; daysLeft: number; sessionsUsed: number; cap: number } | null = null
+  if (coachStatus.isCoachAccount && coachStatus.active) {
+    coach = {
+      active: true,
+      daysLeft: coachStatus.daysRemaining,
+      sessionsUsed: Number(profile?.coach_sessions_used ?? 0),
+      cap: Number(profile?.coach_session_cap ?? 100),
+    }
+  }
+
+  // The onboarding states, derived from plan_type + trial/coach state:
+  //   coach   → active coach_complimentary account (shows the coach pill)
   //   paid    → a subscription plan_type
   //   trial   → plan_type 'trial' with a started clock (handled above)
   //   explore → everything else (signed up, no trial started) → show trial nudge
+  // An EXPIRED/revoked coach falls to 'trial' (terminal, no pill, no fresh-trial
+  // nudge) — it lands on the same upgrade path the lazy conversion produces,
+  // rather than being offered another free trial as an 'explore' user would be.
   const planTypeLower = String(profile?.plan_type ?? '').toLowerCase()
   const isPaid = ['monthly', 'yearly', 'pro', 'paid', 'premium', 'founder', 'lifetime'].includes(planTypeLower)
-  const planState: 'explore' | 'trial' | 'paid' = isPaid
-    ? 'paid'
-    : profile?.trial_started_at
-      ? 'trial'
-      : 'explore'
+  const planState: 'explore' | 'trial' | 'paid' | 'coach' = coachStatus.isCoachAccount
+    ? coachStatus.active
+      ? 'coach'
+      : 'trial'
+    : isPaid
+      ? 'paid'
+      : profile?.trial_started_at
+        ? 'trial'
+        : 'explore'
 
   // Welcome modal only in the first few minutes of a brand-new trial.
   const showWelcome =
@@ -219,6 +242,7 @@ export default async function DashboardPage({
       nextHref={nextHref}
       showWelcome={showWelcome}
       trial={trial}
+      coach={coach}
       planState={planState}
       promo={promo}
     />
