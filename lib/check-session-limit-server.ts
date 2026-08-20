@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server-admin'
 import { isAdmin } from '@/lib/admin'
+import { getCoachStatus } from '@/lib/coach-account'
 
 // Server-side trial / daily-limit enforcement.
 //
@@ -12,7 +14,13 @@ import { isAdmin } from '@/lib/admin'
 export const TRIAL_DAYS = 14
 export const TRIAL_SESSIONS_PER_DAY = 10
 
-export type LimitReason = 'ok' | 'trial_expired' | 'daily_limit' | 'explore'
+export type LimitReason =
+  | 'ok'
+  | 'trial_expired'
+  | 'daily_limit'
+  | 'explore'
+  | 'coach_expired'
+  | 'coach_revoked'
 
 export interface ServerLimit {
   allowed: boolean
@@ -26,6 +34,39 @@ const PAID_PLANS = ['pro', 'paid', 'premium', 'founder', 'lifetime', 'monthly', 
 
 function sameLocalDay(a: string | null, b: string): boolean {
   return !!a && a.slice(0, 10) === b.slice(0, 10)
+}
+
+/**
+ * Once a coach_complimentary account's 30 days or 100 sessions run out, flip
+ * it into the SAME expired-trial state a regular user hits — reason
+ * 'trial_expired', existing paywall copy, existing upgrade flow. Zero new UI:
+ * the coach lands on the exact "your trial ended, upgrade" screen that
+ * already exists.
+ *
+ * Back-dating trial_started_at (rather than leaving it null) is deliberate:
+ * it means this account can never click "Start free trial" and get a second
+ * free 14-day run — /api/start-trial's `already_started` check fires
+ * immediately, and checkSessionLimitServer's own trial math already reads
+ * daysRemaining=0 the instant this lands.
+ *
+ * Non-fatal: the caller has already blocked THIS request using the fresh
+ * read regardless of whether this write succeeds — the write only saves the
+ * next call from recomputing the same result.
+ */
+async function convertExpiredCoachAccount(userId: string): Promise<void> {
+  try {
+    const admin = createAdminClient()
+    await admin
+      .from('profiles')
+      .update({
+        plan_type: 'trial',
+        trial_started_at: new Date(Date.now() - (TRIAL_DAYS + 1) * 864e5).toISOString(),
+      })
+      .eq('id', userId)
+      .eq('plan_type', 'coach_complimentary') // never touch a row that changed under us
+  } catch (e) {
+    console.error('⚠️ Failed to convert expired coach account (non-fatal):', e)
+  }
 }
 
 /**
@@ -49,11 +90,36 @@ export async function checkSessionLimitServer(userId: string): Promise<ServerLim
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('plan_type, trial_started_at, last_session_date, daily_sessions_used')
+    .select(
+      'plan_type, trial_started_at, last_session_date, daily_sessions_used, ' +
+        'coach_started_at, coach_session_cap, coach_sessions_used, coach_revoked_at',
+    )
     .eq('id', userId)
     .maybeSingle()
 
   const planType = String(profile?.plan_type ?? 'trial').toLowerCase()
+
+  // Coach complimentary accounts are their own plan_type, checked BEFORE the
+  // paid-plan / trial logic below — not a trial variant.
+  const coachStatus = getCoachStatus(profile ?? {})
+  if (coachStatus.isCoachAccount) {
+    if (coachStatus.reason === 'revoked') {
+      return { allowed: false, reason: 'coach_revoked', daysRemaining: 0, sessionsRemainingToday: 0, planType }
+    }
+    if (!coachStatus.active) {
+      // days_expired, cap_reached, or the defensive not_started case — all
+      // read the same to the caller: complimentary access is over.
+      await convertExpiredCoachAccount(userId)
+      return { allowed: false, reason: 'coach_expired', daysRemaining: 0, sessionsRemainingToday: 0, planType }
+    }
+    return {
+      allowed: true,
+      reason: 'ok',
+      daysRemaining: coachStatus.daysRemaining,
+      sessionsRemainingToday: coachStatus.sessionsRemaining,
+      planType,
+    }
+  }
 
   // Paying users: unlimited.
   if (PAID_PLANS.includes(planType)) {

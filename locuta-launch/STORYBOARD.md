@@ -7,6 +7,8 @@ arc: "Hook (anxiety) → Reframe (it's trainable) → Product intro → Demo (re
 audience: "US adults 20–35 who want to speak with more confidence; anyone with speaking anxiety"
 mode: collaborative
 music: "warm, uplifting, confident modern underscore — soft start, builds momentum to the CTA, light percussion"
+music_source: local (MusicGen — not signed into HeyGen)
+sfx_source: local
 narration: none
 ---
 

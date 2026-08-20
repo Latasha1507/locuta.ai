@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#3fce6f; --greenDark:#2fa552; --greenText:#3fb950; --blue:#1cb0f6; --yellow:#ffc531;
+    --coral:#ff6f61; --purple:#c774f0; --ink:#4b4b4b; --muted:#7d8a75; --cream:#fbfdfa; --cardBorder:#e8ece2;
+    --display:'Baloo 2',system-ui,sans-serif; --body:'Nunito',system-ui,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#222;}
+  section{position:relative;width:1920px;height:1080px;overflow:hidden;font-family:var(--body);}
+
+  /* ===== EXACT mascot (ported from components/landing/Mascot.tsx) ===== */
+  .mascot{position:relative;width:132px;height:120px;}
+  .m-bump{position:absolute;top:-10px;width:44px;height:44px;background:var(--green);border-radius:50%;}
+  .m-bump.l{left:22px;} .m-bump.r{right:22px;}
+  .m-face{position:absolute;inset:6px 0 0;background:var(--green);
+    border-radius:44% 44% 46% 46%/40% 40% 60% 60%;
+    box-shadow:inset 0 -8px 0 rgba(0,0,0,.08), 0 8px 0 var(--greenDark);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding-top:6px;}
+  .m-eyes{display:flex;gap:16px;margin-bottom:8px;height:30px;align-items:center;}
+  .m-eye{width:26px;height:30px;background:#fff;border-radius:50%;display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px;}
+  .m-pupil{width:11px;height:11px;background:var(--ink);border-radius:50%;}
+  .m-mouth{width:30px;height:16px;border:3.5px solid var(--ink);border-top:0;border-radius:0 0 24px 24px;}
+  .m-cheek{position:absolute;top:56px;width:15px;height:9px;background:#ff9ba8;border-radius:50%;opacity:.75;}
+  .m-cheek.l{left:20px;} .m-cheek.r{right:20px;}
+  /* cheer mood */
+  .mascot.cheer .m-eye{height:6px;border-radius:4px;padding-bottom:0;}
+  .mascot.cheer .m-pupil{opacity:0;}
+  .mascot.cheer .m-mouth{width:34px;height:22px;background:var(--ink);border:0;border-radius:4px 4px 20px 20px;}
+
+  .pill{display:inline-flex;align-items:center;gap:14px;font-family:var(--body);font-weight:800;
+    border-radius:9999px;padding:18px 40px;font-size:34px;}
+  .pill.green{background:var(--green);color:#fff;box-shadow:0 8px 0 var(--greenDark);}
+  .pill.white{background:#fff;color:var(--ink);box-shadow:0 8px 0 var(--cardBorder);}
+  .dot{width:16px;height:16px;border-radius:50%;}
+
+  /* ---------- FRAME 1 · HOOK (bold green) ---------- */
+  #f1{background:
+      radial-gradient(1200px 800px at 82% 18%, rgba(255,255,255,.16), transparent 60%),
+      var(--green);}
+  #f1 .wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  #f1 h1{font-family:var(--display);font-weight:800;color:#fff;font-size:200px;line-height:.92;letter-spacing:-.03em;text-align:center;text-shadow:0 10px 0 rgba(0,0,0,.10);}
+  #f1 .sub{margin-top:52px;background:#fff;color:var(--ink);font-family:var(--display);font-weight:700;font-size:56px;
+    border-radius:9999px;padding:22px 56px;box-shadow:0 10px 0 var(--greenDark);}
+  #f1 .em{color:var(--green);}
+  #f1 .mascot{position:absolute;right:150px;bottom:150px;transform:scale(1.7);transform-origin:bottom right;}
+  #f1 .mascot .m-face{box-shadow:inset 0 -8px 0 rgba(0,0,0,.10), 0 8px 0 #23823f;}
+
+  /* ---------- FRAME 2 · PRODUCT (cream, product-forward) ---------- */
+  #f2{background:var(--cream);}
+  #f2 .grid{position:absolute;inset:0;padding:110px 130px;display:grid;grid-template-columns:1fr;align-content:start;gap:40px;}
+  #f2 .kicker{font-family:var(--body);font-weight:800;letter-spacing:.02em;color:var(--greenText);font-size:34px;}
+  #f2 h2{font-family:var(--display);font-weight:800;color:var(--ink);font-size:98px;line-height:.98;letter-spacing:-.02em;max-width:600px;}
+  #f2 h2 .em{color:var(--green);}
+  #f2 .device{position:absolute;left:742px;top:232px;width:1058px;height:616px;border-radius:34px;overflow:hidden;
+    border:4px solid #eceee8;background:#fff;box-shadow:0 26px 0 #e4e8de, 0 40px 60px rgba(20,40,20,.10);}
+  #f2 .device img{width:100%;height:100%;object-fit:cover;object-position:50% 0;display:block;}
+  #f2 .chips{position:absolute;left:130px;bottom:150px;display:flex;flex-direction:column;gap:26px;align-items:flex-start;}
+  #f2 .mascot{position:absolute;left:150px;bottom:120px;transform:scale(1.5);transform-origin:bottom left;display:none;}
+
+  /* ---------- FRAME 3 · CLOSE (brand) ---------- */
+  #f3{background:
+      radial-gradient(1100px 800px at 20% 100%, rgba(63,206,111,.12), transparent 60%),
+      var(--cream);}
+  #f3 .wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
+  #f3 .mascot{transform:scale(2.3);transform-origin:center;margin-bottom:70px;}
+  #f3 img.logo{height:120px;width:auto;display:block;margin-bottom:26px;}
+  #f3 h3{font-family:var(--display);font-weight:700;color:var(--ink);font-size:96px;letter-spacing:-.02em;}
+  #f3 .live{margin-top:40px;}
+  #f3 .em{color:var(--green);}
+
+  .tag{position:absolute;left:60px;top:52px;font-family:var(--body);font-weight:900;color:#fff;background:rgba(0,0,0,.18);
+    padding:10px 22px;border-radius:9999px;font-size:26px;letter-spacing:.04em;}
+  #f2 .tag,#f3 .tag{color:var(--muted);background:rgba(0,0,0,.05);}
+</style>
+</head>
+<body>
+
+  <section id="f1">
+    <div class="tag">STYLE FRAME 1 · HOOK</div>
+    <div class="wrap">
+      <h1>You know<br>what to say.</h1>
+      <div class="sub">You just don't <span class="em">practice</span> it.</div>
+    </div>
+    <div class="mascot happy">
+      <div class="m-bump l"></div><div class="m-bump r"></div>
+      <div class="m-face"><div class="m-eyes"><div class="m-eye"><div class="m-pupil"></div></div><div class="m-eye"><div class="m-pupil"></div></div></div><div class="m-mouth"></div><div class="m-cheek l"></div><div class="m-cheek r"></div></div>
+    </div>
+  </section>
+
+  <section id="f2">
+    <div class="tag">STYLE FRAME 2 · PRODUCT</div>
+    <div class="grid">
+      <div class="kicker">Record. Score. Repeat.</div>
+      <h2>Get told <span class="em">exactly</span> what to fix.</h2>
+    </div>
+    <div class="device"><img src="assets/stills/score.png" alt="score"></div>
+    <div class="chips">
+      <div class="pill white"><span class="dot" style="background:var(--green)"></span>Pace</div>
+      <div class="pill white"><span class="dot" style="background:var(--blue)"></span>Clarity</div>
+      <div class="pill white"><span class="dot" style="background:var(--purple)"></span>Filler words</div>
+    </div>
+  </section>
+
+  <section id="f3">
+    <div class="tag">STYLE FRAME 3 · CLOSE</div>
+    <div class="wrap">
+      <div class="mascot happy">
+        <div class="m-bump l"></div><div class="m-bump r"></div>
+        <div class="m-face"><div class="m-eyes"><div class="m-eye"><div class="m-pupil"></div></div><div class="m-eye"><div class="m-pupil"></div></div></div><div class="m-mouth"></div><div class="m-cheek l"></div><div class="m-cheek r"></div></div>
+      </div>
+      <img class="logo" src="assets/logo.png" alt="locuta">
+      <h3>Train how you communicate.</h3>
+      <div class="pill green live">Now live · locuta.in</div>
+    </div>
+  </section>
+
+</body>
+</html>
