@@ -43,7 +43,8 @@ export interface DashboardData {
   nextHref: string
   showWelcome: boolean
   trial: { active: boolean; daysLeft: number; sessionsLeft: number } | null
-  planState: 'explore' | 'trial' | 'paid'
+  coach: { active: boolean; daysLeft: number; sessionsUsed: number; cap: number } | null
+  planState: 'explore' | 'trial' | 'paid' | 'coach'
   promo: FounderPromo | null
   userId: string
 }
@@ -170,8 +171,35 @@ export function DashboardClient(d: DashboardData) {
 
           {/* Plan-state row: trial status or the explore nudge. On its own line
               so it never squeezes the greeting/streak row on mobile. */}
-          {((d.planState === 'trial' && d.trial?.active) || d.planState === 'explore') && (
+          {((d.planState === 'trial' && d.trial?.active) || d.planState === 'explore' || (d.planState === 'coach' && d.coach?.active)) && (
             <div className="flex flex-wrap items-center gap-3">
+              {/* COACH: complimentary evaluation access — account type, sessions
+                  remaining out of the cap, and days left. Distinct purple pill so
+                  it never reads as a normal trial. */}
+              {d.planState === 'coach' && d.coach?.active && (
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    background: '#f2ecfd',
+                    border: '2px solid #ddccf7',
+                    padding: '8px 13px',
+                    borderRadius: 999,
+                    fontFamily: fontDisplay,
+                    fontWeight: 800,
+                    fontSize: 13,
+                    color: '#6d3fce',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Coach access
+                  <span style={{ opacity: 0.5 }}>·</span>
+                  {Math.max(0, d.coach.cap - d.coach.sessionsUsed)}/{d.coach.cap} sessions
+                  <span style={{ opacity: 0.5 }}>·</span>
+                  {d.coach.daysLeft} {d.coach.daysLeft === 1 ? 'day' : 'days'} left
+                </span>
+              )}
               {/* TRIAL: calm status pill — days left + sessions left today. */}
               {d.planState === 'trial' && d.trial?.active && (
                 <span

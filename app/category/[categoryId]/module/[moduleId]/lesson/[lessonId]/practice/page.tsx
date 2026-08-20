@@ -66,7 +66,15 @@ export default async function PracticePage({
   // NOTE: daily_limit is deliberately NOT redirected — that user still has
   // access, they've just used today's sessions, and PracticeView shows that
   // state (with the task still readable) rather than sending them to pricing.
-  if (!limit.allowed && limit.reason === 'trial_expired') {
+  // trial_expired AND the coach terminal states (complimentary access ended, or
+  // revoked for a policy breach) all mean the same thing here: no more free
+  // practice, send them to pricing before any paid OpenAI work fires.
+  if (
+    !limit.allowed &&
+    (limit.reason === 'trial_expired' ||
+      limit.reason === 'coach_expired' ||
+      limit.reason === 'coach_revoked')
+  ) {
     redirect('/pricing?from=lesson')
   }
   // EXPLORE users have not started the trial yet → they must not reach the

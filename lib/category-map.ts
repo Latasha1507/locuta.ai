@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { getCoachStatus, type CoachProfileFields } from './coach-account'
 
 // Single source of truth for "what can this user open in this category, and
 // where are they up to". Paths, the lesson picker, and Practice smart-resume
@@ -133,7 +134,14 @@ export async function loadCategoryMap(
   }
   const moduleNumbers = [...byModule.keys()].sort((a, b) => a - b)
 
-  const hasFullAccess = computeFullAccess(profile, isAdmin)
+  // Active coach_complimentary accounts explore the whole syllabus out of
+  // order — every module and level open, no plan gate and no sequence gate,
+  // exactly like admin. Once the account expires/revokes (coach.active false)
+  // this is false and the normal locks apply, funnelling them to the paywall.
+  const coach = getCoachStatus((profile ?? {}) as unknown as CoachProfileFields)
+  const coachUnlockAll = coach.isCoachAccount && coach.active
+
+  const hasFullAccess = computeFullAccess(profile, isAdmin) || coachUnlockAll
 
   const moduleComplete = (m: number): boolean => {
     const rows = byModule.get(m)
@@ -144,7 +152,7 @@ export async function loadCategoryMap(
   const modules: ModuleNode[] = moduleNumbers.map((m) => {
     let locked = false
     let lockedReason: 'plan' | 'sequence' | null = null
-    if (!isAdmin) {
+    if (!isAdmin && !coachUnlockAll) {
       if (!hasFullAccess) {
         // No active trial and no subscription: EVERYTHING is locked, Module 1
         // included. Previously only m > 1 was gated, which left every Module 1

@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server-admin'
 import { readPreferences } from '@/lib/preferences'
-import { computeStreak } from '@/lib/streaks'
 import {
   sendEmail,
   dailyReminderEmail,
   streakAtRiskEmail,
   weeklyRecapEmail,
-  localHour,
   localWeekday,
   localDateKey,
-  reminderHour,
 } from '@/lib/notifications'
 
 export const runtime = 'nodejs'
@@ -18,13 +15,21 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 /**
- * Hourly notification cron. Configure in vercel.json to hit this every hour.
- * For each user it decides — in THEIR timezone — whether a daily reminder,
- * streak-at-risk, or weekly recap is due, respects their toggles, dedupes so a
- * given email is sent at most once per local day, and sends via Resend.
+ * Daily notification cron. Triggered once a day by Vercel Cron (see vercel.json).
  *
- * Protected by CRON_SECRET: Vercel Cron sends it as a Bearer token; we reject
- * anything else so the endpoint can't be triggered by outsiders.
+ * For each user it decides — in THEIR timezone — whether ONE email is due:
+ *   1. Weekly recap   — Sunday, if they were active this week.
+ *   2. Streak at risk — live streak, haven't practised today.
+ *   3. Comeback nudge — lapsed 2–3 days, no active streak.
+ * Highest priority wins; we send AT MOST ONE email per user per local day
+ * (enforced by the `lastNotifiedOn` marker), so nobody gets buried in mail.
+ *
+ * The logic is day-based (not hour-based) so a single daily run is correct in
+ * every timezone. Because we run once a day, we can't honour a per-user reminder
+ * HOUR — that's the deliberate trade for "never spammy".
+ *
+ * Protected by CRON_SECRET: Vercel Cron sends it as a Bearer token when the
+ * CRON_SECRET env var is set; we reject anything else.
  */
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET
@@ -48,24 +53,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'fetch failed' }, { status: 500 })
   }
 
-  let dailySent = 0
-  let streakSent = 0
-  let weeklySent = 0
+  const now = new Date()
+  const sent = { daily: 0, streak: 0, weekly: 0 }
 
   for (const p of profiles ?? []) {
     const email = p.email as string | null
     if (!email) continue
+
     const prefs = readPreferences(p.preferences)
     const tz = prefs.timezone
-    const firstName = String(p.full_name ?? '').split(' ')[0] || 'there'
-    const today = localDateKey(tz)
-    const hour = localHour(tz)
-    const patch: Record<string, string> = {}
+    const todayKey = localDateKey(tz, now)
 
-    // Load this user's sessions once (needed for "practised today?", streak,
-    // weekly stats). Cheap per-user; only for users who have a toggle on.
-    const wantsAny = prefs.dailyReminder || prefs.streakAtRisk || prefs.weeklyEmail
-    if (!wantsAny) continue
+    // Hard cap: at most one email per user per local day.
+    if (prefs.lastNotifiedOn === todayKey) continue
+
+    // Skip anyone who has every relevant toggle off — no reason to load sessions.
+    if (!prefs.dailyReminder && !prefs.streakAtRisk && !prefs.weeklyEmail) continue
+
+    const firstName = String(p.full_name ?? '').split(' ')[0] || 'there'
 
     const { data: sessions } = await admin
       .from('sessions')
@@ -75,63 +80,80 @@ export async function GET(request: NextRequest) {
       .limit(200)
 
     const timestamps = (sessions ?? []).map((s) => s.created_at as string)
-    const practisedToday = timestamps.some((t) => localDateKey(tz) === new Intl.DateTimeFormat('en-CA', { timeZone: tz || 'UTC' }).format(new Date(t)))
-    const streak = computeStreak(timestamps)
+    const days = new Set(timestamps.map((t) => localDateKey(tz, new Date(t))))
+    const practicedToday = days.has(todayKey)
+    const streak = streakFromDays(days, todayKey)
+    const lastPracticeKey = days.size ? [...days].sort().at(-1)! : null
+    const daysSince = lastPracticeKey
+      ? Math.round((Date.parse(todayKey) - Date.parse(lastPracticeKey)) / 864e5)
+      : Infinity
 
-    // ── Daily reminder: at their reminder hour, if they haven't practised and
-    //    we haven't already sent today. ──────────────────────────────────────
-    if (prefs.dailyReminder && !practisedToday && hour === reminderHour(prefs.reminderTime)) {
-      if (prefs.lastDailyReminderAt !== today) {
-        const { subject, html } = dailyReminderEmail(firstName)
-        if (await sendEmail(email, subject, html)) {
-          patch.lastDailyReminderAt = today
-          dailySent++
-        }
-      }
-    }
+    // Choose ONE email, highest priority first.
+    let chosen: { kind: keyof typeof sent; subject: string; html: string } | null = null
 
-    // ── Streak at risk: they have a live streak, haven't practised today, and
-    //    it's late in their evening (21:00 local). Once per day. ─────────────
-    if (prefs.streakAtRisk && streak > 0 && !practisedToday && hour === 21) {
-      if (prefs.lastStreakWarningAt !== today) {
-        const { subject, html } = streakAtRiskEmail(firstName, streak)
-        if (await sendEmail(email, subject, html)) {
-          patch.lastStreakWarningAt = today
-          streakSent++
-        }
-      }
-    }
-
-    // ── Weekly recap: Sunday 6pm local, once per that date. ─────────────────
-    if (prefs.weeklyEmail && localWeekday(tz) === 0 && hour === 18) {
-      if (prefs.lastWeeklyEmailAt !== today) {
-        const weekAgo = Date.now() - 7 * 864e5
-        const weekScores = (sessions ?? [])
-          .filter((s) => new Date(s.created_at as string).getTime() >= weekAgo)
+    // 1) Weekly recap — Sunday, opted in, and actually active this week.
+    if (prefs.weeklyEmail && localWeekday(tz) === 0) {
+      const weekAgoMs = now.getTime() - 7 * 864e5
+      const weekSessions = (sessions ?? []).filter((s) => new Date(s.created_at as string).getTime() >= weekAgoMs)
+      if (weekSessions.length > 0) {
+        const weekScores = weekSessions
           .map((s) => Number((s.feedback as { overall_score?: number })?.overall_score ?? 0))
           .filter((n) => n > 0)
         const stats = {
-          sessions: weekScores.length,
+          sessions: weekSessions.length,
           avgScore: weekScores.length ? Math.round(weekScores.reduce((a, b) => a + b, 0) / weekScores.length) : 0,
           bestScore: weekScores.length ? Math.max(...weekScores) : 0,
         }
-        const { subject, html } = weeklyRecapEmail(firstName, stats)
-        if (await sendEmail(email, subject, html)) {
-          patch.lastWeeklyEmailAt = today
-          weeklySent++
-        }
+        chosen = { kind: 'weekly', ...weeklyRecapEmail(firstName, stats) }
       }
     }
 
-    // Persist any dedupe markers we set (merge into the preferences blob).
-    if (Object.keys(patch).length > 0) {
+    // 2) Streak at risk — live streak, nothing logged today yet.
+    if (!chosen && prefs.streakAtRisk && streak > 0 && !practicedToday) {
+      chosen = { kind: 'streak', ...streakAtRiskEmail(firstName, streak) }
+    }
+
+    // 3) Comeback nudge — a fresh 2–3 day lapse (no active streak). We don't
+    //    nag never-active users or long-gone accounts.
+    if (!chosen && prefs.dailyReminder && !practicedToday && streak === 0 && daysSince >= 2 && daysSince <= 3) {
+      chosen = { kind: 'daily', ...dailyReminderEmail(firstName) }
+    }
+
+    if (!chosen) continue
+
+    if (await sendEmail(email, chosen.subject, chosen.html)) {
+      sent[chosen.kind]++
       await admin
         .from('profiles')
-        .update({ preferences: { ...(p.preferences as object), ...patch } })
+        .update({ preferences: { ...(p.preferences as object), lastNotifiedOn: todayKey } })
         .eq('id', p.id)
     }
   }
 
-  console.log(`cron notifications: daily=${dailySent} streak=${streakSent} weekly=${weeklySent}`)
-  return NextResponse.json({ ok: true, dailySent, streakSent, weeklySent })
+  console.log(`cron notifications: daily=${sent.daily} streak=${sent.streak} weekly=${sent.weekly}`)
+  return NextResponse.json({ ok: true, ...sent })
+}
+
+/**
+ * Consecutive-day streak from a set of local day keys, counted in the user's
+ * timezone. A streak stays alive through today: anchor on today if practised,
+ * else yesterday, then walk backwards.
+ */
+function streakFromDays(days: Set<string>, todayKey: string): number {
+  let cursor = days.has(todayKey) ? todayKey : shiftDayKey(todayKey, -1)
+  if (!days.has(cursor)) return 0
+  let n = 0
+  while (days.has(cursor)) {
+    n++
+    cursor = shiftDayKey(cursor, -1)
+  }
+  return n
+}
+
+/** Shift a YYYY-MM-DD key by whole days (UTC math — keys are calendar dates). */
+function shiftDayKey(key: string, deltaDays: number): string {
+  const [y, m, d] = key.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  dt.setUTCDate(dt.getUTCDate() + deltaDays)
+  return dt.toISOString().slice(0, 10)
 }

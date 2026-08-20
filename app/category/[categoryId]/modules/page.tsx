@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { isAdmin } from '@/lib/admin'
 import { CoachLessonView, type LessonItem, type CoachLessonData } from '@/components/practice/CoachLessonView'
 import { resolveTone } from '@/lib/tones'
+import { getCoachStatus, type CoachProfileFields } from '@/lib/coach-account'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -127,8 +128,14 @@ export default async function CategoryModulesPage({
   const hasLifetime = Boolean(profile?.lifetime_access || profile?.founder_access || profile?.beta_access || profile?.pro_access)
   const hasSubFlag = Boolean(profile?.has_active_subscription || profile?.active_subscription || profile?.is_subscription_active)
 
+  // Active coach_complimentary accounts get the whole syllabus unlocked out of
+  // order (see lib/category-map.ts — kept in sync with this duplicate copy).
+  const coach = getCoachStatus((profile ?? {}) as unknown as CoachProfileFields)
+  const coachUnlockAll = coach.isCoachAccount && coach.active
+
   const hasFullAccess =
     isUserAdmin ||
+    coachUnlockAll ||
     hasLifetime ||
     hasSubFlag ||
     isTrialActive ||
@@ -143,7 +150,9 @@ export default async function CategoryModulesPage({
     ['pro', 'paid', 'premium', 'founder', 'lifetime', 'monthly', 'yearly'].includes(planType) ||
     ['active', 'trialing'].includes(subStatus)
   const trialStarted = Boolean(profile?.trial_started_at)
-  const isExplore = !isUserAdmin && !isPaidPlan && !trialStarted
+  // A coach on active complimentary access is NOT an explore user — they must
+  // reach the real practice page, not the blurred "Start free trial" tease.
+  const isExplore = !isUserAdmin && !coachUnlockAll && !isPaidPlan && !trialStarted
 
   const prevModuleComplete = (() => {
     const prev = byModule.get(moduleNumber - 1)
@@ -153,7 +162,7 @@ export default async function CategoryModulesPage({
 
   let moduleLocked = false
   let lockedReason: CoachLessonData['lockedReason'] = null
-  if (!isUserAdmin && moduleNumber > 1) {
+  if (!isUserAdmin && !coachUnlockAll && moduleNumber > 1) {
     if (!hasFullAccess) {
       moduleLocked = true
       lockedReason = 'plan'
