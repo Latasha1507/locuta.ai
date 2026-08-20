@@ -149,6 +149,58 @@ export function weeklyRecapEmail(
   }
 }
 
+/**
+ * Coach complimentary invite. NOT a reminder — its own shell (no "manage
+ * notifications" footer), a passwordless sign-in CTA (the Supabase action link),
+ * and a plain statement of what the account is. `actionLink` is a trusted URL
+ * from Supabase auth; it is NOT escaped (escaping would corrupt its query
+ * string) and must never be logged.
+ */
+export function coachInviteEmail(opts: {
+  name?: string
+  actionLink: string
+  cap: number
+  days: number
+}): { subject: string; html: string } {
+  const first = opts.name ? esc(opts.name.trim().split(/\s+/)[0]) : ''
+  const greeting = first ? `Hi ${first}, ` : 'Hi there, '
+  const cap = Math.max(1, Math.floor(opts.cap))
+  const days = Math.max(1, Math.floor(opts.days))
+  const line = (text: string) =>
+    `<tr><td style="font-size:15px;color:${brand.ink};opacity:.9;padding:0">${text}</td></tr>`
+  const html = `<div style="background:${brand.pageBg};margin:0;padding:24px 12px;font-family:${fontBody};-webkit-text-size-adjust:100%">
+  <style>@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;600;700&display=swap');</style>
+  <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden">${days} days, all lessons unlocked, up to ${cap} practice sessions on us.</span>
+  <div style="max-width:460px;margin:0 auto;background:${brand.card};border:1px solid ${brand.border};border-bottom:4px solid ${brand.border};border-radius:20px;overflow:hidden">
+    <div style="padding:26px 28px 0;text-align:center">
+      <img src="${brand.logo}" width="112" alt="Locuta" style="display:inline-block;height:auto;border:0;outline:none;text-decoration:none" />
+    </div>
+    <div style="padding:10px 28px 0;text-align:center">
+      <img src="${brand.mascot}" width="88" alt="" style="display:inline-block;height:auto;border:0;outline:none" />
+    </div>
+    <div style="padding:6px 32px 0;text-align:center">
+      <h1 style="font-family:${fontDisplay};font-size:24px;line-height:1.15;font-weight:800;color:${brand.ink};margin:12px 0 8px">Your coach access is ready</h1>
+      <div style="font-size:16px;line-height:1.55;color:${brand.ink};opacity:.88;margin:0">${greeting}we've set up a complimentary account so you can explore Locuta end to end — the whole syllabus, in any order, and feel exactly what your students would.</div>
+    </div>
+    <div style="padding:16px 34px 0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:0 9px">
+        ${line('✓&nbsp;&nbsp;All 6 paths &amp; every lesson unlocked')}
+        ${line(`✓&nbsp;&nbsp;${cap} practice sessions with instant AI feedback`)}
+        ${line(`✓&nbsp;&nbsp;${days} days, from the moment you sign in`)}
+      </table>
+    </div>
+    <div style="text-align:center;padding:22px 28px 30px">
+      <a href="${opts.actionLink}" style="display:inline-block;background:${brand.green};color:#ffffff;font-family:${fontDisplay};font-weight:800;font-size:16px;text-decoration:none;padding:13px 32px;border-radius:14px;border-bottom:4px solid ${brand.greenDark}">Activate my access</a>
+    </div>
+  </div>
+  <div style="max-width:460px;margin:14px auto 0;text-align:center;font-size:12px;line-height:1.5;color:${brand.faint}">
+    A personal evaluation account set up for you by the Locuta team.<br />
+    The button signs you in — no password needed. Just reply if you have any questions.
+  </div>
+</div>`
+  return { subject: 'Your complimentary Locuta coach access 🎤', html }
+}
+
 // ── Timing helpers ────────────────────────────────────────────────────────────
 
 /** Their local weekday, 0=Sun … 6=Sat — used to fire the Sunday recap. */
