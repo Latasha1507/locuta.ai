@@ -845,16 +845,17 @@ export function LandingPage() {
                   href="https://backlinklog.com/listing/locuta.in?utm_source=backlinklog&utm_medium=badge"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="min-w-0 shrink"
                   style={{ display: 'inline-flex', lineHeight: 0 }}
                 >
+                  {/* Height-normalized so both badges match; width scales from
+                      each badge's own aspect ratio (h-9 mobile, h-10 ≥sm). */}
                   <img
                     src="https://backlinklog.com/badge/locuta.in.svg"
                     width={160}
                     height={40}
                     alt="Listed on BacklinkLog"
                     loading="lazy"
-                    className="h-auto min-w-0 max-w-full"
+                    className="h-9 w-auto sm:h-10"
                   />
                 </a>
               )}
@@ -863,7 +864,6 @@ export function LandingPage() {
                   href="https://launchstag.com/p/locuta"
                   target="_blank"
                   rel="noopener"
-                  className="min-w-0 shrink"
                   style={{ display: 'inline-flex', lineHeight: 0 }}
                 >
                   <img
@@ -872,7 +872,7 @@ export function LandingPage() {
                     height={62}
                     alt="Featured on Launchstag"
                     loading="lazy"
-                    className="h-auto min-w-0 max-w-full"
+                    className="h-9 w-auto sm:h-10"
                   />
                 </a>
               )}
