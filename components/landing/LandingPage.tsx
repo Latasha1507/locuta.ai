@@ -91,6 +91,12 @@ const FOOTER_LINKS = [
 // the listing (and badge) indefinitely.
 const BACKLINKLOG_BADGE_UNTIL = Date.parse('2027-08-17T00:00:00Z')
 
+// Launchstag directory badge — same deal as BacklinkLog: the listing and its
+// dofollow backlink stay live only while the badge is on-site. 12-month window
+// from the 2026-08-21 add; bump the date to extend, or remove the gate to keep
+// it indefinitely.
+const LAUNCHSTAG_BADGE_UNTIL = Date.parse('2027-08-21T00:00:00Z')
+
 // Shared bits ---------------------------------------------------------------
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
@@ -225,6 +231,7 @@ function LaunchBanner() {
 
 export function LandingPage() {
   const showBacklinklogBadge = Date.now() < BACKLINKLOG_BADGE_UNTIL
+  const showLaunchstagBadge = Date.now() < LAUNCHSTAG_BADGE_UNTIL
 
   return (
     <div style={{ background: lc.pageBg, overflowX: 'hidden', color: lc.ink }}>
@@ -809,38 +816,68 @@ export function LandingPage() {
 
       {/* FOOTER */}
       <footer style={{ background: lc.pageBg }} className="px-[14px] pt-6 lg:px-10 lg:pt-8">
-        <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-x-4 gap-y-6 px-[18px] py-6 lg:px-10 lg:py-[30px]">
-          <LocutaLogo size={28} />
-          <nav aria-label="Footer" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 22px' }}>
-            {FOOTER_LINKS.map((l) => (
-              <a key={l.href} href={l.href} style={{ textDecoration: 'none', color: '#7a8a72', fontWeight: 700, fontSize: 13 }}>
-                {l.label}
-              </a>
-            ))}
-          </nav>
-
-          {/* Copyright + BacklinkLog badge, grouped in the one footer row.
-              The badge stays on-site until BACKLINKLOG_BADGE_UNTIL; removing it
-              lapses the directory listing (12-month window is deliberate). */}
-          <div className="flex flex-col items-start gap-3 lg:items-end">
-            {showBacklinklogBadge && (
-              <a
-                href="https://backlinklog.com/listing/locuta.in?utm_source=backlinklog&utm_medium=badge"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: 'inline-flex', lineHeight: 0 }}
-              >
-                <img
-                  src="https://backlinklog.com/badge/locuta.in.svg"
-                  width={160}
-                  height={40}
-                  alt="Listed on BacklinkLog"
-                  loading="lazy"
-                />
-              </a>
-            )}
+        <div className="mx-auto max-w-[1100px] px-[18px] py-6 lg:px-10 lg:py-[30px]">
+          {/* Top row: logo left, menu middle, copyright right. */}
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-4">
+            <LocutaLogo size={28} />
+            <nav aria-label="Footer" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 22px' }}>
+              {FOOTER_LINKS.map((l) => (
+                <a key={l.href} href={l.href} style={{ textDecoration: 'none', color: '#7a8a72', fontWeight: 700, fontSize: 13 }}>
+                  {l.label}
+                </a>
+              ))}
+            </nav>
             <div style={{ fontSize: 13, color: lc.faint, fontWeight: 700 }}>© 2026 Locuta. Train your speaking brain.</div>
           </div>
+
+          {/* Directory badges (BacklinkLog, Launchstag) below a divider,
+              right-aligned on desktop / centered on mobile. Each badge stays
+              on-site until its own *_BADGE_UNTIL date; letting one expire lapses
+              that directory's listing and dofollow backlink (12-month windows
+              are deliberate). */}
+          {(showBacklinklogBadge || showLaunchstagBadge) && (
+            <div
+              className="mt-6 flex flex-nowrap items-center justify-center gap-3 pt-6 sm:gap-4 lg:mt-7 lg:justify-end"
+              style={{ borderTop: `2px solid ${lc.cardBorder}` }}
+            >
+              {showBacklinklogBadge && (
+                <a
+                  href="https://backlinklog.com/listing/locuta.in?utm_source=backlinklog&utm_medium=badge"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="min-w-0 shrink"
+                  style={{ display: 'inline-flex', lineHeight: 0 }}
+                >
+                  <img
+                    src="https://backlinklog.com/badge/locuta.in.svg"
+                    width={160}
+                    height={40}
+                    alt="Listed on BacklinkLog"
+                    loading="lazy"
+                    className="h-auto min-w-0 max-w-full"
+                  />
+                </a>
+              )}
+              {showLaunchstagBadge && (
+                <a
+                  href="https://launchstag.com/p/locuta"
+                  target="_blank"
+                  rel="noopener"
+                  className="min-w-0 shrink"
+                  style={{ display: 'inline-flex', lineHeight: 0 }}
+                >
+                  <img
+                    src="https://launchstag.com/badge-light.svg"
+                    width={198}
+                    height={62}
+                    alt="Featured on Launchstag"
+                    loading="lazy"
+                    className="h-auto min-w-0 max-w-full"
+                  />
+                </a>
+              )}
+            </div>
+          )}
         </div>
       </footer>
     </div>
