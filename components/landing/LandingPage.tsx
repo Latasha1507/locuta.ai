@@ -82,12 +82,14 @@ const FOOTER_LINKS = [
   { label: 'Pricing', href: '#pricing' },
 ]
 
-// Fazier launch badge is temporary — it shows for ~2 days after the
-// 2026-08-17 launch, then auto-hides. The homepage renders per request
-// (it reads auth cookies), so this date check is re-evaluated live with no
-// redeploy needed. To keep it up longer, bump the date; to pull it now,
-// set the date to the past or delete the footer block that uses it.
-const FAZIER_BADGE_UNTIL = Date.parse('2026-08-19T00:00:00Z')
+// BacklinkLog directory badge shows for a 12-month window from the
+// 2026-08-17 launch, then auto-hides. NOTE: BacklinkLog keeps locuta.in
+// listed only while this badge is live on-site, so when this date passes the
+// listing will lapse — the 12-month window is intentional. The homepage
+// renders per request (it reads auth cookies), so this check is evaluated
+// live with no redeploy. Bump the date to extend, or remove the gate to keep
+// the listing (and badge) indefinitely.
+const BACKLINKLOG_BADGE_UNTIL = Date.parse('2027-08-17T00:00:00Z')
 
 // Shared bits ---------------------------------------------------------------
 
@@ -222,7 +224,7 @@ function LaunchBanner() {
 }
 
 export function LandingPage() {
-  const showFazierBadge = Date.now() < FAZIER_BADGE_UNTIL
+  const showBacklinklogBadge = Date.now() < BACKLINKLOG_BADGE_UNTIL
 
   return (
     <div style={{ background: lc.pageBg, overflowX: 'hidden', color: lc.ink }}>
@@ -819,25 +821,26 @@ export function LandingPage() {
           <div style={{ fontSize: 13, color: lc.faint, fontWeight: 700 }}>© 2026 Locuta. Train your speaking brain.</div>
         </div>
 
-        {/* Fazier launch badge — temporary. Auto-hides after FAZIER_BADGE_UNTIL
-            (~2 days from the 2026-08-17 launch). Delete this block to remove. */}
-        {showFazierBadge && (
+        {/* BacklinkLog directory badge. BacklinkLog keeps locuta.in listed
+            only while this badge is live on-site, so the gate below lapses the
+            listing when it passes — the 12-month window is deliberate. */}
+        {showBacklinklogBadge && (
           <div
             className="mx-auto flex max-w-[1100px] justify-center px-[18px] pb-7 pt-5 lg:pb-9"
             style={{ borderTop: `2px solid ${lc.cardBorder}` }}
           >
             <a
-              href="https://fazier.com/launches/locuta.in"
+              href="https://backlinklog.com/listing/locuta.in?utm_source=backlinklog&utm_medium=badge"
               target="_blank"
               rel="noopener noreferrer"
               style={{ display: 'inline-flex', lineHeight: 0 }}
             >
               <img
-                src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=launched&theme=neutral"
-                width={120}
-                alt="Locuta — launched on Fazier"
+                src="https://backlinklog.com/badge/locuta.in.svg"
+                width={160}
+                height={40}
+                alt="Listed on BacklinkLog"
                 loading="lazy"
-                style={{ height: 'auto' }}
               />
             </a>
           </div>
