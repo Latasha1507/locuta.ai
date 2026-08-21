@@ -168,32 +168,57 @@ export default function CoachAccountsPage() {
 
   if (!isAdmin) return null
 
+  const activeCount = coaches.filter((c) => c.active).length
+  const revokedCount = coaches.filter((c) => c.revokedAt).length
+  const expiredCount = coaches.filter((c) => !c.active && !c.revokedAt).length
+  const totalUsed = coaches.reduce((sum, c) => sum + (c.used || 0), 0)
+  const stats = [
+    { label: 'Active', value: activeCount, accent: 'text-emerald-600' },
+    { label: 'Sessions used', value: totalUsed, accent: 'text-slate-900' },
+    { label: 'Expired', value: expiredCount, accent: 'text-slate-500' },
+    { label: 'Revoked', value: revokedCount, accent: 'text-red-500' },
+  ]
+  const initials = (c: Coach) => {
+    const parts = (c.fullName || c.email || '?').trim().split(/[\s@.]+/).filter(Boolean)
+    return ((parts[0]?.[0] || '?') + (parts[1]?.[0] || '')).toUpperCase()
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/admin" className="text-slate-600 hover:text-slate-900">
-                ← Back to Admin
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                  Coach Accounts
-                  <span className="px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold rounded-full">
-                    ADMIN
-                  </span>
-                </h1>
-                <p className="text-sm text-slate-600">Complimentary coach evaluation accounts</p>
-              </div>
+      {/* Header — purple hero */}
+      <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <Link href="/admin" className="text-purple-200 hover:text-white text-sm font-medium">
+            ← Back to Admin
+          </Link>
+          <div className="mt-2 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2.5 flex-wrap">
+                <span>🎤</span> Coach Accounts
+                <span className="px-2.5 py-0.5 bg-white/20 text-white text-[11px] font-bold rounded-full tracking-wider">
+                  ADMIN
+                </span>
+              </h1>
+              <p className="text-purple-100 text-sm mt-1">
+                Complimentary evaluation accounts — 30 days, all lessons unlocked.
+              </p>
             </div>
-            <img src="/Icon.png" alt="Locuta" className="w-10 h-10" />
+            <img src="/Icon.png" alt="Locuta" className="hidden sm:block w-12 h-12 rounded-xl bg-white/10 p-1.5 flex-none" />
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Summary stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {stats.map((s) => (
+            <div key={s.label} className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3">
+              <div className={`text-2xl font-extrabold ${s.accent}`}>{s.value}</div>
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mt-0.5">{s.label}</div>
+            </div>
+          ))}
+        </div>
+
         {/* Invite */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sm:p-8">
           <h2 className="text-lg font-bold text-slate-900 mb-1">Invite a coach</h2>
@@ -294,51 +319,70 @@ export default function CoachAccountsPage() {
           )}
 
           {coaches.length === 0 ? (
-            <p className="text-slate-500 text-sm py-8 text-center">No coach accounts yet. Invite one above.</p>
+            <div className="text-center py-12">
+              <div className="text-5xl mb-3">🎓</div>
+              <p className="text-slate-500 text-sm">No coach accounts yet. Invite one above.</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-slate-500 border-b border-slate-200">
-                    <th className="py-2 pr-3 font-semibold">Coach</th>
-                    <th className="py-2 px-3 font-semibold">Status</th>
-                    <th className="py-2 px-3 font-semibold">Sessions</th>
-                    <th className="py-2 px-3 font-semibold">Days left</th>
-                    <th className="py-2 px-3 font-semibold">Started</th>
-                    <th className="py-2 pl-3 font-semibold text-right">Action</th>
+                  <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400 border-b border-slate-200">
+                    <th className="py-2.5 pr-3 font-semibold">Coach</th>
+                    <th className="py-2.5 px-3 font-semibold">Status</th>
+                    <th className="py-2.5 px-3 font-semibold">Sessions</th>
+                    <th className="py-2.5 px-3 font-semibold">Days left</th>
+                    <th className="py-2.5 px-3 font-semibold">Started</th>
+                    <th className="py-2.5 pl-3 font-semibold text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {coaches.map((c) => (
-                    <tr key={c.id} className="border-b border-slate-100 last:border-0">
-                      <td className="py-3 pr-3">
-                        <div className="font-medium text-slate-900">{c.email ?? '—'}</div>
-                        {c.fullName && <div className="text-xs text-slate-500">{c.fullName}</div>}
-                        {c.revokedAt && c.revokedReason && (
-                          <div className="text-xs text-red-500 mt-0.5">Revoked: {c.revokedReason}</div>
-                        )}
-                      </td>
-                      <td className="py-3 px-3">
-                        <StatusBadge c={c} />
-                      </td>
-                      <td className="py-3 px-3 text-slate-700">
-                        {c.used}/{c.cap}
-                      </td>
-                      <td className="py-3 px-3 text-slate-700">{c.active ? c.daysRemaining : '—'}</td>
-                      <td className="py-3 px-3 text-slate-500">{fmtDate(c.startedAt)}</td>
-                      <td className="py-3 pl-3 text-right">
-                        {!c.revokedAt && (
-                          <button
-                            onClick={() => revoke(c)}
-                            disabled={busyId === c.id}
-                            className="px-3 py-1.5 rounded-md border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold disabled:opacity-50"
-                          >
-                            {busyId === c.id ? '…' : 'Revoke'}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {coaches.map((c) => {
+                    const pct = Math.min(100, Math.round((c.used / Math.max(1, c.cap)) * 100))
+                    return (
+                      <tr key={c.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3 pr-3">
+                          <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-full bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center flex-none">
+                              {initials(c)}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="font-medium text-slate-900 truncate">{c.email ?? '—'}</div>
+                              {c.fullName && <div className="text-xs text-slate-500 truncate">{c.fullName}</div>}
+                              {c.revokedAt && c.revokedReason && (
+                                <div className="text-xs text-red-500 mt-0.5">Revoked: {c.revokedReason}</div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <StatusBadge c={c} />
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="text-slate-700 font-medium">
+                            {c.used}
+                            <span className="text-slate-400">/{c.cap}</span>
+                          </div>
+                          <div className="mt-1 h-1.5 w-20 rounded-full bg-slate-100 overflow-hidden">
+                            <div className="h-full rounded-full bg-purple-500" style={{ width: `${pct}%` }} />
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-slate-700">{c.active ? `${c.daysRemaining}d` : '—'}</td>
+                        <td className="py-3 px-3 text-slate-500 whitespace-nowrap">{fmtDate(c.startedAt)}</td>
+                        <td className="py-3 pl-3 text-right">
+                          {!c.revokedAt && (
+                            <button
+                              onClick={() => revoke(c)}
+                              disabled={busyId === c.id}
+                              className="px-3 py-1.5 rounded-md border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold disabled:opacity-50"
+                            >
+                              {busyId === c.id ? '…' : 'Revoke'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
