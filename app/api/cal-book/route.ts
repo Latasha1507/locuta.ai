@@ -5,7 +5,7 @@ import { sendEmail } from '@/lib/notifications'
 // NOTE: this route is not currently wired into the app (the founder-call modal
 // books via a client-side insert). It is kept for the real Cal.com integration
 // — but it is publicly POST-able, so it must not be an unauthenticated mailer.
-// Both confirmation emails go through the shared Brevo sendEmail().
+// Both confirmation emails go through the shared sendEmail() helper.
 
 /** Escape user-supplied text before it goes into an HTML email body. */
 const esc = (s: string) =>

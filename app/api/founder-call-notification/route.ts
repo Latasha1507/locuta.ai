@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     }
 
     console.log('🎯 Founder call booked:', user.email, '—', name)
-    // TODO: send confirmation email (via lib/notifications sendEmail / Brevo) to the user + founder.
+    // TODO: send confirmation email (via lib/notifications sendEmail) to the user + founder.
 
     return NextResponse.json({ success: true })
   } catch (error) {
