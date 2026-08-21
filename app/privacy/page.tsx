@@ -76,7 +76,7 @@ export default function PrivacyPage() {
             <LI><strong>Supabase</strong> — to store your account, recordings, transcripts, and progress.</LI>
             <LI><strong>Vercel</strong> — to host and serve the application.</LI>
             <LI><strong>Mixpanel</strong> — to understand product usage in aggregate.</LI>
-            <LI><strong>Resend</strong> — to send account and service emails.</LI>
+            <LI><strong>Brevo</strong> — to send account and service emails.</LI>
             <LI><strong>Cal.com</strong> — to schedule sessions, if you book one.</LI>
           </UL>
           <P>

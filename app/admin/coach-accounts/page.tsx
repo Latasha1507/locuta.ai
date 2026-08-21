@@ -250,7 +250,7 @@ export default function CoachAccountsPage() {
               <p className="text-sm mt-1">
                 {invite.emailSent
                   ? '📧 Invite email sent.'
-                  : '⚠️ Email not sent (sender domain not verified in Resend yet) — copy the sign-in link below and send it manually.'}
+                  : '⚠️ Invite email could not be sent — copy the sign-in link below and send it to the coach manually.'}
               </p>
               {invite.actionLink && (
                 <div className="mt-3">

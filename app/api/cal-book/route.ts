@@ -1,20 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/notifications'
 
 // NOTE: this route is not currently wired into the app (the founder-call modal
 // books via a client-side insert). It is kept for the real Cal.com integration
 // — but it is publicly POST-able, so it must not be an unauthenticated mailer.
-
-let _resend: Resend | null = null
-function getResend(): Resend {
-  if (!_resend) {
-    const apiKey = process.env.RESEND_API_KEY
-    if (!apiKey) throw new Error('RESEND_API_KEY is not configured')
-    _resend = new Resend(apiKey)
-  }
-  return _resend
-}
+// Both confirmation emails go through the shared Brevo sendEmail().
 
 /** Escape user-supplied text before it goes into an HTML email body. */
 const esc = (s: string) =>
@@ -122,11 +113,10 @@ export async function POST(request: Request) {
     // Emails — non-blocking. Recipient is the account email; user text escaped.
     try {
       await Promise.all([
-        getResend().emails.send({
-          from: 'Locuta <onboarding@resend.dev>',
-          to: process.env.FOUNDER_EMAIL!,
-          subject: `New Founder Call: ${name} — ${meetingTime}`,
-          html: `
+        sendEmail(
+          process.env.FOUNDER_EMAIL!,
+          `New Founder Call: ${name} — ${meetingTime}`,
+          `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #2fa552;">New Founder Call Booked</h2>
               <div style="background: #f4f7f0; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -138,12 +128,11 @@ export async function POST(request: Request) {
               <p><a href="${meetingUrl}" style="color: #2fa552;">${meetingUrl}</a></p>
             </div>
           `,
-        }),
-        getResend().emails.send({
-          from: 'Locuta <onboarding@resend.dev>',
-          to: email,
-          subject: 'Your Locuta founder call is confirmed',
-          html: `
+        ),
+        sendEmail(
+          email,
+          'Your Locuta founder call is confirmed',
+          `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #2fa552;">You're all set, ${esc(name)}.</h2>
               <div style="background: #eafaef; border-left: 4px solid #3fce6f; padding: 20px; margin: 20px 0;">
@@ -154,7 +143,7 @@ export async function POST(request: Request) {
               <p style="margin-top: 30px;">Looking forward to speaking with you!<br/><strong>Locuta</strong></p>
             </div>
           `,
-        }),
+        ),
       ])
     } catch (emailError) {
       console.error('⚠️ Email error (non-blocking):', emailError)
