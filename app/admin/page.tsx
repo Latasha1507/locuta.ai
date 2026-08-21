@@ -495,6 +495,12 @@ export default function AdminPage() {
               <p className="text-sm text-slate-600">Upload CSV files</p>
             </Link>
 
+            <Link href="/admin/coach-accounts" className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200 hover:border-purple-400 hover:shadow-xl transition-all">
+              <div className="text-2xl mb-2">🎤</div>
+              <h3 className="font-bold text-slate-900 mb-1">Coach Accounts</h3>
+              <p className="text-sm text-slate-600">Invite &amp; manage coaches</p>
+            </Link>
+
             <a href="https://mixpanel.com" target="_blank" rel="noopener noreferrer" className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border-2 border-green-200 hover:border-green-400 hover:shadow-xl transition-all">
               <div className="text-2xl mb-2">📊</div>
               <h3 className="font-bold text-slate-900 mb-1">Mixpanel</h3>

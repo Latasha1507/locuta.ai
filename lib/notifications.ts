@@ -6,7 +6,12 @@
 // Hard rule (see the cron route): AT MOST ONE email per user per local day.
 // Nobody wants hourly — or even daily — mail, so we send sparingly and on brand.
 
-const FROM = 'Locuta <onboarding@resend.dev>' // swap to a verified locuta.in sender once the domain is set up in Resend
+// Sender for ALL outbound mail (notifications + coach invites).
+// TODO(email): switch to 'Locuta <info@locuta.in>' the moment `locuta.in` is
+// verified as a sending domain in Resend (resend.com/domains). Do NOT switch
+// before then — the test sender below only delivers to the Resend account
+// owner, but info@locuta.in would 403 every send until the domain verifies.
+const FROM = 'Locuta <onboarding@resend.dev>'
 const APP_URL = 'https://locuta.in'
 
 export type NotificationKind = 'daily' | 'streak' | 'weekly'
