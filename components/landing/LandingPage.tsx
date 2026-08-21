@@ -809,7 +809,7 @@ export function LandingPage() {
 
       {/* FOOTER */}
       <footer style={{ background: lc.pageBg }} className="px-[14px] pt-6 lg:px-10 lg:pt-8">
-        <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-4 px-[18px] py-6 lg:px-10 lg:py-[30px]">
+        <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-x-4 gap-y-6 px-[18px] py-6 lg:px-10 lg:py-[30px]">
           <LocutaLogo size={28} />
           <nav aria-label="Footer" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 22px' }}>
             {FOOTER_LINKS.map((l) => (
@@ -818,33 +818,30 @@ export function LandingPage() {
               </a>
             ))}
           </nav>
-          <div style={{ fontSize: 13, color: lc.faint, fontWeight: 700 }}>© 2026 Locuta. Train your speaking brain.</div>
-        </div>
 
-        {/* BacklinkLog directory badge. BacklinkLog keeps locuta.in listed
-            only while this badge is live on-site, so the gate below lapses the
-            listing when it passes — the 12-month window is deliberate. */}
-        {showBacklinklogBadge && (
-          <div
-            className="mx-auto flex max-w-[1100px] justify-center px-[18px] pb-7 pt-5 lg:pb-9"
-            style={{ borderTop: `2px solid ${lc.cardBorder}` }}
-          >
-            <a
-              href="https://backlinklog.com/listing/locuta.in?utm_source=backlinklog&utm_medium=badge"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: 'inline-flex', lineHeight: 0 }}
-            >
-              <img
-                src="https://backlinklog.com/badge/locuta.in.svg"
-                width={160}
-                height={40}
-                alt="Listed on BacklinkLog"
-                loading="lazy"
-              />
-            </a>
+          {/* Copyright + BacklinkLog badge, grouped in the one footer row.
+              The badge stays on-site until BACKLINKLOG_BADGE_UNTIL; removing it
+              lapses the directory listing (12-month window is deliberate). */}
+          <div className="flex flex-col items-start gap-3 lg:items-end">
+            {showBacklinklogBadge && (
+              <a
+                href="https://backlinklog.com/listing/locuta.in?utm_source=backlinklog&utm_medium=badge"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: 'inline-flex', lineHeight: 0 }}
+              >
+                <img
+                  src="https://backlinklog.com/badge/locuta.in.svg"
+                  width={160}
+                  height={40}
+                  alt="Listed on BacklinkLog"
+                  loading="lazy"
+                />
+              </a>
+            )}
+            <div style={{ fontSize: 13, color: lc.faint, fontWeight: 700 }}>© 2026 Locuta. Train your speaking brain.</div>
           </div>
-        )}
+        </div>
       </footer>
     </div>
   )
