@@ -99,9 +99,9 @@ export async function inviteCoach(
   // real-world causes are a missing key on the server or a provider rejection.
   const emailError = emailSent
     ? undefined
-    : process.env.BREVO_API_KEY
-      ? 'The email provider (Brevo) rejected the send — check the Brevo dashboard logs.'
-      : 'BREVO_API_KEY is not set on the server. Add it in Vercel → Settings → Environment Variables (Production), then redeploy.'
+    : process.env.RESEND_API_KEY
+      ? 'Resend rejected the send — most likely locuta.in is not verified in Resend yet (resend.com/domains).'
+      : 'RESEND_API_KEY is not set on the server. Add it in Vercel → Settings → Environment Variables (Production), then redeploy.'
 
   return { ok: true, value: { status: 'invited', created, emailSent, emailError, email, userId, actionLink } }
 }

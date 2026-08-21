@@ -1,46 +1,38 @@
 // Email — every outbound message (coach invites, daily/streak/weekly
 // notifications, founder-call confirmations) goes through the one sendEmail()
-// below, sent via Brevo's transactional API from info@locuta.in (locuta.in is
-// authenticated in Brevo). No push here — this is email only; browser/mobile
-// push is a separate, larger job.
+// below, sent via Resend's API from info@locuta.in. Resend authenticates by API
+// key alone (no IP allow-list), which is why it works from Vercel's serverless
+// functions where Brevo's IP-authorization security kept 401-blocking the
+// rotating outbound IPs. Marketing/newsletters live separately in Brevo.
 //
 // Hard rule (see the cron route): AT MOST ONE notification email per user per
 // local day. Nobody wants hourly — or even daily — mail, so we send sparingly.
 
-const SENDER = { name: 'Locuta', email: 'info@locuta.in' }
+const FROM = 'Locuta <info@locuta.in>' // requires locuta.in verified in Resend (resend.com/domains)
 const APP_URL = 'https://locuta.in'
 
 export type NotificationKind = 'daily' | 'streak' | 'weekly'
 
-/** Send one email through Brevo's transactional API. Returns true on success. */
+/** Send one email through Resend. Returns true on success. */
 export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
-  const apiKey = process.env.BREVO_API_KEY
+  const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
-    console.error('BREVO_API_KEY not configured — cannot send email')
+    console.error('RESEND_API_KEY not configured — cannot send email')
     return false
   }
   try {
-    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: {
-        'api-key': apiKey,
-        'Content-Type': 'application/json',
-        accept: 'application/json',
-      },
-      body: JSON.stringify({
-        sender: SENDER,
-        to: [{ email: to }],
-        subject,
-        htmlContent: html,
-      }),
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: FROM, to, subject, html }),
     })
     if (!res.ok) {
-      console.error('Brevo send failed:', res.status, await res.text().catch(() => ''))
+      console.error('Resend send failed:', res.status, await res.text().catch(() => ''))
       return false
     }
     return true
   } catch (e) {
-    console.error('Brevo send error:', e)
+    console.error('Resend send error:', e)
     return false
   }
 }
