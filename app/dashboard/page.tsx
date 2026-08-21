@@ -164,6 +164,11 @@ export default async function DashboardPage({
     }
   }
 
+  // Show the coach welcome the first time a freshly-provisioned coach lands
+  // (before they've run any session). The client also guards with localStorage
+  // so it appears once, not on every visit.
+  const showCoachWelcome = !!coach && Number(profile?.coach_sessions_used ?? 0) === 0
+
   // The onboarding states, derived from plan_type + trial/coach state:
   //   coach   → active coach_complimentary account (shows the coach pill)
   //   paid    → a subscription plan_type
@@ -241,6 +246,7 @@ export default async function DashboardPage({
       categories={categories}
       nextHref={nextHref}
       showWelcome={showWelcome}
+      showCoachWelcome={showCoachWelcome}
       trial={trial}
       coach={coach}
       planState={planState}

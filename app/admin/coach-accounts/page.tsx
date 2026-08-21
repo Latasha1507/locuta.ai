@@ -23,6 +23,7 @@ interface InviteResult {
   status?: string
   created?: boolean
   emailSent?: boolean
+  emailError?: string
   email?: string
   userId?: string
   actionLink?: string
@@ -252,6 +253,9 @@ export default function CoachAccountsPage() {
                   ? '📧 Invite email sent.'
                   : '⚠️ Invite email could not be sent — copy the sign-in link below and send it to the coach manually.'}
               </p>
+              {!invite.emailSent && invite.emailError && (
+                <p className="text-xs mt-1 font-semibold text-amber-700">Why: {invite.emailError}</p>
+              )}
               {invite.actionLink && (
                 <div className="mt-3">
                   <div className="flex items-center gap-2">

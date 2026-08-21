@@ -16,6 +16,8 @@ export interface InviteCoachSuccess {
   /** true if a brand-new account was created; false if an existing one was reused. */
   created: boolean
   emailSent: boolean
+  /** When emailSent is false, a human-readable reason so the admin isn't guessing. */
+  emailError?: string
   email: string
   userId: string
   /** Passwordless sign-in link. A secret — return only to an admin, never log. */
@@ -93,5 +95,13 @@ export async function inviteCoach(
   const { subject, html } = coachInviteEmail({ name, actionLink, cap: capForEmail, days: COACH_TRIAL_DAYS })
   const emailSent = await sendEmail(email, subject, html)
 
-  return { ok: true, value: { status: 'invited', created, emailSent, email, userId, actionLink } }
+  // Give the admin a precise reason when the email didn't go out — the two
+  // real-world causes are a missing key on the server or a provider rejection.
+  const emailError = emailSent
+    ? undefined
+    : process.env.BREVO_API_KEY
+      ? 'The email provider (Brevo) rejected the send — check the Brevo dashboard logs.'
+      : 'BREVO_API_KEY is not set on the server. Add it in Vercel → Settings → Environment Variables (Production), then redeploy.'
+
+  return { ok: true, value: { status: 'invited', created, emailSent, emailError, email, userId, actionLink } }
 }

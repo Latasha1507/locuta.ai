@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Mixpanel from '@/lib/mixpanel'
 import { EVENTS, USER_PROPERTIES } from '@/lib/analytics/events'
 import TrialWelcomeModal from '@/components/TrialWelcomeModal'
+import CoachWelcomeModal from '@/components/CoachWelcomeModal'
 import { lc, fontDisplay, fontBody } from '@/components/landing/tokens'
 import { pressable } from '@/components/ui/buttonSkins'
 import { Icon } from '@/components/ui/icons'
@@ -42,6 +43,7 @@ export interface DashboardData {
   categories: CategoryStat[]
   nextHref: string
   showWelcome: boolean
+  showCoachWelcome: boolean
   trial: { active: boolean; daysLeft: number; sessionsLeft: number } | null
   coach: { active: boolean; daysLeft: number; sessionsUsed: number; cap: number } | null
   planState: 'explore' | 'trial' | 'paid' | 'coach'
@@ -51,6 +53,22 @@ export interface DashboardData {
 
 export function DashboardClient(d: DashboardData) {
   const [showWelcome, setShowWelcome] = useState(d.showWelcome)
+  const [showCoachWelcome, setShowCoachWelcome] = useState(false)
+
+  // Coach welcome: show once on first landing, then remember it's been seen so
+  // it doesn't reappear on every dashboard visit until they run a session.
+  useEffect(() => {
+    if (!d.showCoachWelcome || typeof window === 'undefined') return
+    if (!localStorage.getItem('coachWelcomeSeen')) setShowCoachWelcome(true)
+  }, [d.showCoachWelcome])
+  const dismissCoachWelcome = () => {
+    setShowCoachWelcome(false)
+    try {
+      localStorage.setItem('coachWelcomeSeen', '1')
+    } catch {
+      /* private mode — non-fatal */
+    }
+  }
 
   useEffect(() => {
     try {
@@ -451,6 +469,15 @@ export function DashboardClient(d: DashboardData) {
       </main>
 
       {showWelcome && <TrialWelcomeModal onClose={() => setShowWelcome(false)} daysLeft={d.trial?.daysLeft ?? 14} />}
+      {showCoachWelcome && d.coach && (
+        <CoachWelcomeModal
+          onClose={dismissCoachWelcome}
+          firstName={d.firstName}
+          daysLeft={d.coach.daysLeft}
+          sessionsRemaining={Math.max(0, d.coach.cap - d.coach.sessionsUsed)}
+          cap={d.coach.cap}
+        />
+      )}
     </div>
   )
 }
