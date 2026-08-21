@@ -172,7 +172,7 @@ export function coachInviteEmail(opts: {
     `<tr><td style="font-size:15px;color:${brand.ink};opacity:.9;padding:0">${text}</td></tr>`
   const html = `<div style="background:${brand.pageBg};margin:0;padding:24px 12px;font-family:${fontBody};-webkit-text-size-adjust:100%">
   <style>@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;600;700&display=swap');</style>
-  <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden">${days} days, all lessons unlocked, up to ${cap} practice sessions on us.</span>
+  <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden">Full access for ${days} days, up to ${cap} practice sessions, on us.</span>
   <div style="max-width:460px;margin:0 auto;background:${brand.card};border:1px solid ${brand.border};border-bottom:4px solid ${brand.border};border-radius:20px;overflow:hidden">
     <div style="padding:26px 28px 0;text-align:center">
       <img src="${brand.logo}" width="112" alt="Locuta" style="display:inline-block;height:auto;border:0;outline:none;text-decoration:none" />
@@ -181,26 +181,29 @@ export function coachInviteEmail(opts: {
       <img src="${brand.mascot}" width="88" alt="" style="display:inline-block;height:auto;border:0;outline:none" />
     </div>
     <div style="padding:6px 32px 0;text-align:center">
-      <h1 style="font-family:${fontDisplay};font-size:24px;line-height:1.15;font-weight:800;color:${brand.ink};margin:12px 0 8px">Your coach access is ready</h1>
-      <div style="font-size:16px;line-height:1.55;color:${brand.ink};opacity:.88;margin:0">${greeting}we've set up a complimentary account so you can explore Locuta end to end — the whole syllabus, in any order, and feel exactly what your students would.</div>
+      <h1 style="font-family:${fontDisplay};font-size:24px;line-height:1.15;font-weight:800;color:${brand.ink};margin:12px 0 8px">Your Locuta access is ready</h1>
+      <div style="font-size:16px;line-height:1.55;color:${brand.ink};opacity:.88;margin:0">${greeting}we've set you up with full access, so you can try Locuta exactly the way the people you coach would. Open any speaking path, run a few real practice sessions, and see the feedback they'd get.</div>
     </div>
     <div style="padding:16px 34px 0">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:0 9px">
-        ${line('✓&nbsp;&nbsp;All 6 paths &amp; every lesson unlocked')}
-        ${line(`✓&nbsp;&nbsp;${cap} practice sessions with instant AI feedback`)}
-        ${line(`✓&nbsp;&nbsp;${days} days, from the moment you sign in`)}
+        ${line('✓&nbsp;&nbsp;All six speaking paths, every lesson unlocked')}
+        ${line(`✓&nbsp;&nbsp;${cap} practice sessions with instant feedback`)}
+        ${line(`✓&nbsp;&nbsp;Free for ${days} days, from the moment you sign in`)}
       </table>
     </div>
-    <div style="text-align:center;padding:22px 28px 30px">
-      <a href="${opts.actionLink}" style="display:inline-block;background:${brand.green};color:#ffffff;font-family:${fontDisplay};font-weight:800;font-size:16px;text-decoration:none;padding:13px 32px;border-radius:14px;border-bottom:4px solid ${brand.greenDark}">Activate my access</a>
+    <div style="padding:14px 34px 0;font-size:14px;line-height:1.55;color:${brand.ink};opacity:.78">
+      Have a proper look around. If you think it could help the people you work with, just reply to this email and we'll sort out the easiest way to bring them on.
+    </div>
+    <div style="text-align:center;padding:20px 28px 30px">
+      <a href="${opts.actionLink}" style="display:inline-block;background:${brand.green};color:#ffffff;font-family:${fontDisplay};font-weight:800;font-size:16px;text-decoration:none;padding:13px 32px;border-radius:14px;border-bottom:4px solid ${brand.greenDark}">Start exploring</a>
     </div>
   </div>
   <div style="max-width:460px;margin:14px auto 0;text-align:center;font-size:12px;line-height:1.5;color:${brand.faint}">
-    A personal evaluation account set up for you by the Locuta team.<br />
-    The button signs you in — no password needed. Just reply if you have any questions.
+    We set this account up for you personally.<br />
+    The button signs you in, no password needed. Any questions, just reply.
   </div>
 </div>`
-  return { subject: 'Your complimentary Locuta coach access 🎤', html }
+  return { subject: 'Your Locuta access is ready 🎤', html }
 }
 
 // ── Timing helpers ────────────────────────────────────────────────────────────

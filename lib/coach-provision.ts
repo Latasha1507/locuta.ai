@@ -73,6 +73,11 @@ export async function grantCoachAccount(
       coach_sessions_used: 0,
       coach_revoked_at: null,
       coach_revoked_reason: null,
+      // Coaches are partners evaluating the product, not learners — they must
+      // NOT be sent through the learner questionnaire (age / skill / speaking
+      // level). Marking onboarding complete drops them straight onto the
+      // dashboard, where the personalized coach welcome greets them by name.
+      onboarding_completed: true,
     })
     .eq('id', userId)
     .select('id, email, plan_type, coach_started_at, coach_session_cap')
